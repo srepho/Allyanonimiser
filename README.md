@@ -1,5 +1,9 @@
 # Allyanonimiser
 
+[![PyPI version](https://badge.fury.io/py/allyanonimiser.svg)](https://badge.fury.io/py/allyanonimiser)
+[![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Australian-focused PII detection and anonymization for the insurance industry.
 
 ## Features
@@ -14,6 +18,8 @@ Australian-focused PII detection and anonymization for the insurance industry.
 
 ## Installation
 
+[![PyPI install](https://img.shields.io/pypi/v/allyanonimiser?label=pip%20install&logo=pypi)](https://pypi.org/project/allyanonimiser/)
+
 ```bash
 # Install from PyPI
 pip install allyanonimiser
@@ -21,6 +27,8 @@ pip install allyanonimiser
 # Install the required spaCy model
 python -m spacy download en_core_web_lg
 ```
+
+Requires Python 3.8 or higher.
 
 ## Quick Start
 
