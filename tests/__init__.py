@@ -1,3 +1,3 @@
 """
-Test package for Allyanonimiser.
+Tests package for Allyanonimiser.
 """
