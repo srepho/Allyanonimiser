@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Australian synthetic data generator
 - LLM augmenter for creating challenging datasets
 
+## [0.1.1] - 2025-02-28
+
+### Fixed
+- Fixed package structure to properly support imports
+- Moved all modules into the proper package hierarchy
+- Ensured correct relative imports across the package
+- Added example script using absolute imports
+- Improved import reliability for pip-installed packages
+
 ## [0.1.0] - 2025-02-28
 
 ### Added

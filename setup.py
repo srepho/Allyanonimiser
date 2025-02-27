@@ -10,14 +10,14 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name="allyanonimiser",
-    version="0.1.0",
+    version="0.1.1",
     author="Stephen Oates",
     author_email="stephen.j.a.oates@gmail.com",
     description="Australian-focused PII detection and anonymization for the insurance industry",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/srepho/Allyanonimiser",
-    packages=find_packages(),
+    packages=find_packages(include=['allyanonimiser', 'allyanonimiser.*']),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
