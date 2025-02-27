@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.3 (2025-02-28)
+
+### Added
+- Enhanced factory functions to accept custom patterns parameter
+- Improved flexibility in function parameters with better default values
+- More robust pattern creation from examples
+
+### Changed
+- Made API more flexible and customizable
+- Improved handling of different pattern types
+- Further enhanced code structure to avoid import issues
+
 ## 0.1.2 (2025-02-28)
 
 ### Fixed

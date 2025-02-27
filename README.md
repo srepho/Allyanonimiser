@@ -8,7 +8,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.1.3 - Added Functional Processing Capabilities
+## Version 0.1.4 - Added Functional Processing Capabilities
 
 This version adds fully functional processing capabilities to the package while maintaining compatibility with previous versions. Key improvements include:
 
@@ -59,7 +59,7 @@ This version adds fully functional processing capabilities to the package while 
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.1.3
+pip install allyanonimiser==0.1.4
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg
