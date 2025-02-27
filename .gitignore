@@ -169,3 +169,22 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project-specific
+CLAUDE.md
+output/
+temp_files/
+anonymized_files/
+challenging_dataset/
+datasets/
+cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dataset storage
+*.csv
+*.jsonl

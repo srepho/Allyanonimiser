@@ -1,0 +1,25 @@
+include LICENSE
+include README.md
+include requirements.txt
+
+recursive-include tests *.py
+recursive-include allyanonimiser *.py
+
+prune .git
+prune .github
+prune venv
+prune env
+prune dist
+prune build
+prune output
+prune temp_files
+prune anonymized_files
+prune challenging_dataset
+prune datasets
+prune cache
+
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude CLAUDE.md
