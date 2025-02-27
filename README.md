@@ -2,9 +2,48 @@
 
 [![PyPI version](https://badge.fury.io/py/allyanonimiser.svg)](https://badge.fury.io/py/allyanonimiser)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
+[![Tests](https://github.com/your-username/allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/your-username/allyanonimiser/actions/workflows/tests.yml)
+[![Package](https://github.com/your-username/allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/your-username/allyanonimiser/actions/workflows/package.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Australian-focused PII detection and anonymization for the insurance industry.
+
+## Version 0.1.2 - Fixed Circular Import Issue
+
+This version fixes a circular import issue that was present in versions 0.1.0 and 0.1.1. The issue was between the top-level `__init__.py` file and the `insurance/claim_notes_analyzer.py` module.
+
+### The Problem
+
+The circular import was caused by:
+
+1. `/__init__.py` importing `from .insurance.claim_notes_analyzer import ClaimNotesAnalyzer, analyze_claim_note`
+2. `/insurance/claim_notes_analyzer.py` importing `from .. import create_au_insurance_analyzer`
+
+This created a dependency cycle where:
+- Module A (`__init__.py`) imports Module B 
+- Module B (`claim_notes_analyzer.py`) imports Module A
+
+### The Solution
+
+The solution was to restructure the imports in the package:
+
+1. In `__init__.py`:
+   - First define all factory functions (`create_au_analyzer`, `create_insurance_analyzer`, etc.)
+   - Then import the insurance-specific modules that might use these factory functions
+
+2. In `insurance/claim_notes_analyzer.py`:
+   - Remove the import of `create_au_insurance_analyzer` from the top-level module
+   - Instead, create a local analyzer instance
+
+3. In `insurance/__init__.py`:
+   - Define `__all__` first to make imports visible to parent modules
+   - Then import the actual modules to avoid circular imports
+
+### Benefits
+
+- The package now cleanly imports without circular import errors
+- The hierarchy of dependencies is clearer
+- All existing functionality continues to work as expected
 
 ## Features
 
@@ -22,7 +61,7 @@ Australian-focused PII detection and anonymization for the insurance industry.
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser
+pip install allyanonimiser==0.1.2
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg
@@ -207,6 +246,99 @@ generator.generate_dataset(
     include_annotations=True
 )
 ```
+
+## Development and Testing
+
+### Running Tests
+
+```bash
+# Install development dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest tests/
+
+# Run specific test files
+pytest tests/test_imports.py -v
+pytest tests/test_version.py -v
+
+# Run tests with coverage
+pytest --cov=allyanonimiser
+```
+
+### Automated Testing
+
+This project uses GitHub Actions for continuous integration:
+
+1. **Tests Workflow**: Automatically runs imports tests and test suite
+2. **Package Checks**: Ensures consistent versioning and valid packaging
+
+### Package Structure Tests
+
+We have implemented specific tests to prevent common issues:
+
+1. **Circular Import Prevention**: Tests to detect and prevent circular imports
+2. **Version Consistency**: Checks that version numbers match across all files
+3. **Import Structure Tests**: Validates that the package can be imported correctly
+
+You can run these tests with:
+
+```bash
+# Run all structure tests
+python tests/run_package_tests.py
+
+# Run during build
+python setup.py structure_test
+
+# Run functional tests
+python tests/run_functional_tests.py
+
+# Run specific test file
+python tests/run_functional_tests.py test_circular_import_fix.py
+```
+
+These tests help prevent issues like:
+
+- Circular imports between modules (e.g., parent module importing from child and child importing from parent)
+- Inconsistent versioning between `__init__.py`, `setup.py`, and `pyproject.toml`
+- Import order issues that can cause dependency problems
+
+#### Functional Tests
+
+Functional tests verify the behavior of key components:
+
+1. **Factory Functions**: Tests that the factory functions like `create_au_insurance_analyzer` work correctly
+2. **Circular Import Fix**: Specifically tests that the circular import issue is fixed properly
+3. **Interface Tests**: Tests that the main interfaces can be instantiated and used correctly
+
+These tests are designed to be lightweight and run without requiring a full package installation.
+
+## Usage
+
+```python
+import allyanonimiser
+
+# Create an Allyanonimiser instance
+ally = allyanonimiser.create_allyanonimiser()
+
+# Process a text
+text = "Patient John Smith with policy number POL123456 reported a claim"
+result = ally.analyze(text)
+
+# Alternatively, use specialized analyzers
+claim_analyzer = allyanonimiser.ClaimNotesAnalyzer()
+result = allyanonimiser.analyze_claim_note(text)
+```
+
+See `example_fixed_imports.py` for a complete example.
+
+## For Package Maintainers
+
+When making changes to imports in this package, keep these rules in mind:
+
+1. Define factory functions before using them (top to bottom)
+2. Don't import from parent modules in child modules if possible
+3. If a module depends on another, make sure dependencies go in one direction
 
 ## License
 
