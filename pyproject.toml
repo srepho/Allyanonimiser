@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Ally Insurance Dev Team", email = "devteam@example.com"}
+    {name = "Stephen Oates", email = "stephen.j.a.oates@gmail.com"}
 ]
 keywords = ["pii", "anonymization", "privacy", "insurance", "australia"]
 classifiers = [
@@ -44,9 +44,9 @@ llm = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/allyinsurance/allyanonimiser"
-"Bug Tracker" = "https://github.com/allyinsurance/allyanonimiser/issues"
-"Documentation" = "https://github.com/allyinsurance/allyanonimiser#readme"
+"Homepage" = "https://github.com/srepho/Allyanonimiser"
+"Bug Tracker" = "https://github.com/srepho/Allyanonimiser/issues"
+"Documentation" = "https://github.com/srepho/Allyanonimiser#readme"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
