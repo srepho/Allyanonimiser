@@ -1,289 +1,155 @@
 """
-Consolidated example showing how to use the Allyanonimiser interface.
+Consolidated example showcasing the unified interface of Allyanonimiser.
+
+This script demonstrates how Allyanonimiser provides a consistent interface
+for processing different text types with automatic content detection.
 """
 
 import os
-import json
 from allyanonimiser import create_allyanonimiser
 
-def process_single_text():
-    """Process a single text with auto-detection of content type."""
-    # Create the main interface
-    allyanon = create_allyanonimiser()
-    
-    # Sample text (this could be any type - email, claim note, medical report, etc.)
-    text = """
-From: agent@insurance.com.au
-To: john.smith@example.com
-Subject: Your Claim CL-12345678
+# Create output directory
+output_dir = "output"
+os.makedirs(output_dir, exist_ok=True)
 
-Dear Mr. Smith,
+# Create the Allyanonimiser instance
+allya = create_allyanonimiser()
 
-Thank you for your recent claim submission regarding your vehicle (Registration: XYZ123).
+def process_and_save(text, output_filename, title):
+    """Process text and save results to file."""
+    print(f"\n\n{'=' * 60}")
+    print(f"{title}")
+    print(f"{'=' * 60}")
+    
+    # Process the text with automatic content type detection
+    result = allya.process(text)
+    
+    # Print detected content type
+    print(f"Detected Content Type: {result['content_type']}")
+    
+    # Summary of entities found
+    entity_counts = {}
+    for entity in result['analysis']['entities']:
+        entity_type = entity['entity_type']
+        if entity_type not in entity_counts:
+            entity_counts[entity_type] = 0
+        entity_counts[entity_type] += 1
+    
+    print("\nEntities Detected:")
+    for entity_type, count in sorted(entity_counts.items()):
+        print(f"  {entity_type}: {count}")
+    
+    # Save results
+    with open(os.path.join(output_dir, output_filename), "w") as f:
+        f.write(f"ORIGINAL TEXT:\n{'-' * 40}\n{text}\n\n")
+        f.write(f"ANONYMIZED TEXT:\n{'-' * 40}\n{result['anonymized']}\n\n")
+        f.write(f"CONTENT TYPE: {result['content_type']}\n\n")
+        
+        if result['structured_data']:
+            f.write("STRUCTURED DATA:\n")
+            f.write("-" * 40 + "\n")
+            for key, value in result['structured_data'].items():
+                if isinstance(value, str) and len(value) > 100:
+                    value = value[:100] + "..."
+                f.write(f"{key}: {value}\n")
+            f.write("\n")
+        
+        f.write("ENTITY DETECTION:\n")
+        f.write("-" * 40 + "\n")
+        for entity_type, count in sorted(entity_counts.items()):
+            f.write(f"{entity_type}: {count}\n")
+        f.write("\n")
+        
+        f.write("PII SEGMENTS:\n")
+        f.write("-" * 40 + "\n")
+        for i, segment in enumerate(result['segments']):
+            if segment['pii_likelihood'] > 0.1:
+                f.write(f"Segment {i+1} (PII score: {segment['pii_likelihood']:.2f}):\n")
+                f.write(f"{segment['anonymized']}\n\n")
+    
+    print(f"Results saved to {os.path.join(output_dir, output_filename)}")
 
-We have assigned your claim number CL-12345678. Please reference this number in all future correspondence.
+# Example 1: Email
+email_text = """
+From: john.smith@example.com
+To: claims@insurance.com.au
+Subject: Claim CL-12345678 - Vehicle Damage
 
-Your policy POL-9876543 covers this type of damage, and we'll need the following information:
-1. Your Medicare number
-2. Additional photos of the damage
-3. The repair quote from the mechanic
+Dear Claims Team,
 
-Please call me at 03 9876 5432 if you have any questions.
+I would like to follow up on my claim (CL-12345678) regarding the damage to my vehicle 
+(Registration: ABC-123). The incident occurred on 15/07/2023.
 
-Kind regards,
-Sarah Johnson
-Claims Assessor
-"""
-    
-    # Process the text - automatically detects content type and anonymizes
-    print("Processing text with automatic content detection...\n")
-    result = allyanon.process(text)
-    
-    # Print content type that was detected
-    print(f"Detected content type: {result.get('content_type', 'unknown')}")
-    
-    # Print detected entities
-    print("\nDetected entities:")
-    for entity in result.get("entities", []):
-        entity_text = entity.get("text", "")
-        entity_type = entity.get("entity_type", "")
-        entity_score = entity.get("score", 0)
-        print(f"  - {entity_type}: {entity_text} (Score: {entity_score:.2f})")
-    
-    # Print anonymized text
-    print("\nAnonymized text:")
-    print("-" * 80)
-    print(result.get("anonymized_text", ""))
-    print("-" * 80)
-    
-    # Print anonymization statistics
-    stats = result.get("anonymization_stats", {})
-    print(f"\nTotal entities anonymized: {stats.get('total_items', 0)}")
-    
-    # Entity type counts
-    print("\nEntities by type:")
-    for entity_type, count in stats.get("entity_type_counts", {}).items():
-        print(f"  - {entity_type}: {count}")
-    
-    return result
+My policy number is POL-987654. You can reach me at 0412 345 678 or at my address 
+42 Wallaby Way, Sydney NSW 2000.
 
-def process_multiple_text_types():
-    """Process multiple text types with different configurations."""
-    # Create the main interface
-    allyanon = create_allyanonimiser()
-    
-    # Sample texts of different types
-    texts = {
-        "email": """
-From: agent@insurance.com.au
-To: jane.doe@example.com
-Subject: Policy Renewal POL-789012
-
-Dear Ms. Doe,
-
-Your insurance policy POL-789012 is due for renewal on 15/06/2024.
-Please contact us at 1800 123 456 to discuss your options.
+My Medicare number is 2345 67890 1 and TFN is 123 456 789, which I believe you requested 
+for the medical expense reimbursement.
 
 Regards,
-Insurance Team
-""",
-        "claim_note": """
-Claim Reference: CL-23456789
+John Smith
+"""
+
+process_and_save(email_text, "email_results.txt", "PROCESSING EMAIL")
+
+# Example 2: Claim Note
+claim_note = """
+Claim Number: CL-12345678
+Policy Number: POL-987654
 Customer: John Smith
 
-Customer called to report water damage in his bathroom.
-Incident occurred on 10/05/2024 due to a burst pipe.
-Policy POL-987654 covers water damage.
+Customer called to report a vehicle accident that occurred on 15/07/2023. 
+Customer was driving his Toyota Corolla (Registration: ABC-123, VIN: 1HGCM82633A123456) 
+when another vehicle collided with him at the intersection of George St and Market St, Sydney.
 
 Customer Details:
+Name: John Smith
+DOB: 14/08/1985
 Phone: 0412 345 678
 Email: john.smith@example.com
-Address: 123 Main St, Sydney NSW 2000
-""",
-        "medical_report": """
-PATIENT: Alice Brown
-DOB: 22/08/1975
+Address: 42 Wallaby Way, Sydney NSW 2000
+TFN: 123 456 789
+"""
+
+process_and_save(claim_note, "claim_note_results.txt", "PROCESSING CLAIM NOTE")
+
+# Example 3: Medical Report
+medical_report = """
+PATIENT: John Smith
+DOB: 14/08/1985
 MEDICARE: 2345 67890 1
 
 ASSESSMENT:
-Patient presented with lower back pain following a fall.
-X-rays show no fractures.
+Patient presented with lower back pain following a vehicle accident on 15/07/2023.
+X-rays show no fractures but mild disc compression at L4-L5.
 
 TREATMENT PLAN:
-1. Rest and ice
-2. Paracetamol 500mg as needed
-3. Follow-up in 2 weeks
+1. Prescribed pain relief: Paracetamol 500mg, 2 tablets every 4-6 hours
+2. Referral to physiotherapy
+3. Follow-up appointment in 2 weeks
 
-Dr. Robert Lee
+Dr. Jane Wilson
 Medical Practitioner
+Medicare Provider: 123456AB
 """
-    }
-    
-    # Process each text with specific configurations
-    results = {}
-    
-    print("Processing multiple text types with different configurations...\n")
-    
-    # Process email - redact all entities
-    print("Processing email with redaction...")
-    results["email"] = allyanon.process(
-        texts["email"],
-        content_type="email",  # Explicitly set content type
-        operators={
-            "EMAIL_ADDRESS": "redact",
-            "PHONE_NUMBER": "redact",
-            "AU_PHONE": "redact",
-            "PERSON": "redact",
-            "DATE": "redact",
-            "INSURANCE_POLICY_NUMBER": "redact"
-        }
-    )
-    
-    # Process claim note - replace entities with realistic values
-    print("\nProcessing claim note with realistic replacements...")
-    results["claim_note"] = allyanon.process(
-        texts["claim_note"],
-        content_type="claim_note",
-        operators={
-            "PERSON": "replace",
-            "AU_PHONE": "replace",
-            "EMAIL_ADDRESS": "replace",
-            "AU_ADDRESS": "replace",
-            "INSURANCE_POLICY_NUMBER": "replace",
-            "INSURANCE_CLAIM_NUMBER": "replace",
-            "DATE": "replace"
-        }
-    )
-    
-    # Process medical report - custom masking
-    print("\nProcessing medical report with custom masking...")
-    results["medical_report"] = allyanon.process(
-        texts["medical_report"],
-        content_type="medical_report",
-        mask_char="X",  # Use X instead of * for masking
-        operators={
-            "PERSON": "mask",
-            "AU_MEDICARE": "mask_preserve_last_4",  # Keep last 4 digits
-            "DATE": "replace"  # Replace dates with realistic values
-        }
-    )
-    
-    # Print anonymized texts
-    for text_type, result in results.items():
-        print(f"\n{text_type.upper()} - Anonymized:")
-        print("-" * 80)
-        print(result.get("anonymized_text", ""))
-        print("-" * 80)
-    
-    return results
 
-def batch_process_files():
-    """Process multiple files in a directory."""
-    # Create the main interface
-    allyanon = create_allyanonimiser()
-    
-    # Create sample files in a temporary directory
-    temp_dir = "temp_files"
-    output_dir = "anonymized_files"
-    
-    # Create directories if they don't exist
-    os.makedirs(temp_dir, exist_ok=True)
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Sample texts
-    texts = {
-        "email.txt": """
-From: agent@insurance.com.au
-To: john.smith@example.com
-Subject: Your Claim CL-12345678
+process_and_save(medical_report, "medical_report_results.txt", "PROCESSING MEDICAL REPORT")
 
-Dear Mr. Smith,
-
-Thank you for your claim submission. Your policy POL-9876543 covers this.
-Please call me at 03 9876 5432 if you have questions.
-
-Regards,
-Sarah Johnson
-""",
-        "claim_note.txt": """
-Claim Reference: CL-23456789
-Customer: John Smith
-
-Customer reported water damage. Incident occurred on 10/05/2024.
-Policy POL-987654 covers water damage.
-
-Customer phone: 0412 345 678
-""",
-        "medical_report.txt": """
-PATIENT: Alice Brown
-DOB: 22/08/1975
-MEDICARE: 2345 67890 1
-
-ASSESSMENT:
-Patient presented with lower back pain.
-
-Dr. Robert Lee
-Medical Practitioner
+# Example 4: Generic Text
+generic_text = """
+Australian PII examples for testing:
+- Name: John Smith
+- Phone: 0412 345 678
+- Email: john.smith@example.com
+- TFN: 123 456 789
+- Medicare: 2345 67890 1
+- Address: 42 Wallaby Way, Sydney NSW 2000
+- Driver's License: 12345678 (NSW)
+- Passport: PA1234567
+- Credit Card: 4111 1111 1111 1111
 """
-    }
-    
-    # Write sample files
-    file_paths = []
-    for filename, content in texts.items():
-        file_path = os.path.join(temp_dir, filename)
-        with open(file_path, "w") as f:
-            f.write(content)
-        file_paths.append(file_path)
-    
-    print(f"Created {len(file_paths)} sample files in {temp_dir}.")
-    
-    # Process the files
-    print(f"\nProcessing files with automatic content detection...")
-    results = allyanon.process_files(
-        file_paths=file_paths,
-        output_dir=output_dir,
-        anonymize=True,
-        save_results=True
-    )
-    
-    print(f"\nProcessed {len(results)} files. Results saved to {output_dir}.")
-    
-    # List anonymized files
-    print("\nAnonymized files:")
-    for filename in os.listdir(output_dir):
-        if filename.endswith("_anonymized.txt"):
-            print(f"  - {filename}")
-    
-    # Print an example analysis summary
-    print("\nExample analysis summary:")
-    for filename in os.listdir(output_dir):
-        if filename.endswith("_analysis.json"):
-            analysis_path = os.path.join(output_dir, filename)
-            with open(analysis_path, "r") as f:
-                analysis = json.load(f)
-            
-            # Print entity counts
-            if "entities" in analysis:
-                entity_counts = {}
-                for entity in analysis["entities"]:
-                    entity_type = entity.get("entity_type", "")
-                    entity_counts[entity_type] = entity_counts.get(entity_type, 0) + 1
-                
-                print(f"  {filename}: {len(analysis['entities'])} entities found")
-                for entity_type, count in entity_counts.items():
-                    print(f"    - {entity_type}: {count}")
-            
-            # Only show one example
-            break
-    
-    return results
 
-if __name__ == "__main__":
-    print("======= SINGLE TEXT PROCESSING EXAMPLE =======")
-    process_single_text()
-    
-    print("\n\n======= MULTIPLE TEXT TYPES EXAMPLE =======")
-    process_multiple_text_types()
-    
-    print("\n\n======= BATCH FILE PROCESSING EXAMPLE =======")
-    batch_process_files()
+process_and_save(generic_text, "generic_text_results.txt", "PROCESSING GENERIC TEXT")
+
+print("\nAll processing complete!")
+print(f"Results have been saved to the {output_dir} directory.")

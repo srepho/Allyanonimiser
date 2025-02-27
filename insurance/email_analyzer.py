@@ -4,7 +4,7 @@ Provides functionality for extracting structured information from email content.
 """
 
 import re
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 import email
 from email.parser import Parser
 from email.policy import default

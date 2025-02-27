@@ -4,6 +4,7 @@ include requirements.txt
 
 recursive-include tests *.py
 recursive-include allyanonimiser *.py
+include allyanonimiser/*.py
 
 prune .git
 prune .github

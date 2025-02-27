@@ -6,9 +6,11 @@ Provides functionality for extracting structured information from free-text clai
 from typing import Dict, List, Any, Optional
 import re
 import spacy
+
 from ..utils.long_text_processor import LongTextProcessor
 from ..enhanced_analyzer import EnhancedAnalyzer
-from .. import create_au_insurance_analyzer
+from ..patterns.insurance_patterns import get_insurance_pattern_definitions
+from ..patterns.au_patterns import get_au_pattern_definitions
 
 class ClaimNotesAnalyzer:
     """
@@ -18,250 +20,312 @@ class ClaimNotesAnalyzer:
     
     def __init__(self, analyzer=None, nlp=None):
         """
-        Initialize the claim notes analyzer.
+        Initialize the ClaimNotesAnalyzer.
         
         Args:
-            analyzer: Optional EnhancedAnalyzer instance
-            nlp: Optional spaCy language model
+            analyzer: Pre-configured analyzer to use
+            nlp: Pre-loaded spaCy NLP pipeline
         """
-        self.analyzer = analyzer or create_au_insurance_analyzer()
-        self.text_processor = LongTextProcessor(nlp=nlp)
-        
-        # Patterns for extracting specific claim information
-        self.patterns = {
-            "claim_number": r'(?:claim|reference|ref).*?(?:number|#|\:)?\s*([A-Za-z]{0,3}[-]?[0-9]{4,10})',
-            "policy_number": r'(?:policy|insurance).*?(?:number|#|\:)?\s*([A-Za-z0-9]{2,5}[-]?[A-Za-z0-9]{4,10})',
-            "incident_date": r'(?:incident|accident|event|loss).*?(?:date|occurred).*?([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
-            "incident_location": r'(?:location|at|in).*?(?:of|the).*?(?:incident|accident|event|collision|crash).*?(?:at|in|near)\s*([A-Za-z0-9\s\.,]+(?:Road|Street|St|Rd|Avenue|Ave|Highway|Hwy|Lane|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cr|Boulevard|Blvd))',
-            "amount": r'(?:amount|total|sum|cost|quote|estimate).*?(?:of|\:|\$)\s*(?:\$)?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)',
-            "third_party": r'(?:third\s+party|tp|other\s+party|other\s+driver).*?(?:details|name|is|was)?\s*(?:\:)?\s*([A-Z][a-z]+\s+[A-Z][a-z]+)',
-            "insurer": r'(?:insurer|insurance|company|provider).*?(?:is|with|through|name)?\s*(?:\:)?\s*([A-Z][a-z]*(?:\s[A-Z][a-z]*){0,2}\s+(?:Insurance|Mutual|Assurance|Underwriters|Limited|Ltd))'
-        }
+        if analyzer is None:
+            # Create our own analyzer without importing create_au_insurance_analyzer
+            insurance_patterns = get_insurance_pattern_definitions()
+            au_patterns = get_au_pattern_definitions()
+            combined_patterns = au_patterns + insurance_patterns
+            analyzer = EnhancedAnalyzer(patterns=combined_patterns, language="en")
+            
+        self.analyzer = analyzer
+        self.nlp = nlp or spacy.load("en_core_web_lg")
+        self.text_processor = LongTextProcessor(self.nlp)
     
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, claim_note: str) -> Dict[str, Any]:
         """
-        Analyze claim notes text to extract structured information.
+        Analyze a claim note to extract structured information.
         
         Args:
-            text: Claim notes text
+            claim_note: Raw claim note text
             
         Returns:
-            Dictionary with extracted information
+            Dictionary containing structured information from the claim note
         """
-        # Process text using LongTextProcessor
-        base_analysis = self.text_processor.analyze_claim_notes(text)
+        # Process the claim note into segments
+        segments = self.text_processor.split_into_paragraphs(claim_note)
         
-        # Extract specific claim information using regex patterns
-        extracted_info = self._extract_specific_information(text)
-        
-        # Detect entities using EnhancedAnalyzer
-        entities = self._detect_entities(text)
-        
-        # Identify the main incident description
-        incident_description = self._extract_incident_description(text, base_analysis)
-        
-        # Identify action items and next steps
-        action_items = self._extract_action_items(text)
-        
-        # Combine all analyses
+        # Initialize structure for results
         result = {
-            **base_analysis,
-            "extracted_info": extracted_info,
-            "entities": entities,
-            "incident_description": incident_description,
-            "action_items": action_items
+            "claim_number": None,
+            "policy_number": None,
+            "customer_name": None,
+            "incident_date": None,
+            "incident_description": None,
+            "customer_details": {},
+            "vehicle_details": {},
+            "assessment_details": {},
+            "action_items": [],
+            "pii_segments": [],
+            "section_segments": {
+                "claim": [],
+                "customer": [],
+                "vehicle": [],
+                "incident": [],
+                "assessment": [],
+                "action": []
+            }
         }
+        
+        # Extract key information
+        self._extract_claim_details(claim_note, result)
+        self._extract_customer_details(claim_note, result)
+        self._extract_vehicle_details(claim_note, result)
+        self._extract_incident_details(claim_note, result)
+        
+        # Process segments for PII likelihood
+        for segment in segments:
+            entities = self.analyzer.analyze(segment)
+            pii_likelihood = self._calculate_pii_likelihood(segment, entities)
+            
+            segment_data = {
+                "text": segment,
+                "pii_likelihood": pii_likelihood,
+                "pii_scores": self._get_pii_type_scores(entities)
+            }
+            
+            result["pii_segments"].append(segment_data)
+            
+            # Categorize segment by section
+            self._categorize_segment(segment, segment_data, result)
+        
+        # Sort PII segments by likelihood
+        result["pii_segments"] = sorted(
+            result["pii_segments"], 
+            key=lambda x: x["pii_likelihood"], 
+            reverse=True
+        )
         
         return result
     
-    def _extract_specific_information(self, text: str) -> Dict[str, Any]:
-        """Extract specific information using regex patterns."""
-        results = {}
+    def _extract_claim_details(self, text: str, result: Dict[str, Any]) -> None:
+        """Extract claim-related details."""
+        # Claim number
+        claim_patterns = [
+            r"(?:claim|reference)\s*(?:number|ref|#)?:?\s*([A-Z0-9-]+)",
+            r"(?:claim|ref)\s*#?\s*([A-Z0-9-]+)"
+        ]
         
-        for info_type, pattern in self.patterns.items():
-            matches = re.search(pattern, text, re.IGNORECASE)
-            if matches:
-                results[info_type] = matches.group(1).strip()
+        for pattern in claim_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match and not result["claim_number"]:
+                result["claim_number"] = match.group(1).strip()
         
-        return results
+        # Policy number
+        policy_patterns = [
+            r"policy\s*(?:number|#)?:?\s*([A-Z0-9-]+)",
+            r"policy\s*#?\s*([A-Z0-9-]+)"
+        ]
+        
+        for pattern in policy_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match and not result["policy_number"]:
+                result["policy_number"] = match.group(1).strip()
     
-    def _detect_entities(self, text: str) -> Dict[str, List[Dict[str, Any]]]:
-        """Detect entities using the enhanced analyzer."""
-        analysis_results = self.analyzer.analyze(text)
+    def _extract_customer_details(self, text: str, result: Dict[str, Any]) -> None:
+        """Extract customer-related details."""
+        # Customer name
+        name_patterns = [
+            r"(?:customer|insured|claimant)(?:'s)?\s*name:?\s*([A-Za-z\s]+)",
+            r"name:?\s*([A-Za-z\s]+)"
+        ]
         
-        # Group by entity type
-        entities_by_type = {}
-        for result in analysis_results:
-            entity_type = result.entity_type
-            if entity_type not in entities_by_type:
-                entities_by_type[entity_type] = []
+        for pattern in name_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match and not result["customer_name"]:
+                result["customer_name"] = match.group(1).strip()
+        
+        # Look for customer details section
+        customer_section = re.search(
+            r"(?:customer|insured|claimant)\s*details:?(.*?)(?:\n\n|\r\n\r\n|$)",
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+        
+        if customer_section:
+            section_text = customer_section.group(1).strip()
             
-            entities_by_type[entity_type].append({
-                "text": text[result.start:result.end],
-                "start": result.start,
-                "end": result.end,
-                "score": result.score
-            })
-        
-        return entities_by_type
+            # Extract structured details
+            detail_patterns = {
+                "dob": r"(?:dob|date\s*of\s*birth):?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+                "phone": r"(?:phone|mobile|tel):?\s*([\d\s]+)",
+                "email": r"(?:email|e-mail):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})",
+                "address": r"(?:address|location):?\s*([^\n]+)",
+                "tfn": r"(?:tfn|tax\s*file\s*number):?\s*([\d\s]+)",
+                "medicare": r"(?:medicare)(?:\s*(?:number|#))?:?\s*(\d{4}\s*\d{5}\s*\d{1})",
+                "license": r"(?:license|licence|driver'?s\s*licen[cs]e):?\s*([A-Z0-9\s]+)"
+            }
+            
+            for key, pattern in detail_patterns.items():
+                match = re.search(pattern, section_text, re.IGNORECASE)
+                if match:
+                    result["customer_details"][key] = match.group(1).strip()
     
-    def _extract_incident_description(self, text: str, base_analysis: Dict[str, Any]) -> str:
-        """Extract the main incident description."""
-        # Try to get incident description from claim section
-        if "section_segments" in base_analysis and "claim" in base_analysis["section_segments"]:
-            claim_segments = base_analysis["section_segments"]["claim"]
-            if claim_segments:
-                return " ".join([s["text"] for s in claim_segments])
+    def _extract_vehicle_details(self, text: str, result: Dict[str, Any]) -> None:
+        """Extract vehicle-related details."""
+        # Look for vehicle details section
+        vehicle_section = re.search(
+            r"(?:vehicle|car)\s*(?:details|information|assessment):?(.*?)(?:\n\n|\r\n\r\n|$)",
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
         
-        # Fall back to regex-based extraction
-        incident_patterns = [
-            r'(?:Incident|Accident|Event|Loss)\s+(?:Details|Description)\s*\:?\s*([^\n]+(?:\n[^\n]+)*)',
-            r'(?:what|how)(?:\s+did)?(?:\s+the)?(?:\s+incident|accident|event|collision|crash)(?:\s+occur|\s+happen)(?:\?|:|\.)?\s*([^\n]+(?:\n[^\n]+)*)',
-            r'(?:describe|details\s+of)(?:\s+the)?(?:\s+incident|accident|event|collision|crash)(?:\?|:|\.)?\s*([^\n]+(?:\n[^\n]+)*)'
+        if vehicle_section:
+            section_text = vehicle_section.group(1).strip()
+            
+            # Extract structured details
+            detail_patterns = {
+                "make": r"(?:make|manufacturer):?\s*([A-Za-z]+)",
+                "model": r"(?:model):?\s*([A-Za-z0-9\s]+)",
+                "registration": r"(?:registration|rego):?\s*([A-Z0-9-]+)",
+                "vin": r"(?:vin|vehicle\s*identification\s*number):?\s*([A-Z0-9]+)",
+                "year": r"(?:year):?\s*(\d{4})"
+            }
+            
+            for key, pattern in detail_patterns.items():
+                match = re.search(pattern, section_text, re.IGNORECASE)
+                if match:
+                    result["vehicle_details"][key] = match.group(1).strip()
+        
+        # If vehicle section wasn't found, search in full text
+        if not result["vehicle_details"]:
+            # Registration
+            reg_match = re.search(
+                r"(?:registration|rego):?\s*([A-Z0-9-]+)",
+                text,
+                re.IGNORECASE
+            )
+            if reg_match:
+                result["vehicle_details"]["registration"] = reg_match.group(1).strip()
+            
+            # VIN
+            vin_match = re.search(
+                r"(?:vin|vehicle\s*identification\s*number):?\s*([A-Z0-9]+)",
+                text,
+                re.IGNORECASE
+            )
+            if vin_match:
+                result["vehicle_details"]["vin"] = vin_match.group(1).strip()
+            
+            # Make and model
+            make_model_match = re.search(
+                r"(?:vehicle|car)?:?\s*(?:a|his|her)?\s*([A-Za-z]+)\s+([A-Za-z0-9\s]+)(?:\s*\(\d{4}\))?",
+                text,
+                re.IGNORECASE
+            )
+            if make_model_match:
+                result["vehicle_details"]["make"] = make_model_match.group(1).strip()
+                result["vehicle_details"]["model"] = make_model_match.group(2).strip()
+    
+    def _extract_incident_details(self, text: str, result: Dict[str, Any]) -> None:
+        """Extract incident-related details."""
+        # Incident date
+        date_patterns = [
+            r"(?:incident|event|accident)\s*date:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+            r"occurred\s*on\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})"
         ]
         
-        for pattern in incident_patterns:
-            matches = re.search(pattern, text, re.IGNORECASE)
-            if matches:
-                return matches.group(1).strip()
+        for pattern in date_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match and not result["incident_date"]:
+                result["incident_date"] = match.group(1).strip()
         
-        # If no specific incident description found, return empty string
-        return ""
-    
-    def _extract_action_items(self, text: str) -> List[str]:
-        """Extract action items and next steps."""
-        action_items = []
-        
-        # Look for sections with action items, next steps, or to-do lists
-        action_patterns = [
-            r'(?:Action|Next Steps|To Do|Follow Up)s?\s*\:?\s*\n((?:\s*\d+\.\s*[^\n]+\n)+)',
-            r'(?:Action|Next Steps|To Do|Follow Up)s?\s*\:?\s*\n((?:\s*-\s*[^\n]+\n)+)',
-            r'(?:We will|I will|Please|Customer to)\s+([^\.\n]+\.)'
+        # Incident description
+        description_patterns = [
+            r"(?:incident|accident)\s*description:?\s*(.*?)(?:\n\n|\r\n\r\n|$)",
+            r"(?:reported|called|report).*?(?:that|regarding|about|stating|advised)\s+(.*?)(?:\n\n|\r\n\r\n|$)"
         ]
         
-        for pattern in action_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                action_text = match.group(1).strip()
-                
-                # Split into individual actions if it's a list
-                if re.search(r'^\s*\d+\.', action_text, re.MULTILINE) or re.search(r'^\s*-', action_text, re.MULTILINE):
-                    for line in action_text.split('\n'):
-                        if line.strip():
-                            # Remove list markers
-                            clean_line = re.sub(r'^\s*\d+\.\s*|\s*-\s*', '', line).strip()
-                            if clean_line:
-                                action_items.append(clean_line)
-                else:
-                    action_items.append(action_text)
-        
-        return action_items
+        for pattern in description_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match and not result["incident_description"]:
+                result["incident_description"] = match.group(1).strip()
     
-    def extract_customer_details(self, text: str) -> Dict[str, Any]:
-        """Extract customer details from claim notes."""
-        customer_details = {}
-        
-        # Common patterns for customer details
-        detail_patterns = {
-            "name": r'(?:customer|client|insured|policyholder|claimant)(?:\s+name)?\s*(?:\:|is|-)?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})',
-            "phone": r'(?:phone|telephone|mobile|contact)(?:\s+number)?\s*(?:\:|is|-)?\s*((?:\+?61|0)\s*\d(?:[ \.-]?\d{2,4}){2,4})',
-            "email": r'(?:email|e-mail)(?:\s+address)?\s*(?:\:|is|-)?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',
-            "dob": r'(?:date\s+of\s+birth|dob|born)(?:\s+date)?\s*(?:\:|is|-)?\s*(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})',
-            "address": r'(?:address|residence|lives\s+at)(?:\s+is)?\s*(?:\:|-)?\s*([^,\n]+(,[^,\n]+){1,4})'
+    def _categorize_segment(self, segment: str, segment_data: Dict[str, Any], 
+                           result: Dict[str, Any]) -> None:
+        """Categorize a segment by its content."""
+        # Prepare segment data for section categorization
+        segment_info = {
+            "text": segment,
+            "pii_likelihood": segment_data["pii_likelihood"]
         }
         
-        for detail_type, pattern in detail_patterns.items():
-            matches = re.search(pattern, text, re.IGNORECASE)
-            if matches:
-                customer_details[detail_type] = matches.group(1).strip()
-        
-        # Get additional customer details from entity detection
-        entities = self._detect_entities(text)
-        
-        # Map entity types to customer detail fields
-        entity_mapping = {
-            "PERSON": "name_entities",
-            "AU_PHONE": "phone_entities",
-            "EMAIL_ADDRESS": "email_entities",
-            "AU_ADDRESS": "address_entities",
-            "AU_DRIVERS_LICENSE": "license_entities",
-            "AU_MEDICARE": "medicare_entities",
-            "AU_TFN": "tfn_entities"
+        # Define section keywords
+        section_keywords = {
+            "claim": ["claim", "reference", "policy", "number"],
+            "customer": ["customer", "insured", "name", "phone", "email", "address"],
+            "vehicle": ["vehicle", "car", "registration", "rego", "vin", "make", "model"],
+            "incident": ["incident", "accident", "occurred", "collision", "damage"],
+            "assessment": ["assessment", "inspection", "damage", "repair", "quote"],
+            "action": ["action", "approved", "processed", "follow-up", "next steps"]
         }
         
-        for entity_type, field_name in entity_mapping.items():
-            if entity_type in entities:
-                customer_details[field_name] = entities[entity_type]
-        
-        return customer_details
+        # Check segment against each section's keywords
+        segment_lower = segment.lower()
+        for section, keywords in section_keywords.items():
+            if any(keyword in segment_lower for keyword in keywords):
+                result["section_segments"][section].append(segment_info)
     
-    def categorize_claim(self, text: str) -> Dict[str, Any]:
-        """
-        Categorize the claim based on its content.
+    def _calculate_pii_likelihood(self, text: str, entities: List[Dict[str, Any]]) -> float:
+        """Calculate likelihood of PII presence in a segment."""
+        if not text or not entities:
+            return 0.0
+            
+        # Calculate percentage of text covered by entities
+        text_length = len(text)
+        entity_chars = set()
         
-        Returns information about the claim type, severity, and complexity.
-        """
-        # Analyze domains using the text processor
-        segments = self.text_processor.segment_text(text)
-        domains = []
-        for segment in segments:
-            if "domains" in segment:
-                domains.extend(segment["domains"])
+        for entity in entities:
+            for i in range(entity["start"], entity["end"]):
+                entity_chars.add(i)
         
-        # Count domain occurrences
-        domain_counts = {}
-        for domain in domains:
-            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+        # Coverage as percentage of text
+        coverage = len(entity_chars) / text_length
         
-        # Determine primary domain (most frequently mentioned)
-        primary_domain = max(domain_counts.items(), key=lambda x: x[1])[0] if domain_counts else None
+        # Calculate average score
+        avg_score = sum(entity["score"] for entity in entities) / len(entities)
         
-        # Check for severity indicators
-        severity_indicators = {
-            "high": ["severe", "significant", "major", "extensive", "serious", "high", "totaled", "wrote off", "hospital", "injury", "ambulance", "emergency"],
-            "medium": ["moderate", "partial", "damage", "repair", "treatment", "medical", "attention"],
-            "low": ["minor", "small", "slight", "minimal", "cosmetic", "scratch", "dent"]
-        }
+        # Combine coverage and score
+        return 0.7 * coverage + 0.3 * avg_score
+    
+    def _get_pii_type_scores(self, entities: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Get scores by PII type."""
+        type_scores = {}
+        for entity in entities:
+            entity_type = entity["entity_type"]
+            if entity_type not in type_scores:
+                type_scores[entity_type] = 0.0
+            
+            type_scores[entity_type] += entity["score"]
         
-        severity_scores = {level: 0 for level in severity_indicators}
-        for level, terms in severity_indicators.items():
-            for term in terms:
-                matches = re.findall(r'\b' + term + r'\b', text.lower())
-                severity_scores[level] += len(matches)
+        # Average scores if multiple entities of same type
+        for entity_type in type_scores:
+            count = sum(1 for entity in entities if entity["entity_type"] == entity_type)
+            type_scores[entity_type] /= count
         
-        highest_severity = max(severity_scores.items(), key=lambda x: x[1])[0] if any(severity_scores.values()) else "unknown"
-        
-        # Estimate complexity based on number of parties, action items, and entities
-        action_items = self._extract_action_items(text)
-        entities = self._detect_entities(text)
-        
-        complexity_factors = {
-            "action_items": len(action_items),
-            "entity_types": len(entities),
-            "third_party_involved": 1 if "third_party" in self._extract_specific_information(text) else 0
-        }
-        
-        complexity_score = sum(complexity_factors.values())
-        complexity = "high" if complexity_score >= 8 else "medium" if complexity_score >= 4 else "low"
-        
-        return {
-            "primary_domain": primary_domain,
-            "domains": list(domain_counts.keys()),
-            "severity": highest_severity,
-            "complexity": complexity,
-            "complexity_factors": complexity_factors
-        }
+        return type_scores
 
-# Helper function for accessing the analyzer directly
-def analyze_claim_note(text: str) -> Dict[str, Any]:
+
+def analyze_claim_note(claim_note: str) -> Dict[str, Any]:
     """
-    Analyze a claim note using the ClaimNotesAnalyzer.
+    Analyze a claim note to extract structured information (convenience function).
     
     Args:
-        text: Claim note text
+        claim_note: Raw claim note text
         
     Returns:
-        Structured analysis of the claim note
+        Dictionary containing structured information from the claim note
     """
-    analyzer = ClaimNotesAnalyzer()
-    return analyzer.analyze(text)
+    # Create our own analyzer without importing create_au_insurance_analyzer
+    insurance_patterns = get_insurance_pattern_definitions()
+    au_patterns = get_au_pattern_definitions()
+    combined_patterns = au_patterns + insurance_patterns
+    analyzer = EnhancedAnalyzer(patterns=combined_patterns, language="en")
+    
+    claim_analyzer = ClaimNotesAnalyzer(analyzer=analyzer)
+    return claim_analyzer.analyze(claim_note)
