@@ -143,7 +143,11 @@ def create_pattern_from_examples(
     else:
         # Import here to avoid circular imports
         import spacy
-        nlp = spacy.load("en_core_web_sm")
+        try:
+            nlp = spacy.load("en_core_web_lg")
+        except OSError:
+            # Fallback to smaller model if large model not available
+            nlp = spacy.load("en_core_web_sm")
         patterns = create_spacy_pattern_from_examples(nlp, examples, "token")
     
     return CustomPatternDefinition(

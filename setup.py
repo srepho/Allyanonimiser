@@ -11,12 +11,12 @@ with open('README.md', 'r', encoding='utf-8') as f:
 setup(
     name="allyanonimiser",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Ally Insurance Dev Team",
+    author_email="devteam@example.com",
     description="Australian-focused PII detection and anonymization for the insurance industry",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/allyanonimiser",
+    url="https://github.com/allyinsurance/allyanonimiser",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -30,7 +30,7 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "spacy>=3.0.0",
+        "spacy>=3.5.0",
         "presidio-analyzer>=2.2.0",
         "presidio-anonymizer>=2.2.0",
     ],

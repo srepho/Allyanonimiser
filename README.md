@@ -19,7 +19,7 @@ Australian-focused PII detection and anonymization for the insurance industry.
 pip install allyanonimiser
 
 # Install the required spaCy model
-python -m spacy download en_core_web_sm
+python -m spacy download en_core_web_lg
 ```
 
 ## Quick Start

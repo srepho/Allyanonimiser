@@ -22,12 +22,16 @@ class LongTextProcessor:
             nlp: Optional spaCy language model
         """
         if nlp is None:
-            # Load a minimal spaCy model for efficiency
+            # Load a larger, more accurate spaCy model
             try:
-                self.nlp = spacy.load("en_core_web_sm")
+                self.nlp = spacy.load("en_core_web_lg")
             except OSError:
-                # Fallback to small model if core model not available
-                self.nlp = spacy.load("en")
+                # Fallback to smaller model if large model not available
+                try:
+                    self.nlp = spacy.load("en_core_web_sm")
+                except OSError:
+                    # Fallback to small model if core model not available
+                    self.nlp = spacy.load("en")
         else:
             self.nlp = nlp
             
