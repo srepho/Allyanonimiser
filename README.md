@@ -8,63 +8,62 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.2.1 - Enhanced Pattern Generation with Bugfixes
+## Version 0.2.2 - spaCy NER Integration for Improved Entity Detection
 
-This version significantly enhances the pattern detection capabilities of the package, making it much more effective at identifying personally identifiable information in Australian and insurance-specific contexts.
+This version integrates spaCy's Named Entity Recognition (NER) system to dramatically improve entity detection accuracy, particularly for PERSON entities. It reduces false positives and resolves entity type conflicts through a sophisticated hybrid approach.
 
 ### Key Improvements
 
-1. **Multi-Level Pattern Generalization**:
-   - Four levels of pattern generalization: none, low, medium, high
-   - Create flexible regex patterns that match structure without requiring exact examples
-   - Intelligent format detection for dates, emails, phone numbers, and more
-   - Automatically recognize character classes and structure in examples
+1. **spaCy NER Integration**:
+   - Added direct integration with spaCy's pre-trained NER models for entity detection
+   - Prioritizes spaCy's contextual understanding for PERSON entity detection
+   - Maintains pattern-based detection for specialized Australian and insurance entities
+   - Configurable to use different spaCy models depending on accuracy requirements
 
-2. **Improved Pattern Matching**:
-   - Generate patterns that can match variations of input examples
-   - Detect common prefixes and suffixes across examples
-   - Analyze variable parts to create appropriate character class patterns
-   - Balance precision and recall based on selected generalization level
+2. **Reduced False Positives**:
+   - Fixed issue where phrases like "Ref Number" were incorrectly identified as PERSON entities
+   - Added contextual filters to improve detection accuracy
+   - Implemented hierarchical entity type resolution with configurable priorities
+   - Significantly reduced rate of false positives in real-world insurance documents
 
-3. **Simplified Custom Pattern Creation**:
-   - Added `generalization_level` parameter to `create_pattern_from_examples` function
-   - Backward compatible with existing code
-   - Simple interface to create powerful detection patterns
-   - Comprehensive docstrings with detailed examples
-   - Extensive examples in `example_advanced_pattern_generation.py`
+3. **Entity Type Conflict Resolution**:
+   - Added sophisticated entity conflict resolution system when multiple entity types match the same text
+   - Created context-based and prefix-based prioritization rules
+   - Implemented scoring to prioritize the most appropriate entity type
+   - Fixed issues with duplicate entity detections for the same text span
    
    ```python
-   # Create a flexible pattern for Australian phone numbers
-   phone_pattern = create_pattern_from_examples(
-       entity_type="PHONE_NUMBER",
-       examples=["0412 345 678", "(02) 9876 5432", "+61 4 1234 5678"],
-       context=["phone", "mobile", "call"],
-       generalization_level="medium"
-   )
-   analyzer.add_pattern(phone_pattern)
+   # The analyzer now correctly handles conflicts like this:
+   results = analyzer.analyze("Policy POL123456 was reviewed by John Smith")
+   # POL123456 is correctly identified as INSURANCE_POLICY_NUMBER, not as a PERSON
+   # John Smith is correctly identified as a PERSON
    ```
 
-4. **Enhanced Format Detection**:
-   - Special handling for common formats like dates, phone numbers, and emails
-   - Australian-specific format recognition
-   - Automatic token-based pattern generation for complex examples
-   - Smart segmentation of long examples for better pattern extraction
+4. **Enhanced Entity Type Mapping**:
+   - Added comprehensive mapping between spaCy and custom entity types
+   - Support for 17 entity types from spaCy's standard model
+   - Confidence scoring to prioritize high-quality matches
+   - Maintains backward compatibility with existing pattern definitions
    
    ```python
-   # Common format detection examples
-   formats = {
-       "Dates": ["01/02/2023", "15/06/2022"],                       # Generates: \d{1,2}[/-]\d{1,2}[/-]\d{2,4}
-       "Emails": ["user@example.com", "john.doe@company.co.uk"],    # Generates: [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
-       "IP Addresses": ["192.168.0.1", "10.0.0.1"],                 # Generates: (\d{1,3}\.){3}\d{1,3}
-       "Phone Numbers": ["0412-345-678", "(02) 9876 5432"]          # Detects phone number format
+   # The mapping now supports these spaCy entity types:
+   mapping = {
+       "PERSON": "PERSON",
+       "ORG": "ORGANIZATION",
+       "GPE": "LOCATION",
+       "LOC": "LOCATION",
+       "DATE": "DATE",
+       "TIME": "TIME",
+       "MONEY": "MONEY",
+       # And many more...
    }
    ```
 
-5. **Developer-Friendly Pattern Creation**:
-   - Comprehensive debugging output to understand pattern generation
-   - Each generalization level builds on the previous one with more flexibility
-   - Full control over the precision-recall tradeoff
-   - Advanced algorithms for structure analysis
+5. **Improved Person Detection**:
+   - Leverages spaCy's contextual understanding for more accurate person name detection
+   - Better handling of name variations, titles, and multi-word names
+   - Improved accuracy for non-English and multicultural names
+   - Reduced false positives from words that might appear similar to names
 
 ### Benefits
 
@@ -90,7 +89,7 @@ This version significantly enhances the pattern detection capabilities of the pa
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.2.1
+pip install allyanonimiser==0.2.2
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg

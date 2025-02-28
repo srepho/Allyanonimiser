@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.2 (2025-02-28)
+
+### Added
+- Integrated spaCy's NER system for more accurate PERSON entity detection
+- Added entity type mapping between spaCy NER and custom entity types
+- Improved detection of names with contextual understanding
+
+### Fixed
+- Reduced false positives by prioritizing spaCy NER results over pattern matching for PERSON entities
+- Fixed issues with conflicting entity types for the same text span
+- Addressed false positives for phrases like "Ref Number" being detected as PERSON entities
+- Added proper entity type resolution with configurable prioritization rules
+
 ## 0.2.1 (2025-02-28)
 
 ### Fixed
