@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7 (2025-02-28)
+
+### Fixed
+- Fixed text mangling issue in anonymizer by separating entity collection from replacement
+- Improved handling of overlapping entities during anonymization
+- Enhanced text replacement algorithm to maintain correct positions
+
 ## 0.1.6 (2025-02-28)
 
 ### Changed
