@@ -2,6 +2,14 @@
 Presidio helpers for the Allyanonimiser package - stub for testing.
 """
 
+def configure_presidio_engine(languages=None, default_score_threshold=0.6):
+    """Stub function for testing."""
+    return None
+
+def create_presidio_analyzer(recognizers=None, languages=None, default_score_threshold=0.6):
+    """Stub function for testing."""
+    return None
+
 def create_pattern_from_regex(pattern, name, score=1.0):
     """Stub function for testing."""
     return {"pattern": pattern, "name": name, "score": score}

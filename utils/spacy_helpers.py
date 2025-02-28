@@ -9,6 +9,27 @@ from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher, PhraseMatcher
 from spacy.language import Language
 
+def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
+    """
+    Load a spaCy language model with fallback to a smaller model if needed.
+    
+    Args:
+        model_name: Primary model name to load
+        fallback_model: Fallback model if primary isn't available
+        
+    Returns:
+        Loaded spaCy Language model
+    """
+    try:
+        return spacy.load(model_name)
+    except OSError:
+        try:
+            # Try the fallback model
+            return spacy.load(fallback_model)
+        except OSError:
+            # If all else fails, use the blank model
+            return spacy.blank("en")
+
 def create_spacy_pattern_from_examples(
     nlp: Language,
     examples: List[str],

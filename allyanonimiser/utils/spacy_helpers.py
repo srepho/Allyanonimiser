@@ -2,6 +2,10 @@
 spaCy helpers for the Allyanonimiser package - stub for testing.
 """
 
+def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
+    """Stub function for testing."""
+    return None
+
 def create_spacy_pattern_from_examples(nlp, examples, pattern_type="token"):
     """Stub function for testing."""
     return [{"LOWER": "test"}]

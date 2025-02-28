@@ -4,8 +4,51 @@ Utility functions for working with Presidio.
 
 import re
 from typing import List, Dict, Any, Optional, Union, Tuple, Set
-from presidio_analyzer import PatternRecognizer, Pattern, RecognizerResult
+from presidio_analyzer import PatternRecognizer, Pattern, RecognizerResult, AnalyzerEngine
 from presidio_analyzer.predefined_recognizers import SpacyRecognizer
+
+def configure_presidio_engine(languages=None, default_score_threshold=0.6):
+    """
+    Configure a Presidio analyzer engine with default settings.
+    
+    Args:
+        languages: List of language codes to support
+        default_score_threshold: Default confidence threshold
+        
+    Returns:
+        Configured Presidio AnalyzerEngine
+    """
+    if languages is None:
+        languages = ["en"]
+        
+    return AnalyzerEngine(
+        default_score_threshold=default_score_threshold,
+        supported_languages=languages
+    )
+
+def create_presidio_analyzer(recognizers=None, languages=None, default_score_threshold=0.6):
+    """
+    Create a Presidio analyzer with custom recognizers.
+    
+    Args:
+        recognizers: List of custom recognizers to add
+        languages: List of language codes to support
+        default_score_threshold: Default confidence threshold
+        
+    Returns:
+        Configured Presidio AnalyzerEngine
+    """
+    analyzer = configure_presidio_engine(
+        languages=languages,
+        default_score_threshold=default_score_threshold
+    )
+    
+    # Add custom recognizers if provided
+    if recognizers:
+        for recognizer in recognizers:
+            analyzer.registry.add_recognizer(recognizer)
+            
+    return analyzer
 
 def create_pattern_from_regex(
     regex: str,

@@ -110,7 +110,7 @@ class AustralianSyntheticDataGenerator:
             "SA": (5000, 5999),
             "WA": (6000, 6999),
             "TAS": (7000, 7999),
-            "NT": (0800, 0899)
+            "NT": (800, 899)  # No leading zeros in integer literals
         }
         
         if state in postcode_ranges:

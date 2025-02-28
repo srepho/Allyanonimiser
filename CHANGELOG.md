@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.8 (2025-02-28)
+
+### Added
+- Improved package structure for better organization
+- Added clearer examples for custom pattern creation
+- Enhanced documentation for pattern validation
+- Additional utility functions for pattern registry management
+
+### Fixed
+- Resolved installation issues on certain platforms
+- Improved compatibility with different Python versions
+
 ## 0.1.7 (2025-02-28)
 
 ### Fixed
