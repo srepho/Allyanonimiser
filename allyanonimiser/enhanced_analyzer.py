@@ -11,11 +11,11 @@ class RecognizerResult:
     start: int
     end: int
     score: float
+    text: str = None
     
-    @property
-    def text(self):
-        """This is added for compatibility, but will be None in the stub."""
-        return None
+    def __post_init__(self):
+        """Ensure all fields are properly initialized."""
+        # We don't need to do anything here as text can be populated externally
 
 class EnhancedAnalyzer:
     """
@@ -54,16 +54,25 @@ class EnhancedAnalyzer:
                 try:
                     # Find all matches
                     for match in re.finditer(regex_pattern, text):
-                        start = match.start()
-                        end = match.end()
-                        matched_text = text[start:end]
+                        # Check if the pattern has capturing groups
+                        if match.lastindex and match.lastindex > 0:
+                            # Use the first capturing group to get the actual value
+                            start = match.start(1)
+                            end = match.end(1)
+                            matched_text = match.group(1)
+                        else:
+                            # Use the entire match
+                            start = match.start()
+                            end = match.end()
+                            matched_text = match.group()
                         
                         # Create a result object
                         result = RecognizerResult(
                             entity_type=entity_type,
                             start=start,
                             end=end,
-                            score=0.85  # Default score
+                            score=0.85,  # Default score
+                            text=matched_text  # Set the actual matched text
                         )
                         
                         results.append(result)
@@ -75,4 +84,16 @@ class EnhancedAnalyzer:
                     print(f"Error processing pattern {regex_pattern}: {e}")
                     continue
         
-        return results
+        # De-duplicate results
+        deduplicated_results = []
+        seen_entities = set()
+        
+        for result in results:
+            # Create a key using entity_type, text, start, end
+            key = (result.entity_type, result.text, result.start, result.end)
+            
+            if key not in seen_entities:
+                seen_entities.add(key)
+                deduplicated_results.append(result)
+        
+        return deduplicated_results

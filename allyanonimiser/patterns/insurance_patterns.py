@@ -9,6 +9,7 @@ def get_insurance_pattern_definitions():
             "entity_type": "INSURANCE_POLICY_NUMBER",
             "patterns": [
                 r"\b(?:POL|P|Policy)[- ]?\d{6,9}\b",
+                r"\bAU[-\s]*\d{5,10}\b",                    # AU-12345678 format
                 r"\bPolicy (?:Number|#):\s*[A-Za-z0-9-]{6,15}\b",
                 r"\bPolicy\s*(?:Number|#|No):\s*[A-Za-z0-9-]{6,15}\b",
                 r"\bPolicy:\s*[A-Za-z0-9-]{6,15}\b"

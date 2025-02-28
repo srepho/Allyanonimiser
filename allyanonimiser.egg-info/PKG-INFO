@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: allyanonimiser
-Version: 0.1.4
+Version: 0.1.5
 Summary: Australian-focused PII detection and anonymization for the insurance industry
 Home-page: https://github.com/srepho/Allyanonimiser
 Author: Stephen Oates
@@ -55,40 +55,43 @@ License-File: LICENSE
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.1.4 - Added Functional Processing Capabilities
+## Version 0.1.5 - Enhanced Pattern Detection Capabilities
 
-This version adds fully functional processing capabilities to the package while maintaining compatibility with previous versions. Key improvements include:
+This version significantly enhances the pattern detection capabilities of the package, making it much more effective at identifying personally identifiable information in Australian and insurance-specific contexts.
 
-### New Features
+### Key Improvements
 
-1. **Enhanced Analyzer Implementation**:
-   - Added a functional `analyze` method to `EnhancedAnalyzer` that can detect PII entities using regex patterns
-   - Implemented `RecognizerResult` class to store and return detection results
+1. **Comprehensive Pattern Libraries**:
+   - Expanded Australian patterns for TFNs, Medicare numbers, phone numbers, driver's licenses, and addresses
+   - Added detailed insurance patterns for policy numbers, claim references, and vehicle identifiers
+   - Enhanced general patterns for detecting names, email addresses, dates, and monetary amounts
 
-2. **Anonymization Capabilities**:
-   - Improved `EnhancedAnonymizer` with a full implementation of the `anonymize` method
-   - Added support for different anonymization strategies: replace, mask, redact, and hash
+2. **Improved Detection Accuracy**:
+   - Refined regex patterns for higher precision matching
+   - Better context-aware detection to reduce false positives
+   - Expanded pattern variants to catch different formatting styles
 
-3. **Long Text Processing**:
-   - Added intelligent text segmentation to handle long documents
-   - Implemented PII-rich segment detection with scoring
-   - Added pattern-based claim note analysis with section detection
+3. **Australian-Specific Focus**:
+   - Specialized patterns for Australian postal codes, state abbreviations, and addresses
+   - Tailored patterns for Australian phone number formats, including mobile and landline variants
+   - Proper detection of Australian financial identifiers like BSB and account numbers
 
-4. **Content Type Detection**:
-   - Added automatic detection of document types (emails, claim notes, medical reports)
-   - Specialized processing for each document type
+4. **Insurance Industry Patterns**:
+   - Purpose-built patterns for policy numbers, claim references, and insurance documents
+   - Detection of vehicle-related information including registrations and VINs
+   - Recognition of claim-specific data like incident dates and repair quotes
 
-5. **Unified Interface**:
-   - Expanded `Allyanonimiser` class with comprehensive interface methods
-   - Added the `process` method for one-step analysis, anonymization, and structuring
+5. **Enhanced Example Functionality**:
+   - Fixed detection in example claim notes to showcase the package's capabilities
+   - Updated pattern matching to identify all key entities in sample documents
 
 ### Benefits
 
-- Complete end-to-end functionality for PII detection and anonymization
-- Improved handling of different document types
-- Structured data extraction from unstructured text
-- Better organization of code with clear module responsibilities
-- Functional implementation while maintaining API compatibility
+- Much more comprehensive PII detection in Australian contexts
+- Greater accuracy in identifying sensitive information
+- Reduced false negatives in document processing
+- Better demonstration of package capabilities
+- Improved real-world usability for Australian organizations
 
 ## Features
 
@@ -106,7 +109,7 @@ This version adds fully functional processing capabilities to the package while 
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.1.4
+pip install allyanonimiser==0.1.5
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg

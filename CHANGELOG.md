@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6 (2025-02-28)
+
+### Changed
+- Optimized pattern detection performance for long documents
+- Enhanced accuracy of Australian TFN and Medicare patterns
+- Improved handling of edge cases in insurance pattern detection
+- Bug fixes in enhanced_analyzer.py for certain pattern matches
+
+### Fixed
+- Fixed performance issues when processing large claim notes
+- Resolved pattern matching inconsistencies in insurance_patterns.py
+- Fixed detection issues with Australian formats in au_patterns.py
+- Improved compatibility with different spaCy model versions
+
 ## 0.1.5 (2025-02-28)
 
 ### Added

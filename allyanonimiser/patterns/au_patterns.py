@@ -70,8 +70,9 @@ def get_au_pattern_definitions():
         {
             "entity_type": "VEHICLE_REGISTRATION",
             "patterns": [
-                r"\b[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}\b",
-                r"\b(?:Registration|Rego):\s*[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}\b"
+                r"\b(?!AU-\d+\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must start with at least one letter, and exclude policy numbers like AU-12345678
+                r"\b(?:Registration|Rego)(?:\.|\:|\s)+\s*([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",  # Match after the word Registration/Rego with capturing group
+                r"\brego\s+([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b"   # Match after lowercase "rego" with capturing group
             ],
             "context": ["registration", "rego", "vehicle", "car", "plate"],
             "name": "Vehicle Registration"
