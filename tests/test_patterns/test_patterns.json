@@ -1,0 +1,24 @@
+[
+  {
+    "entity_type": "ENTITY_A",
+    "patterns": [
+      "A-\\d{5}"
+    ],
+    "context": null,
+    "name": "Entity A Pattern",
+    "score": 0.85,
+    "language": "en",
+    "description": "Custom pattern for ENTITY_A"
+  },
+  {
+    "entity_type": "ENTITY_B",
+    "patterns": [
+      "B-\\d{5}"
+    ],
+    "context": null,
+    "name": "Entity B Pattern",
+    "score": 0.85,
+    "language": "en",
+    "description": "Custom pattern for ENTITY_B"
+  }
+]

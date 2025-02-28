@@ -1,0 +1,36 @@
+[
+  {
+    "entity_type": "RESERVATION_NUMBER",
+    "patterns": [
+      "RES-\\d{6}",
+      "BOOKING-[A-Z]{2}\\d{4}"
+    ],
+    "context": [
+      "reservation",
+      "booking",
+      "hotel",
+      "flight"
+    ],
+    "name": "Reservation Number Pattern",
+    "score": 0.85,
+    "language": "en",
+    "description": "Custom pattern for RESERVATION_NUMBER"
+  },
+  {
+    "entity_type": "CASE_ID",
+    "patterns": [
+      "CASE-\\d{5}",
+      "SUPPORT-\\d{6}"
+    ],
+    "context": [
+      "case",
+      "support",
+      "ticket",
+      "issue"
+    ],
+    "name": "Support Case ID Pattern",
+    "score": 0.85,
+    "language": "en",
+    "description": "Custom pattern for CASE_ID"
+  }
+]

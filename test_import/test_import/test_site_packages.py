@@ -1,0 +1,1 @@
+import sys; sys.path.insert(0, '/Users/srepho/anaconda3/envs/allyanonimiser_verify/lib/python3.9/site-packages'); import allyanonimiser; print(f'Version: {allyanonimiser.__version__}'); print(f'Path: {allyanonimiser.__path__}')

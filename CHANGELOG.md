@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.3.2 (2025-03-25)
+
+### Added
+- Configuration export/import functionality for sharing settings between users
+- Added `export_config()` method to export settings to JSON or YAML files
+- Enhanced settings manager with functions to create shareable configurations
+- Added support for exporting and importing configuration files
+- Created example_export_config.py demonstrating configuration sharing
+- Added comprehensive test suite for configuration export functionality
+- Added PyArrow integration for improved DataFrame performance
+- Graceful fallback for environments without PyArrow installed
+- Configurable PyArrow usage through settings with sensible defaults
+
+### Enhanced 
+- Modified DataFrameProcessor class to utilize PyArrow when available
+- Updated README with comprehensive documentation on configuration sharing
+- Improved error handling in configuration import/export
+
+## 0.3.1 (2025-03-20)
+
+### Added
+- DataFrameProcessor class for efficient pandas DataFrame processing
+- Batch processing for handling large DataFrames with optimized memory usage
+- Multi-processing capabilities for improved performance
+- Comprehensive DataFrame anonymization functionality
+- Statistical analysis tools for entity detection results
+- Progress tracking with tqdm for long-running operations
+- Extended main interface with DataFrame convenience methods
+- Added example_dataframe.py demonstrating DataFrame processing
+
+### Enhanced
+- Added pandas dependency to package requirements
+- Implemented test suite for DataFrame processing
+- Added documentation for DataFrame processing in README
+- Optimized entity detection algorithms for batched data
+
+## 0.3.0 (2025-03-10)
+
+### Added
+- Comprehensive custom pattern creation and management functionality
+- PatternManager class for handling pattern collections and application
+- PatternRegistry class for saving and loading patterns
+- Enhanced CustomPatternDefinition with serialization capabilities
+- Support for creating patterns from examples with different generalization levels
+- Added pattern creation helpers in main interface
+- Implemented pattern persistence with JSON storage
+- Added example script demonstrating custom pattern usage
+
+### Enhanced
+- Improved entity type metadata for custom patterns
+- Enhanced pattern explanation capabilities
+- Extended public API with pattern management methods
+- Improved pattern testing and validation support
+
 ## 0.2.2 (2025-02-28)
 
 ### Added

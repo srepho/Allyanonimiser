@@ -22,6 +22,9 @@ def validate_pattern_definition(pattern_def):
     """Stub function for testing."""
     return True, ""
 
-def test_pattern_against_examples(pattern, positive_examples, negative_examples=None):
+def analyze_pattern_examples(pattern, positive_examples, negative_examples=None):
     """Stub function for testing."""
     return True, ""
+    
+# Alias for backward compatibility
+test_pattern_against_examples = analyze_pattern_examples

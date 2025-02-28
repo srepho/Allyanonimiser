@@ -23,7 +23,7 @@ class StructureTestCommand(build_py):
 
 setup(
     name="allyanonimiser",
-    version="0.2.2",
+    version="0.3.2",
     description="Australian-focused PII detection and anonymization for the insurance industry",
     author="Stephen Oates",
     author_email="stephen.j.a.oates@gmail.com",
@@ -32,7 +32,9 @@ setup(
     install_requires=[
         "spacy>=3.5.0",
         "presidio-analyzer>=2.2.0",
-        "presidio-anonymizer>=2.2.0"
+        "presidio-anonymizer>=2.2.0",
+        "pandas>=1.0.0",
+        "tqdm>=4.64.0"
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",

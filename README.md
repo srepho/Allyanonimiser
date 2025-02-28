@@ -8,6 +8,146 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
+## Version 0.3.2 - Configuration Sharing and PyArrow Integration
+
+This version adds functionality to export configuration settings to shareable files and improves DataFrame performance with optional PyArrow integration.
+
+### Key Features
+
+1. **Configuration Export/Import**:
+   - Export settings to JSON or YAML files for sharing with team members
+   - Load exported configuration in new instances
+   - Include optional metadata for documentation
+   - Seamless integration with existing settings management
+   
+   ```python
+   # Export configuration to share with team members
+   ally = create_allyanonimiser()
+   ally.set_acronym_dictionary({'POL': 'Policy', 'CL': 'Claim'})
+   ally.settings_manager.set_entity_types(['PERSON', 'EMAIL_ADDRESS'])
+   ally.export_config("my_config.json")
+   
+   # Team members can load the configuration
+   shared_ally = create_allyanonimiser(settings_path="my_config.json")
+   ```
+
+2. **PyArrow Integration**:
+   - Optional PyArrow support for improved DataFrame performance
+   - Graceful fallback when PyArrow isn't available
+   - Configurable through settings with sensible defaults
+   - Enhanced DataFrame processing speed for large datasets
+
+## Version 0.3.1 - DataFrame Processing and Batch Operations
+
+This version adds comprehensive DataFrame processing capabilities, enabling efficient analysis and anonymization of data stored in pandas DataFrames. It includes batch processing, parallel execution, and statistical analysis of results.
+
+### Key Features
+
+1. **DataFrame Processing**:
+   - Process pandas DataFrames with optimized memory usage
+   - Batch operations for efficient handling of large datasets
+   - Parallel processing for improved performance
+   - Progress tracking for long-running operations
+
+2. **Anonymization and Analysis**:
+   - Anonymize specific columns or entire DataFrames
+   - Extract entities from text columns
+   - Generate statistical reports on detected entities
+   - Configure entity types and anonymization operators
+
+3. **Performance Optimizations**:
+   - Process data in configurable batches
+   - Use multiprocessing for CPU-intensive operations
+   - Efficiently handle large datasets with minimal memory usage
+   - Vectorized operations where possible
+
+4. **Integrated Interface**:
+   - Simple methods added to main Allyanonimiser class
+   - Complete example code in example_dataframe.py
+   - Comprehensive test suite for DataFrame processing
+   - Detailed documentation and usage examples
+
+## Version 0.3.0 - Custom Pattern Support and Pattern Management
+
+This version adds comprehensive custom pattern creation and management capabilities, enabling users to define, test, save, and load their own PII detection patterns. It includes pattern generation from examples, serialization, and integration with the existing analyzer.
+
+### Key Features
+
+1. **Custom Pattern Creation**:
+   - Create custom patterns for detecting organization-specific PII
+   - Define patterns using regex or provide example strings
+   - Support for context keywords to improve detection accuracy
+   - Create patterns with different levels of generalization
+   
+   ```python
+   # Create a custom pattern directly
+   pattern = CustomPatternDefinition(
+       entity_type="PROJECT_ID",
+       patterns=["PRJ-\d{4}"],  # Regex patterns
+       context=["project", "task"],  # Context words
+       name="Project ID Pattern"
+   )
+   analyzer.add_pattern(pattern)
+   
+   # Or generate a pattern from examples
+   ally = create_allyanonimiser()
+   ally.create_pattern_from_examples(
+       entity_type="MEMBERSHIP_NUMBER",
+       examples=["MEM-12345", "MEM-78901", "MEMBER-12345"],
+       context=["member", "membership"],
+       generalization_level="medium"  # none, low, medium, high
+   )
+   ```
+
+2. **Pattern Persistence**:
+   - Save custom patterns to JSON files
+   - Load patterns from files into new analyzer instances
+   - Share patterns between applications
+   
+   ```python
+   # Save patterns to a file
+   ally.save_patterns("my_custom_patterns.json")
+   
+   # Load patterns in another instance
+   new_ally = create_allyanonimiser()
+   new_ally.load_patterns("my_custom_patterns.json")
+   ```
+
+3. **Pattern Testing and Validation**:
+   - Test patterns against positive and negative examples
+   - Get precision, recall, and F1 scores for patterns
+   - Validate pattern definitions
+   
+   ```python
+   from allyanonimiser.validators import test_pattern_against_examples
+   
+   results = test_pattern_against_examples(
+       pattern=r"PRJ-\d{4}",
+       positive_examples=["PRJ-1234", "PRJ-5678"],
+       negative_examples=["PR-1234", "PROJECT-1234"]
+   )
+   print(f"Precision: {results['metrics']['precision']}")
+   print(f"Recall: {results['metrics']['recall']}")
+   ```
+
+4. **Pattern Generation**:
+   - Generate patterns from example strings
+   - Multiple generalization levels for flexibility
+   - Format detection for common patterns
+   
+   ```python
+   # Different levels of generalization
+   from allyanonimiser.utils.spacy_helpers import create_regex_from_examples
+   
+   # Exact matching - only matches exactly these examples
+   create_regex_from_examples(["ABC-123", "ABC-456"], "none")
+   # Result: (ABC\-123)|(ABC\-456)
+   
+   # Medium generalization - more flexible pattern
+   create_regex_from_examples(["ABC-123", "ABC-456"], "medium")
+   # Result: ABC-\d{3}
+   ```
+
 ## Version 0.2.2 - spaCy NER Integration for Improved Entity Detection
 
 This version integrates spaCy's Named Entity Recognition (NER) system to dramatically improve entity detection accuracy, particularly for PERSON entities. It reduces false positives and resolves entity type conflicts through a sophisticated hybrid approach.
@@ -89,7 +229,7 @@ This version integrates spaCy's Named Entity Recognition (NER) system to dramati
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.2.2
+pip install allyanonimiser==0.3.2
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg
@@ -199,47 +339,96 @@ print("Identified PII:", analysis["pii_entities"])
 ## Creating Custom Patterns
 
 ```python
-from allyanonimiser import CustomPatternDefinition, create_pattern_from_examples
+from allyanonimiser import CustomPatternDefinition, create_allyanonimiser
 
-# Create a custom pattern for internal reference numbers
+# Create a pattern directly
+ally = create_allyanonimiser()
+ally.add_pattern({
+    "entity_type": "INTERNAL_REFERENCE",
+    "patterns": [r"REF-\d{5}", r"Reference:\s*([A-Z0-9-]+)"],
+    "context": ["internal", "reference", "ref"],
+    "name": "Internal Reference Number"
+})
+
+# Or create a pattern from examples
 internal_ref_examples = [
-    "Internal reference: REF-12345",
-    "Ref Number: REF-98765",
+    "REF-12345",
+    "REF-98765",
     "Reference: REF-55555"
 ]
 
-pattern = create_pattern_from_examples(
+pattern = ally.create_pattern_from_examples(
     entity_type="INTERNAL_REFERENCE",
     examples=internal_ref_examples,
     context=["internal", "reference", "ref"],
-    pattern_type="regex"
+    name="Internal Reference Pattern",
+    generalization_level="medium"  # Determines how flexible the pattern is
 )
 
-# Add to an existing analyzer
-analyzer.add_pattern(pattern)
+# Test with text
+text = "Please reference REF-78901 in all future correspondence."
+results = ally.analyze(text)
 ```
 
-## Using the Pattern Registry
+## Pattern Persistence and Sharing
 
 ```python
-from allyanonimiser import PatternRegistry, CustomPatternDefinition
+from allyanonimiser import create_allyanonimiser, CustomPatternDefinition
 
-# Create a registry
-registry = PatternRegistry()
+# Create an analyzer with custom patterns
+ally = create_allyanonimiser()
 
-# Register patterns
-registry.register_pattern(CustomPatternDefinition(
+# Add company-specific patterns
+ally.add_pattern(CustomPatternDefinition(
     entity_type="BROKER_CODE",
     patterns=["BRK-[0-9]{4}"],
     context=["broker", "agent", "representative"],
-    name="broker_code_recognizer"
+    name="Broker Code Pattern"
 ))
 
-# Share patterns across applications
-registry.export_patterns("insurance_patterns.json")
+ally.add_pattern(CustomPatternDefinition(
+    entity_type="CUSTOMER_ID",
+    patterns=["CUST-[A-Z]{2}[0-9]{4}"],
+    context=["customer", "client", "id"],
+    name="Customer ID Pattern"
+))
+
+# Save patterns to a file
+ally.save_patterns("company_patterns.json")
 
 # Later, in another application
-registry.import_patterns("insurance_patterns.json")
+new_ally = create_allyanonimiser()
+new_ally.load_patterns("company_patterns.json")
+```
+
+## Testing and Validating Patterns
+
+```python
+from allyanonimiser.validators import test_pattern_against_examples, validate_pattern_definition
+
+# Test a pattern against examples
+pattern = r"PROJ-\d{4}-[A-Z]{2}"
+positive_examples = ["PROJ-1234-AB", "PROJ-5678-XY"]
+negative_examples = ["PROJ-123-AB", "PROJECT-1234-AB"]
+
+results = test_pattern_against_examples(pattern, positive_examples, negative_examples)
+print(f"Precision: {results['metrics']['precision']:.2f}")
+print(f"Recall: {results['metrics']['recall']:.2f}")
+print(f"F1 Score: {results['metrics']['f1']:.2f}")
+
+# Validate a complete pattern definition
+pattern_def = {
+    "entity_type": "PROJECT_CODE",
+    "patterns": ["PROJ-\\d{4}-[A-Z]{2}"],
+    "context": ["project", "code"],
+    "name": "Project Code Pattern"
+}
+
+validation = validate_pattern_definition(pattern_def)
+if validation["is_valid"]:
+    print("Pattern definition is valid!")
+else:
+    print("Pattern definition errors:", validation["errors"])
 ```
 
 ## Working with Australian Data
@@ -257,6 +446,167 @@ for pattern in au_patterns:
     print(f"Example Patterns: {pattern['patterns'][:2]}")
     print("Context Terms:", ", ".join(pattern['context'][:5]))
     print()
+```
+
+## Configuration Sharing
+
+Allyanonimiser supports sharing configurations across teams through settings files and export functionality:
+
+```python
+from allyanonimiser import create_allyanonimiser
+from allyanonimiser.utils.settings_manager import create_default_settings, save_settings
+
+# Create and save team settings
+settings = create_default_settings()
+
+# Add team-specific acronyms
+settings['acronyms']['dictionary'].update({
+    "MC": "Motor Claims",
+    "PI": "Personal Injury",
+    "FOS": "Financial Ombudsman Service",
+    "UW": "Underwriter",
+    "RTA": "Road Traffic Accident"
+})
+
+# Configure processing options
+settings['processing']['batch_size'] = 500
+settings['processing']['worker_count'] = 4
+settings['processing']['expand_acronyms'] = True
+settings['processing']['use_pyarrow'] = True
+
+# Save for team use
+save_settings("team_settings.json", settings)
+
+# Team members can load these settings
+ally = create_allyanonimiser(settings_path="team_settings.json")
+
+# Export a shareable configuration with just the essential settings
+ally.export_config("shareable_config.json", include_metadata=True)
+
+# Users can import the shareable configuration
+shared_ally = create_allyanonimiser(settings_path="shareable_config.json")
+```
+
+### Exporting Configuration
+
+Export configuration settings to share with other users:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create and configure an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Configure features
+ally.set_acronym_dictionary({'POL': 'Policy', 'CL': 'Claim'})
+ally.settings_manager.set_entity_types(['PERSON', 'EMAIL_ADDRESS'])
+ally.settings_manager.set_value('processing.use_pyarrow', True)
+
+# Export configuration to JSON or YAML
+ally.export_config("my_config.json")  # JSON format
+ally.export_config("my_config.yaml")  # YAML format (requires PyYAML)
+
+# Export minimal configuration (without metadata)
+ally.export_config("minimal_config.json", include_metadata=False)
+```
+
+The exported configuration file includes:
+- Active entity types
+- Anonymization operators
+- Processing settings (batch size, worker count, PyArrow usage)
+- Configured acronym dictionary
+- Optional metadata for documentation
+
+## Acronym Expansion
+
+Allyanonimiser can expand acronyms before PII detection to improve entity recognition:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Set up acronym dictionary
+acronyms = {
+    "TP": "Third Party",
+    "TL": "Team Leader",
+    "POL": "Policy",
+    "CL": "Claim",
+    "DOB": "Date of Birth"
+}
+ally.set_acronym_dictionary(acronyms)
+
+# Text with acronyms that might hide PII detection
+text = "TP John Smith (DOB 15/04/1982) contacted TL Sarah Jones."
+
+# Analyze with acronym expansion
+results = ally.analyze(text, expand_acronyms=True)
+
+# Process with acronym expansion
+result = ally.process(text, expand_acronyms=True)
+print(f"Expanded acronyms: {result['preprocessing']['expanded_acronyms']}")
+
+# Add new acronyms dynamically
+ally.add_acronyms({"MVA": "Motor Vehicle Accident"})
+
+# Remove acronyms
+ally.remove_acronyms(["TL"])
+```
+
+## DataFrame Processing
+
+Allyanonimiser provides powerful support for efficiently processing pandas DataFrames:
+
+```python
+import pandas as pd
+from allyanonimiser import create_allyanonimiser
+
+# Create a DataFrame with potentially sensitive data
+df = pd.DataFrame({
+    'id': range(1, 5),
+    'name': ['John Smith', 'Jane Doe', 'Bob Johnson', 'Alice Williams'],
+    'note': [
+        'Customer called about policy POL123456',
+        'Email from jane@example.com about claim CL789012',
+        'Medicare number 2123 45678 1 received for claim',
+        'TFN: 123 456 789. Contact at 42 Example St, Sydney'
+    ]
+})
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Method 1: Detect PII in a specific column
+entities_df = ally.detect_pii_in_dataframe(df, 'note')
+
+# Method 2: Anonymize a specific column
+anonymized_df = ally.anonymize_dataframe(
+    df, 
+    'note',
+    operators={
+        'PERSON': 'replace',
+        'EMAIL_ADDRESS': 'mask',
+        'INSURANCE_POLICY_NUMBER': 'redact',
+        'INSURANCE_CLAIM_NUMBER': 'redact'
+    }
+)
+
+# Method 3: Process multiple columns with comprehensive analysis
+result = ally.process_dataframe(
+    df,
+    text_columns=['name', 'note'],
+    batch_size=100,  # Process in batches for large DataFrames
+    n_workers=4      # Use parallel processing for better performance
+)
+
+# Access processed DataFrame and entity information
+processed_df = result['dataframe']
+all_entities = result['entities']
+
+# Calculate entity statistics
+processor = ally.create_dataframe_processor()
+stats = processor.analyze_dataframe_statistics(all_entities, df, 'note')
 ```
 
 ## Generating Australian Test Data

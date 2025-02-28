@@ -1,370 +1,287 @@
 """
-Example demonstrating how to create custom patterns in Allyanonimiser.
-
-This example shows:
-1. Creating simple regex patterns using Presidio
-2. Creating context-aware patterns
-3. Creating complex patterns using spaCy
-4. Testing and validating patterns
-5. Using patterns in the analyzer and anonymizer
+Example demonstrating custom pattern creation and usage in Allyanonimiser.
 """
 
-import re
-import spacy
-from typing import List, Dict, Any
-
-# Import the Allyanonimiser package
+import os
 from allyanonimiser import (
-    CustomPatternDefinition,
-    EnhancedAnalyzer,
-    EnhancedAnonymizer,
-    validate_pattern_definition,
-    test_pattern_against_examples,
-    create_pattern_from_examples
+    create_allyanonimiser,
+    CustomPatternDefinition
 )
-from allyanonimiser.utils.spacy_helpers import (
-    create_spacy_pattern_from_examples,
-    create_regex_from_examples
-)
-from allyanonimiser.utils.presidio_helpers import create_pattern_recognizer
+from allyanonimiser.validators import test_pattern_against_examples
 
-
-# Set up spaCy for more complex patterns
-try:
-    nlp = spacy.load("en_core_web_lg")
-except OSError:
-    print("Downloading spaCy model...")
-    spacy.cli.download("en_core_web_lg")
-    nlp = spacy.load("en_core_web_lg")
-
-
-def print_section(title):
-    """Print a section title."""
-    print("\n" + "=" * 80)
-    print(f"  {title}")
-    print("=" * 80)
-
-
-def print_results(results, title="Results:"):
-    """Print analysis results."""
-    print(f"\n{title}")
-    print("-" * 40)
+def demo_basic_custom_pattern():
+    """Demonstrate basic custom pattern creation and usage."""
+    print("Basic Custom Pattern Example")
+    print("="*80)
+    
+    # Create the Allyanonimiser instance
+    ally = create_allyanonimiser()
+    
+    # Create a custom pattern for detecting invoice numbers
+    invoice_pattern = CustomPatternDefinition(
+        entity_type="INVOICE_NUMBER",
+        patterns=[
+            r"INV-\d{6}",                           # INV-123456
+            r"INVOICE[#:\-\s]+([A-Z0-9-]{6,12})"    # INVOICE: ABC123456
+        ],
+        context=["invoice", "bill", "payment", "due"],
+        name="Invoice Number Pattern",
+        description="Detects invoice numbers in various formats"
+    )
+    
+    # Add the custom pattern to the analyzer
+    ally.add_pattern(invoice_pattern)
+    
+    # Text containing an invoice number
+    text = """
+    Please find attached invoice INV-245789 for your recent purchase.
+    Payment is due within 30 days.
+    
+    The invoice details are as follows:
+    - Purchase Date: 2023-05-15
+    - Invoice: INV-245789
+    - Amount: $1,234.56
+    
+    For any queries, please contact billing@example.com or call 0412 345 678.
+    """
+    
+    # Analyze the text
+    results = ally.analyze(text)
+    
+    # Display detected entities
+    print("\nDetected Entities:")
     for result in results:
-        print(f"Entity: {result.entity_type}, Text: '{result.text}', Score: {result.score:.2f}")
-
-
-def example_1_simple_regex_patterns():
-    """Example of creating simple regex patterns."""
-    print_section("1. Creating Simple Regex Patterns")
+        print(f"  - Type: {result.entity_type}")
+        print(f"    Text: {result.text}")
+        print(f"    Confidence: {result.score:.2f}")
+        print()
     
-    print("Creating an analyzer with a simple project ID pattern...")
+    # Get explanation for a detected entity
+    invoice_entities = [r for r in results if r.entity_type == "INVOICE_NUMBER"]
+    if invoice_entities:
+        explanation = ally.explain_entity(text, {
+            "entity_type": invoice_entities[0].entity_type,
+            "start": invoice_entities[0].start,
+            "end": invoice_entities[0].end,
+            "text": invoice_entities[0].text,
+            "score": invoice_entities[0].score
+        })
+        
+        print("\nEntity Explanation:")
+        print(f"  Entity Type: {explanation['entity_type']}")
+        print(f"  Matched Text: {explanation['matched_text']}")
+        print(f"  Confidence: {explanation['confidence_score']:.2f}")
+        print(f"  Description: {explanation['metadata']['description']}")
+        
+        if "match_details" in explanation and "matching_patterns" in explanation["match_details"]:
+            print("\n  Matching Pattern(s):")
+            for pattern in explanation["match_details"]["matching_patterns"]:
+                print(f"    - {pattern}")
+
+def demo_pattern_from_examples():
+    """Demonstrate creating patterns from examples."""
+    print("\n\nPattern Generation from Examples")
+    print("="*80)
     
-    # Create a custom pattern for project IDs
-    project_id_pattern = CustomPatternDefinition(
+    # Define example strings for membership IDs
+    membership_examples = [
+        "MEM-12345", 
+        "MEM-78901", 
+        "MEM-A12B34",
+        "MEMBER-12345"
+    ]
+    
+    # Test using different generalization levels
+    print("Testing different generalization levels:")
+    
+    for level in ["none", "low", "medium", "high"]:
+        # Generate a test pattern
+        from allyanonimiser.utils.spacy_helpers import create_regex_from_examples
+        regex = create_regex_from_examples(membership_examples, generalization_level=level)
+        
+        print(f"\nGeneralization level: {level}")
+        print(f"Generated pattern: {regex}")
+        
+        # Test the pattern against examples
+        test_examples = membership_examples + ["MEM-56789", "MEM-C45D67"]
+        negative_examples = ["MEMO-12345", "12345-MEM", "Policy-12345"]
+        
+        try:
+            results = test_pattern_against_examples(regex, test_examples, negative_examples)
+            
+            if isinstance(results, dict) and 'positive_matches' in results:
+                print(f"Matches all positive examples: {len(results['positive_matches']) == len(test_examples)}")
+                print(f"Precision: {results['metrics']['precision']:.2f}")
+                print(f"Recall: {results['metrics']['recall']:.2f}")
+            else:
+                print(f"Pattern validation result: {results}")
+        except Exception as e:
+            print(f"Pattern test error: {e}")
+            # Continue to next example
+    
+    # Now create a pattern with the Allyanonimiser interface
+    print("\nCreating and registering a pattern from examples:")
+    ally = create_allyanonimiser()
+    
+    # Create and add the pattern
+    pattern = ally.create_pattern_from_examples(
+        entity_type="MEMBERSHIP_NUMBER",
+        examples=membership_examples,
+        context=["member", "membership", "subscriber"],
+        name="Membership Number Pattern",
+        generalization_level="medium"
+    )
+    
+    print(f"Created pattern: {pattern.patterns[0]}")
+    
+    # Test with text containing membership numbers
+    text = """
+    We've updated your membership details for member MEM-23456.
+    Your subscription benefits will continue through 2023.
+    
+    For reference, your membership numbers are:
+    Primary: MEM-23456
+    Secondary: MEMBER-78901
+    Family Add-on: MEM-A12B34
+    
+    For any questions about your membership benefits, please contact us.
+    """
+    
+    # Analyze with the new pattern
+    results = ally.analyze(text)
+    
+    # Filter for membership numbers
+    membership_entities = [r for r in results if r.entity_type == "MEMBERSHIP_NUMBER"]
+    
+    print(f"\nDetected {len(membership_entities)} membership numbers:")
+    for entity in membership_entities:
+        print(f"  - {entity.text} (Score: {entity.score:.2f})")
+
+def demo_save_load_patterns():
+    """Demonstrate saving and loading patterns."""
+    print("\n\nSaving and Loading Patterns")
+    print("="*80)
+    
+    # Create allyanonimiser with custom patterns
+    ally = create_allyanonimiser()
+    
+    # Add custom patterns
+    patterns = [
+        CustomPatternDefinition(
+            entity_type="RESERVATION_NUMBER",
+            patterns=[r"RES-\d{6}", r"BOOKING-[A-Z]{2}\d{4}"],
+            context=["reservation", "booking", "hotel", "flight"],
+            name="Reservation Number Pattern"
+        ),
+        CustomPatternDefinition(
+            entity_type="CASE_ID",
+            patterns=[r"CASE-\d{5}", r"SUPPORT-\d{6}"],
+            context=["case", "support", "ticket", "issue"],
+            name="Support Case ID Pattern"
+        )
+    ]
+    
+    for pattern in patterns:
+        ally.add_pattern(pattern)
+    
+    # Create a directory for storing patterns
+    os.makedirs("custom_patterns", exist_ok=True)
+    
+    # Save patterns to file
+    patterns_file = "custom_patterns/my_patterns.json"
+    ally.save_patterns(patterns_file)
+    print(f"Saved patterns to {patterns_file}")
+    
+    # Create a new instance and load patterns
+    new_ally = create_allyanonimiser()
+    
+    # Check entity types before loading
+    print("\nEntity types before loading patterns:")
+    print(", ".join(sorted(new_ally.get_available_entity_types().keys())))
+    
+    # Load patterns
+    count = new_ally.load_patterns(patterns_file)
+    print(f"\nLoaded {count} patterns from file")
+    
+    # Check entity types after loading
+    print("\nEntity types after loading patterns:")
+    all_types = sorted(new_ally.get_available_entity_types().keys())
+    print(", ".join(all_types))
+    
+    # Verify our custom types were loaded
+    custom_types = ["RESERVATION_NUMBER", "CASE_ID"]
+    for custom_type in custom_types:
+        if custom_type in all_types:
+            print(f"  ✓ Found {custom_type}")
+    
+    # Test with text containing our custom entities
+    text = """
+    Your reservation RES-123456 has been confirmed for June 15-20, 2023.
+    
+    For any issues, please reference support case CASE-12345 in your communications.
+    """
+    
+    results = new_ally.analyze(text)
+    
+    print("\nDetected entities in text:")
+    for result in results:
+        print(f"  - {result.entity_type}: {result.text} (Score: {result.score:.2f})")
+
+def demo_combining_patterns_with_spacy():
+    """Demonstrate combining custom patterns with spaCy NER."""
+    print("\n\nCombining Custom Patterns with spaCy NER")
+    print("="*80)
+    
+    # Create allyanonimiser
+    ally = create_allyanonimiser()
+    
+    # Add a custom pattern for project IDs
+    project_pattern = CustomPatternDefinition(
         entity_type="PROJECT_ID",
-        patterns=["PROJ-[0-9]{5}"],  # Simple regex pattern
-        context=["project", "id", "number", "reference"],
-        name="project_id_recognizer"
+        patterns=[r"PRJ-\d{4}"],
+        context=["project", "assignment", "task"],
+        name="Project ID Pattern"
     )
     
-    # Validate the pattern definition
-    is_valid, message = validate_pattern_definition(project_id_pattern)
-    print(f"Pattern validation: {is_valid}, Message: {message}")
+    ally.add_pattern(project_pattern)
     
-    # Create an analyzer and add our pattern
-    analyzer = EnhancedAnalyzer()
-    analyzer.add_pattern(project_id_pattern)
+    # Text with both custom entities and standard entities
+    text = """
+    Project PRJ-1234 has been assigned to Sarah Johnson.
     
-    # Test with some text
-    test_text = """
-    Please refer to project PROJ-12345 when submitting your timesheet.
-    This is different from the reference number REF-789.
+    The project team will meet on February 15, 2023 at our Melbourne office.
+    
+    Please contact Sarah at sarah.johnson@example.com if you have any questions.
+    
+    Regards,
+    
+    Michael Zhang
+    Project Manager
+    Australian Insurance Group
     """
     
-    results = analyzer.analyze(test_text)
-    print_results(results)
-
-
-def example_2_context_aware_patterns():
-    """Example of creating context-aware patterns."""
-    print_section("2. Creating Context-Aware Patterns")
+    # Analyze with both custom patterns and spaCy NER
+    results = ally.analyze(text)
     
-    print("Creating a pattern that uses context to improve accuracy...")
+    # Group by source
+    custom_entities = [r for r in results if r.entity_type == "PROJECT_ID"]
+    spacy_entities = [r for r in results if r.entity_type in ["PERSON", "DATE", "ORGANIZATION", "LOCATION"]]
+    other_entities = [r for r in results if r not in custom_entities and r not in spacy_entities]
     
-    # Create a custom pattern for account numbers that uses context
-    account_number_pattern = CustomPatternDefinition(
-        entity_type="ACCOUNT_NUMBER",
-        patterns=["[0-9]{8}"],  # This would match many 8-digit numbers
-        context=["account", "acc", "a/c", "number", "balance", "transfer"],
-        name="account_number_recognizer"
-    )
+    print("\nCustom pattern entities:")
+    for entity in custom_entities:
+        print(f"  - {entity.entity_type}: {entity.text} (Score: {entity.score:.2f})")
     
-    # Create an analyzer and add our pattern
-    analyzer = EnhancedAnalyzer()
-    analyzer.add_pattern(account_number_pattern)
+    print("\nspaCy NER entities:")
+    for entity in spacy_entities:
+        print(f"  - {entity.entity_type}: {entity.text} (Score: {entity.score:.2f})")
     
-    # Test with text that has 8-digit numbers both with and without context
-    test_text = """
-    Your account number is 12345678 and your balance is $500.
-    The product code is 87654321 and is not sensitive information.
-    Please confirm your account 11223344 for the transfer.
-    """
-    
-    results = analyzer.analyze(test_text)
-    print_results(results)
-    
-    print("\nNotice how the pattern only matches 8-digit numbers near context words like 'account' and 'transfer'")
-
-
-def example_3_complex_spacy_patterns():
-    """Example of creating complex patterns using spaCy."""
-    print_section("3. Creating Complex Patterns with spaCy")
-    
-    print("Creating patterns that use spaCy's linguistic features...")
-    
-    # Create a spaCy token pattern for recognizing job titles
-    job_title_examples = [
-        "Senior Software Engineer",
-        "Chief Executive Officer",
-        "Assistant Regional Manager",
-        "Data Scientist",
-        "Machine Learning Engineer",
-        "Junior Developer"
-    ]
-    
-    # Create spaCy patterns from examples - for simplicity in the example, create a basic pattern
-    job_title_patterns = [{"LOWER": "test"}]  # Simplified pattern for example purposes
-    
-    print(f"Generated {len(job_title_patterns)} spaCy patterns from examples:")
-    for i, pattern in enumerate(job_title_patterns[:3]):
-        print(f"  Pattern {i+1}: {pattern}")
-    if len(job_title_patterns) > 3:
-        print(f"  ... and {len(job_title_patterns) - 3} more patterns")
-    
-    # Create a custom pattern definition using these spaCy patterns
-    job_title_pattern = CustomPatternDefinition(
-        entity_type="JOB_TITLE",
-        patterns=job_title_patterns,
-        context=["position", "role", "job", "title", "hired", "promoted"],
-        name="job_title_recognizer"
-    )
-    
-    # Create an analyzer and add our pattern
-    analyzer = EnhancedAnalyzer()
-    analyzer.add_pattern(job_title_pattern)
-    
-    # Test with some text
-    test_text = """
-    We are pleased to announce that Jane Doe has been promoted to Senior Data Scientist.
-    She previously held the position of Data Analyst at Acme Corp.
-    The HR Director will send out more details soon.
-    """
-    
-    results = analyzer.analyze(test_text)
-    print_results(results)
-
-
-def example_4_pattern_from_examples():
-    """Example of generating patterns automatically from examples."""
-    print_section("4. Creating Patterns from Examples")
-    
-    print("Automatically generating patterns from example strings...")
-    
-    # Examples of internal document codes
-    document_code_examples = [
-        "DOC-2023-1234",
-        "DOC-2023-5678",
-        "DOC-2022-9876",
-        "DOC-2024-4321",
-    ]
-    
-    # For simplicity in this example, use a predefined pattern instead of generating one
-    regex_pattern = "DOC-\\d{4}-\\d{4}"
-    print(f"Generated regex pattern: {regex_pattern}")
-    
-    # Create a custom pattern definition using the generate regex
-    document_code_pattern = create_pattern_from_examples(
-        entity_type="DOCUMENT_CODE",
-        examples=document_code_examples,
-        context=["document", "doc", "reference", "code"],
-        name="document_code_recognizer",
-        pattern_type="regex"
-    )
-    
-    # Create an analyzer and add our pattern
-    analyzer = EnhancedAnalyzer()
-    analyzer.add_pattern(document_code_pattern)
-    
-    # Test with some text
-    test_text = """
-    Please review document DOC-2023-1234 and provide feedback by next week.
-    For comparison, you may also refer to last year's document DOC-2022-9876.
-    """
-    
-    results = analyzer.analyze(test_text)
-    print_results(results)
-
-
-def example_5_testing_and_validation():
-    """Example of testing and validating patterns."""
-    print_section("5. Testing and Validating Patterns")
-    
-    print("Testing pattern performance with positive and negative examples...")
-    
-    # Define a pattern for employee IDs
-    employee_id_pattern = "EMP-[0-9]{6}"
-    
-    # Define positive examples (should match)
-    positive_examples = [
-        "EMP-123456",
-        "EMP-987654",
-        "My employee ID is EMP-112233"
-    ]
-    
-    # Define negative examples (should not match)
-    negative_examples = [
-        "EMP-12345",  # Too short
-        "EMP-1234567",  # Too long
-        "EMPL-123456",  # Wrong prefix
-        "emp-123456"    # Case sensitive
-    ]
-    
-    # Test the pattern against examples
-    results = test_pattern_against_examples(
-        pattern=employee_id_pattern,
-        positive_examples=positive_examples,
-        negative_examples=negative_examples
-    )
-    
-    print(f"Pattern: {employee_id_pattern}")
-    if isinstance(results, dict):
-        print(f"True positives: {results.get('true_positives', 0)} / {len(positive_examples)}")
-        print(f"False negatives: {results.get('false_negatives', 0)} / {len(positive_examples)}")
-        print(f"True negatives: {results.get('true_negatives', 0)} / {len(negative_examples)}")
-        print(f"False positives: {results.get('false_positives', 0)} / {len(negative_examples)}")
-        if 'accuracy' in results:
-            print(f"Accuracy: {results['accuracy']:.2f}")
-        if 'f1_score' in results:
-            print(f"F1 Score: {results['f1_score']:.2f}")
-        
-        # If there are errors, show which examples failed
-        if results.get('false_positives', 0) > 0 and 'false_positive_examples' in results:
-            print("\nFalse positives (should not match but did):")
-            for example in results['false_positive_examples']:
-                print(f"  - {example}")
-        
-        if results.get('false_negatives', 0) > 0 and 'false_negative_examples' in results:
-            print("\nFalse negatives (should match but didn't):")
-            for example in results['false_negative_examples']:
-                print(f"  - {example}")
-    else:
-        print(f"Test result: {results}")
-
-
-def example_6_complete_workflow():
-    """Example of a complete pattern creation and usage workflow."""
-    print_section("6. Complete Workflow: Create, Test, Analyze, Anonymize")
-    
-    print("Demonstrating a complete workflow for creating and using custom patterns...")
-    
-    # 1. Define patterns - different types for illustration
-    
-    # Product code pattern (simple regex)
-    product_code_pattern = CustomPatternDefinition(
-        entity_type="PRODUCT_CODE",
-        patterns=["[A-Z]{3}-[0-9]{4}-[A-Z]{2}"],
-        context=["product", "code", "item", "catalog"],
-        name="product_code_recognizer"
-    )
-    
-    # Client reference pattern - created from examples
-    client_ref_examples = [
-        "Client #12345",
-        "Client #67890",
-        "Client #54321",
-        "Client number 98765"
-    ]
-    client_ref_pattern = create_pattern_from_examples(
-        entity_type="CLIENT_REFERENCE",
-        examples=client_ref_examples,
-        context=["client", "reference", "customer", "number"],
-        name="client_reference_recognizer"
-    )
-    
-    # Location pattern using spaCy
-    # This leverages spaCy's built-in entity recognition for locations
-    location_context = ["office", "branch", "located", "location", "address", "headquarters"]
-    location_pattern = CustomPatternDefinition(
-        entity_type="OFFICE_LOCATION",
-        patterns=[r"\b(?:in|at|our)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:office|branch|location)"],
-        context=location_context,
-        name="office_location_recognizer"
-    )
-    
-    # 2. Create and configure the analyzer with our patterns
-    analyzer = EnhancedAnalyzer()
-    analyzer.add_pattern(product_code_pattern)
-    analyzer.add_pattern(client_ref_pattern)
-    analyzer.add_pattern(location_pattern)
-    
-    # 3. Create the anonymizer with custom operators
-    anonymizer = EnhancedAnonymizer(analyzer=analyzer)
-    
-    # Define custom replacement operators
-    operators = {
-        "PRODUCT_CODE": "hash",            # Use hash for product codes
-        "CLIENT_REFERENCE": "replace",     # Use replacement for client refs
-        "OFFICE_LOCATION": "redact"        # Use redaction for locations
-    }
-    
-    # 4. Test with a sample text
-    sample_text = """
-    Sales Report - Confidential
-    
-    For Client #54321 (Priority customer)
-    
-    Product ABC-1234-XY has been our top seller this quarter at our Sydney office.
-    We also saw strong performance of product XYZ-9876-PQ in the Melbourne branch.
-    
-    Client #98765 has placed a large order for product ABC-5678-UV to be delivered
-    to their Chicago location next month.
-    """
-    
-    # 5. Analyze the text
-    analysis_results = analyzer.analyze(sample_text)
-    print("Analysis Results:")
-    print_results(analysis_results)
-    
-    # 6. Anonymize the text
-    anonymized = anonymizer.anonymize(sample_text, operators=operators)
-    
-    print("\nOriginal Text:")
-    print("-" * 40)
-    print(sample_text)
-    
-    print("\nAnonymized Text:")
-    print("-" * 40)
-    print(anonymized["text"])
-    
-    print("\nReplacements Made:")
-    print("-" * 40)
-    for item in anonymized["items"]:
-        print(f"{item['entity_type']}: '{item['original']}' -> '{item['replacement']}'")
-
-
-def run_all_examples():
-    """Run all examples."""
-    example_1_simple_regex_patterns()
-    example_2_context_aware_patterns()
-    example_3_complex_spacy_patterns()
-    example_4_pattern_from_examples()
-    example_5_testing_and_validation()
-    example_6_complete_workflow()
-
+    print("\nOther detected entities:")
+    for entity in other_entities:
+        print(f"  - {entity.entity_type}: {entity.text} (Score: {entity.score:.2f})")
 
 if __name__ == "__main__":
-    print("Allyanonimiser Custom Pattern Examples")
-    print("This script demonstrates how to create and use custom patterns.")
-    print("Each example can be run individually or you can run all examples.")
-    
-    run_all_examples()
+    demo_basic_custom_pattern()
+    demo_pattern_from_examples()
+    demo_save_load_patterns()
+    demo_combining_patterns_with_spacy()

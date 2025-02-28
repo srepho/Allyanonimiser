@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.3.2"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -15,13 +15,16 @@ from .patterns.au_patterns import get_au_pattern_definitions
 from .patterns.insurance_patterns import get_insurance_pattern_definitions
 from .patterns.general_patterns import get_general_pattern_definitions
 
-# Define factory functions for analyzers first
-def create_au_analyzer():
+# Define factory function for the unified analyzer
+def create_unified_analyzer():
     """
-    Create an analyzer with Australian-specific patterns pre-configured.
+    Create a unified analyzer with all pattern types pre-configured.
+    
+    This creates a single analyzer that can handle all document types and patterns,
+    including Australian-specific, insurance-specific, and general patterns.
     
     Returns:
-        EnhancedAnalyzer with Australian patterns
+        EnhancedAnalyzer with all patterns
     """
     analyzer = EnhancedAnalyzer()
     
@@ -29,33 +32,6 @@ def create_au_analyzer():
     au_patterns = get_au_pattern_definitions()
     for pattern_def in au_patterns:
         analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
-    
-    return analyzer
-
-def create_insurance_analyzer():
-    """
-    Create an analyzer with insurance-specific patterns pre-configured.
-    
-    Returns:
-        EnhancedAnalyzer with insurance patterns
-    """
-    analyzer = EnhancedAnalyzer()
-    
-    # Add insurance patterns
-    insurance_patterns = get_insurance_pattern_definitions()
-    for pattern_def in insurance_patterns:
-        analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
-    
-    return analyzer
-
-def create_au_insurance_analyzer():
-    """
-    Create an analyzer with both Australian and insurance patterns pre-configured.
-    
-    Returns:
-        EnhancedAnalyzer with Australian and insurance patterns
-    """
-    analyzer = create_au_analyzer()
     
     # Add insurance patterns
     insurance_patterns = get_insurance_pattern_definitions()
@@ -68,6 +44,34 @@ def create_au_insurance_analyzer():
         analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
     
     return analyzer
+
+# Legacy factory functions maintained for backward compatibility
+def create_au_analyzer():
+    """
+    Create an analyzer with Australian-specific patterns pre-configured.
+    
+    Returns:
+        EnhancedAnalyzer with Australian patterns
+    """
+    return create_unified_analyzer()
+
+def create_insurance_analyzer():
+    """
+    Create an analyzer with insurance-specific patterns pre-configured.
+    
+    Returns:
+        EnhancedAnalyzer with insurance patterns
+    """
+    return create_unified_analyzer()
+
+def create_au_insurance_analyzer():
+    """
+    Create an analyzer with both Australian and insurance patterns pre-configured.
+    
+    Returns:
+        EnhancedAnalyzer with Australian and insurance patterns
+    """
+    return create_unified_analyzer()
 
 # Now that factory functions are defined, import the remaining components
 from .allyanonimiser import Allyanonimiser
@@ -126,16 +130,20 @@ from .insurance.email_analyzer import InsuranceEmailAnalyzer, analyze_insurance_
 from .insurance.medical_report_analyzer import MedicalReportAnalyzer, analyze_medical_report
 
 # Create the primary interface
-def create_allyanonimiser():
+def create_allyanonimiser(pattern_filepath=None, settings_path=None):
     """
     Create an Allyanonimiser instance with all patterns pre-configured.
     
+    Args:
+        pattern_filepath: Optional path to a JSON file with pattern definitions
+        settings_path: Optional path to a settings file (JSON or YAML)
+        
     Returns:
         Allyanonimiser instance
     """
-    analyzer = create_au_insurance_analyzer()
-    anonymizer = EnhancedAnonymizer(analyzer=analyzer)
-    return Allyanonimiser(analyzer=analyzer, anonymizer=anonymizer)
+    # Import here to use the full implementation from allyanonimiser.py
+    from .allyanonimiser import create_allyanonimiser as create_impl
+    return create_impl(pattern_filepath, settings_path)
 
 def create_pattern_from_examples(
     entity_type,
@@ -193,6 +201,7 @@ def create_pattern_from_examples(
     if pattern_type == "regex":
         # Import from allyanonimiser.utils to get the generalization-enabled function
         from allyanonimiser.utils.spacy_helpers import create_regex_from_examples as utils_create_regex
+        from allyanonimiser.utils.settings_manager import SettingsManager, create_default_settings
         pattern = utils_create_regex(examples, generalization_level=generalization_level)
         patterns = [pattern]
     else:

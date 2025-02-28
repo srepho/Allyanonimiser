@@ -1,0 +1,49 @@
+name: Package Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build twine check-manifest
+        
+    - name: Run package structure tests
+      run: |
+        python tests/run_package_tests.py
+        
+    - name: Build package
+      run: |
+        python -m build
+        
+    - name: Check distribution with twine
+      run: |
+        python -m twine check dist/*
+        
+    - name: Test installation from dist
+      run: |
+        python -m pip install --force-reinstall dist/*.whl
+        # Try importing to verify installation
+        python -c "import allyanonimiser; print(f'Successfully installed version {allyanonimiser.__version__}')"
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
