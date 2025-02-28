@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.5 (2025-02-28)
+
+### Added
+- Greatly expanded pattern sets for more comprehensive PII detection
+- Enhanced Australian-specific patterns for TFNs, Medicare numbers, phone numbers, addresses
+- Added insurance-specific patterns for policy numbers, claim references, and vehicle identifiers
+- Improved detection of general patterns such as person names, email addresses, dates, monetary amounts
+- Fixed detection rates for common PII in example claim notes
+
+### Changed
+- Updated README badges to point to correct GitHub repository
+- Improved pattern matching precision for Australian contexts
+- Enhanced regex patterns for more accurate entity detection
+
+## 0.1.4 (2025-02-28)
+
+### Added
+- Functional implementation of EnhancedAnalyzer with regex-based PII detection
+- Added RecognizerResult class to represent detected PII entities
+- Implemented anonymization functionality with multiple operator types (replace, mask, redact, hash)
+- Enhanced pattern files with comprehensive patterns for Australian PII, insurance information, and general entities
+- Added text segmentation and PII detection scoring in long_text_processor
+- Implemented the process method in Allyanonimiser for one-step analysis and anonymization
+
+### Changed
+- Updated README with detailed description of new features
+- Fixed badge URLs in README to point to correct GitHub repository
+- Made minimal processing work without relying on external packages
+- Improved documentation with examples of using the new functionality
+
 ## 0.1.3 (2025-02-28)
 
 ### Added

@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager

@@ -316,5 +316,5 @@ def interactive_demo():
             print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    # Run the interactive demo
-    interactive_demo()
+    # Run the sample claim note analysis directly
+    analyze_claim_note()
