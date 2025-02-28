@@ -37,8 +37,9 @@ class EnhancedAnonymizer:
         replacements = []
         anonymized_text = text
         
-        # Process results from end to start to avoid changing offsets
-        for result in sorted(results, key=lambda x: x.start, reverse=True):
+        # Collect all entities first
+        anonymization_entities = []
+        for result in results:
             entity_type = result.entity_type
             start = result.start
             end = result.end
@@ -61,17 +62,29 @@ class EnhancedAnonymizer:
             else:
                 replacement = f"<{entity_type}>"
             
-            # Replace in the text
-            anonymized_text = anonymized_text[:start] + replacement + anonymized_text[end:]
-            
-            # Add to replacements
-            replacements.append({
+            # Add to entities list
+            anonymization_entities.append({
                 "entity_type": entity_type,
                 "start": start,
                 "end": end,
                 "original": original,
                 "replacement": replacement
             })
+        
+        # Sort entities by start position in reverse order to process from end to start
+        anonymization_entities.sort(key=lambda x: x["start"], reverse=True)
+        
+        # Apply replacements from end to start to maintain correct offsets
+        for entity in anonymization_entities:
+            start = entity["start"]
+            end = entity["end"]
+            replacement = entity["replacement"]
+            
+            # Replace in the text
+            anonymized_text = anonymized_text[:start] + replacement + anonymized_text[end:]
+            
+            # Add to replacements list
+            replacements.append(entity)
         
         return {
             "text": anonymized_text,
