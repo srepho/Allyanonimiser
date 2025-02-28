@@ -2,6 +2,7 @@
 Utility functions for working with spaCy.
 """
 
+import os
 import re
 from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import spacy
@@ -217,21 +218,535 @@ def extract_patterns_from_spans(
     
     return patterns
 
-def create_regex_from_examples(examples: List[str]) -> str:
+def create_regex_from_examples(examples: List[str], generalization_level: str = "none") -> str:
     """
-    Create a regex pattern from example strings.
+    Create a regex pattern from example strings with optional generalization.
+    
+    Args:
+        examples: List of example strings
+        generalization_level: Level of pattern generalization ("none", "low", "medium", "high")
+        
+    Returns:
+        Regex pattern string
+    """
+    if not examples:
+        raise ValueError("At least one example string is required")
+    
+    # Just use exact matching for non-generalized patterns
+    if generalization_level == "none":
+        # Escape special regex characters
+        escaped_examples = [re.escape(example) for example in examples]
+        
+        # Join with OR
+        return '|'.join(f'({example})' for example in escaped_examples)
+    
+    # For generalized patterns, we need to analyze the examples
+    if generalization_level == "low":
+        return create_simple_generalized_regex(examples)
+    elif generalization_level == "medium":
+        return create_generalized_regex(examples)
+    elif generalization_level == "high":
+        return create_advanced_generalized_regex(examples)
+    else:
+        raise ValueError(f"Unsupported generalization level: {generalization_level}")
+
+def create_simple_generalized_regex(examples: List[str]) -> str:
+    """
+    Create a simple generalized regex by detecting common character classes.
+    
+    This low-level generalization replaces digits with \d and preserves structure.
     
     Args:
         examples: List of example strings
         
     Returns:
-        Regex pattern string
+        Generalized regex pattern
     """
-    # Escape special regex characters
-    escaped_examples = [re.escape(example) for example in examples]
+    if len(examples) == 1:
+        # With just one example, replace digits and leave the rest
+        return re.sub(r'\d+', r'\\d+', re.escape(examples[0]))
     
-    # Join with OR
-    return '|'.join(f'({example})' for example in escaped_examples)
+    # Find common prefixes and suffixes among examples
+    prefix = os.path.commonprefix(examples)
+    
+    # Reverse strings to find common suffix
+    reversed_examples = [example[::-1] for example in examples]
+    suffix_reversed = os.path.commonprefix(reversed_examples)
+    suffix = suffix_reversed[::-1]
+    
+    # For very short examples or no common parts, fall back to OR pattern
+    if len(prefix) < 2 and len(suffix) < 2:
+        return create_regex_from_examples(examples, generalization_level="none")
+    
+    # Extract variable middle parts
+    middle_parts = []
+    for example in examples:
+        if prefix and suffix:
+            if prefix + suffix == example:  # Edge case: prefix and suffix overlap
+                middle = ""
+            else:
+                middle = example[len(prefix):-len(suffix) if suffix else None]
+        elif prefix:
+            middle = example[len(prefix):]
+        elif suffix:
+            middle = example[:-len(suffix)]
+        else:
+            middle = example
+        middle_parts.append(middle)
+    
+    # Analyze middle parts to create a pattern
+    if all(middle.isdigit() for middle in middle_parts if middle):
+        # All middle parts are numeric
+        middle_pattern = r'\d+'
+    elif all(middle.isalpha() for middle in middle_parts if middle):
+        # All middle parts are alphabetic
+        if all(middle.isupper() for middle in middle_parts if middle):
+            middle_pattern = r'[A-Z]+'
+        elif all(middle.islower() for middle in middle_parts if middle):
+            middle_pattern = r'[a-z]+'
+        else:
+            middle_pattern = r'[A-Za-z]+'
+    else:
+        # Mixed content
+        if len(set(middle_parts)) <= 3:
+            # Small set of values, use enumeration
+            middle_pattern = '|'.join(f'({re.escape(middle)})' for middle in set(middle_parts))
+        else:
+            # Many values, use wildcard
+            middle_pattern = r'.*?'
+    
+    # Build the final pattern
+    pattern = ''
+    if prefix:
+        pattern += re.escape(prefix)
+    if middle_pattern:
+        if '|' in middle_pattern:
+            pattern += f'({middle_pattern})'
+        else:
+            pattern += middle_pattern
+    if suffix:
+        pattern += re.escape(suffix)
+    
+    return pattern
+
+def create_generalized_regex(examples: List[str]) -> str:
+    """
+    Create a medium-level generalized regex by analyzing patterns in the examples.
+    
+    This analyzes structure across examples to create more flexible patterns.
+    
+    Args:
+        examples: List of example strings
+        
+    Returns:
+        Generalized regex pattern
+    """
+    # Identify common formats like dates, phone numbers, IDs
+    format_pattern = detect_common_format(examples)
+    if format_pattern:
+        return format_pattern
+    
+    # Split examples into character-by-character sequences for analysis
+    if len(examples) == 1:
+        # With a single example, do character class generalization
+        return generalize_single_example(examples[0])
+    
+    # Try structure-based generalization for multiple examples
+    return analyze_structure_for_regex(examples)
+
+def create_advanced_generalized_regex(examples: List[str]) -> str:
+    """
+    Create a highly-generalized regex by combining multiple techniques.
+    
+    This uses advanced pattern detection with tokenization and semantic analysis.
+    
+    Args:
+        examples: List of example strings
+        
+    Returns:
+        Generalized regex pattern
+    """
+    # Check for common formats (like create_generalized_regex)
+    format_pattern = detect_common_format(examples)
+    if format_pattern:
+        return format_pattern
+    
+    # If examples are long/complex, tokenize and analyze
+    if any(len(ex) > 15 for ex in examples):
+        return create_tokenized_pattern(examples)
+    
+    # For short examples, try fragment analysis
+    segments = segment_examples(examples)
+    if segments:
+        pattern_parts = []
+        for segment in segments:
+            # Analyze segment patterns across examples
+            if is_fixed_segment(segment, examples):
+                pattern_parts.append(re.escape(segment))
+            else:
+                var_segment_pattern = generalize_variable_segment(segment, examples)
+                pattern_parts.append(var_segment_pattern)
+        return ''.join(pattern_parts)
+    
+    # Fall back to medium generalization if segmentation failed
+    return create_generalized_regex(examples)
+
+def generalize_single_example(example: str) -> str:
+    """
+    Generalize a single example by replacing character classes.
+    
+    Args:
+        example: Example string to generalize
+        
+    Returns:
+        Generalized regex pattern
+    """
+    pattern = ''
+    # Process the example character by character
+    i = 0
+    while i < len(example):
+        char = example[i]
+        
+        # Count repeated characters
+        repeat_count = 1
+        while i + repeat_count < len(example) and example[i + repeat_count] == char:
+            repeat_count += 1
+        
+        # Create pattern segment based on character type
+        if char.isdigit():
+            if repeat_count > 1:
+                pattern += fr'\d{{{repeat_count}}}'
+            else:
+                # Look ahead for more digits
+                j = i + 1
+                while j < len(example) and example[j].isdigit():
+                    j += 1
+                digit_count = j - i
+                if digit_count > 1:
+                    pattern += fr'\d{{{digit_count}}}'
+                    i = j - 1  # Adjust index (subtract 1 because of the later increment)
+                else:
+                    pattern += r'\d'
+        elif char.isalpha():
+            if char.isupper():
+                if repeat_count > 1:
+                    pattern += fr'[A-Z]{{{repeat_count}}}'
+                else:
+                    # Look ahead for more uppercase letters
+                    j = i + 1
+                    while j < len(example) and example[j].isalpha() and example[j].isupper():
+                        j += 1
+                    upper_count = j - i
+                    if upper_count > 1:
+                        pattern += fr'[A-Z]{{{upper_count}}}'
+                        i = j - 1  # Adjust index
+                    else:
+                        pattern += r'[A-Z]'
+            elif char.islower():
+                if repeat_count > 1:
+                    pattern += fr'[a-z]{{{repeat_count}}}'
+                else:
+                    # Look ahead for more lowercase letters
+                    j = i + 1
+                    while j < len(example) and example[j].isalpha() and example[j].islower():
+                        j += 1
+                    lower_count = j - i
+                    if lower_count > 1:
+                        pattern += fr'[a-z]{{{lower_count}}}'
+                        i = j - 1  # Adjust index
+                    else:
+                        pattern += r'[a-z]'
+            else:
+                pattern += r'[A-Za-z]'
+        elif char.isspace():
+            pattern += r'\s'
+        else:
+            # Special character
+            pattern += re.escape(char)
+        
+        i += 1
+    
+    return pattern
+
+def detect_common_format(examples: List[str]) -> Optional[str]:
+    """
+    Detect if examples match common formats and return appropriate regex.
+    
+    Args:
+        examples: List of examples to analyze
+        
+    Returns:
+        Regex for the detected format or None if no common format detected
+    """
+    # List of (check_function, regex_pattern) tuples
+    format_checkers = [
+        # Date formats
+        (lambda ex: re.match(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$', ex), r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'),
+        (lambda ex: re.match(r'^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$', ex), r'\d{4}[/-]\d{1,2}[/-]\d{1,2}'),
+        
+        # Phone numbers
+        (lambda ex: re.match(r'^(\+\d{1,3}|\(\d{1,3}\))?\s*\d{3}[-.\s]?\d{3}[-.\s]?\d{4}$', ex), 
+         r'(\+\d{1,3}|\(\d{1,3}\))?\s*\d{3}[-.\s]?\d{3}[-.\s]?\d{4}'),
+        
+        # Email addresses
+        (lambda ex: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', ex),
+         r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'),
+        
+        # IP addresses
+        (lambda ex: re.match(r'^(\d{1,3}\.){3}\d{1,3}$', ex), r'(\d{1,3}\.){3}\d{1,3}'),
+        
+        # URLs
+        (lambda ex: re.match(r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[^\s]*)?$', ex),
+         r'https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[^\s]*)?'),
+        
+        # ID formats (like XX-12345)
+        (lambda ex: re.match(r'^[A-Z]{2,3}-\d{4,7}$', ex), r'[A-Z]{2,3}-\d{4,7}'),
+        
+        # Money amounts
+        (lambda ex: re.match(r'^\$\d{1,3}(,\d{3})*(\.\d{2})?$', ex), r'\$\d{1,3}(,\d{3})*(\.\d{2})?'),
+    ]
+    
+    # Check if all examples match a specific format
+    for check_func, pattern in format_checkers:
+        if all(check_func(ex) for ex in examples):
+            return pattern
+    
+    return None
+
+def analyze_structure_for_regex(examples: List[str]) -> str:
+    """
+    Analyze the structure of examples to generate a flexible regex.
+    
+    Args:
+        examples: List of examples to analyze
+        
+    Returns:
+        Generalized regex pattern
+    """
+    # For short examples with reasonable variation, try positional analysis
+    if all(len(ex) < 30 for ex in examples) and len(examples) > 1:
+        # Try to align examples and analyze character distributions at each position
+        max_len = max(len(ex) for ex in examples)
+        min_len = min(len(ex) for ex in examples)
+        
+        # If length variance is too high, fall back to simpler pattern
+        if max_len > min_len * 2:
+            return create_simple_generalized_regex(examples)
+        
+        # Analyze positional patterns
+        pattern_parts = []
+        
+        # Handle prefixes/suffixes first
+        prefix = os.path.commonprefix(examples)
+        if prefix and len(prefix) > 1:
+            pattern_parts.append(re.escape(prefix))
+            # Remove prefix from examples for further analysis
+            examples = [ex[len(prefix):] for ex in examples]
+        
+        # Reverse strings to find common suffix
+        reversed_examples = [ex[::-1] for ex in examples]
+        suffix_reversed = os.path.commonprefix(reversed_examples)
+        suffix = suffix_reversed[::-1]
+        
+        # If we have both clear prefix and suffix, analyze the middle
+        if prefix and suffix and len(suffix) > 1:
+            middles = [ex[:-len(suffix)] for ex in examples]
+            if all(middles) or not any(middles):  # All have middle or none have middle
+                if all(middle.isdigit() for middle in middles if middle):
+                    pattern_parts.append(r'\d+')
+                elif all(middle.isalpha() for middle in middles if middle):
+                    if all(middle.isupper() for middle in middles if middle):
+                        pattern_parts.append(r'[A-Z]+')
+                    elif all(middle.islower() for middle in middles if middle):
+                        pattern_parts.append(r'[a-z]+')
+                    else:
+                        pattern_parts.append(r'[A-Za-z]+')
+                else:
+                    # Mixed or complex content
+                    length_range = [len(middle) for middle in middles if middle]
+                    if length_range:
+                        min_mid_len, max_mid_len = min(length_range), max(length_range)
+                        if max_mid_len - min_mid_len <= 2:  # Small variance
+                            pattern_parts.append(fr'\w{{{min_mid_len},{max_mid_len}}}')
+                        else:
+                            pattern_parts.append(r'\w+')
+                    else:
+                        pattern_parts.append(r'\w*')
+            else:
+                # Inconsistent middle parts
+                pattern_parts.append(r'.*?')
+            
+            pattern_parts.append(re.escape(suffix))
+            return ''.join(pattern_parts)
+    
+    # Fall back to simple generalization for complex cases
+    return create_simple_generalized_regex(examples)
+
+def create_tokenized_pattern(examples: List[str]) -> str:
+    """
+    Create a pattern by tokenizing examples and analyzing token patterns.
+    
+    Args:
+        examples: List of example strings
+        
+    Returns:
+        Generalized regex pattern
+    """
+    # Simple tokenization by splitting on whitespace and punctuation
+    tokenized_examples = []
+    for example in examples:
+        # Split on whitespace and keep separators
+        tokens = []
+        for part in re.split(r'(\s+)', example):
+            if part:
+                # Further split on punctuation and keep separators
+                subparts = re.split(r'([^\w\s])', part)
+                tokens.extend(subpart for subpart in subparts if subpart)
+        tokenized_examples.append(tokens)
+    
+    # Create pattern segments for each position
+    pattern_parts = []
+    max_tokens = max(len(tokens) for tokens in tokenized_examples)
+    
+    for pos in range(max_tokens):
+        tokens_at_pos = [tokens[pos] if pos < len(tokens) else None for tokens in tokenized_examples]
+        tokens_at_pos = [t for t in tokens_at_pos if t is not None]
+        
+        if not tokens_at_pos:
+            continue
+        
+        if len(set(tokens_at_pos)) == 1:
+            # Same token in all examples
+            pattern_parts.append(re.escape(tokens_at_pos[0]))
+        elif all(token.isdigit() for token in tokens_at_pos):
+            # All tokens are numeric
+            length_range = [len(token) for token in tokens_at_pos]
+            min_len, max_len = min(length_range), max(length_range)
+            if min_len == max_len:
+                pattern_parts.append(fr'\d{{{min_len}}}')
+            else:
+                pattern_parts.append(fr'\d{{{min_len},{max_len}}}')
+        elif all(token.isalpha() for token in tokens_at_pos):
+            # All tokens are alphabetic
+            if all(token.isupper() for token in tokens_at_pos):
+                pattern_parts.append(r'[A-Z]+')
+            elif all(token.islower() for token in tokens_at_pos):
+                pattern_parts.append(r'[a-z]+')
+            else:
+                pattern_parts.append(r'[A-Za-z]+')
+        elif all(token.isspace() for token in tokens_at_pos):
+            # All tokens are whitespace
+            pattern_parts.append(r'\s+')
+        elif all(re.match(r'^[^\w\s]$', token) for token in tokens_at_pos):
+            # All tokens are single punctuation
+            if len(set(tokens_at_pos)) <= 3:
+                punct_chars = set(tokens_at_pos)
+                pattern_parts.append(f'[{"".join(re.escape(c) for c in punct_chars)}]')
+            else:
+                pattern_parts.append(r'[^\w\s]')
+        else:
+            # Mixed content or variable tokens
+            length_range = [len(token) for token in tokens_at_pos]
+            min_len, max_len = min(length_range), max(length_range)
+            if min_len == max_len and min_len <= 2:
+                # Short tokens of fixed length - could be separators or codes
+                pattern_parts.append(fr'.{{{min_len}}}')
+            else:
+                # Longer variable tokens
+                pattern_parts.append(r'\S+')
+    
+    return ''.join(pattern_parts)
+
+def is_fixed_segment(segment: str, examples: List[str]) -> bool:
+    """
+    Check if a segment appears consistently in examples.
+    
+    Args:
+        segment: Segment to check
+        examples: List of examples
+        
+    Returns:
+        True if segment is fixed across examples
+    """
+    return all(segment in example for example in examples)
+
+def generalize_variable_segment(segment: str, examples: List[str]) -> str:
+    """
+    Create a pattern for a variable segment across examples.
+    
+    Args:
+        segment: Segment to generalize
+        examples: List of examples
+        
+    Returns:
+        Generalized pattern for the segment
+    """
+    # Extract corresponding segments from examples
+    segment_variants = []
+    for example in examples:
+        # This is a simplified approach - in a real implementation, 
+        # you would need more sophisticated segment matching
+        if segment in example:
+            segment_variants.append(segment)
+        else:
+            # Find similar segments using fuzzy matching
+            # For now, just using a simplistic approach
+            for i in range(len(example) - len(segment) + 1):
+                candidate = example[i:i+len(segment)]
+                if len(set(candidate) & set(segment)) / len(segment) > 0.7:
+                    segment_variants.append(candidate)
+                    break
+    
+    if not segment_variants:
+        return r'\S+'
+    
+    # Analyze segment variants
+    if all(var.isdigit() for var in segment_variants):
+        return r'\d+'
+    elif all(var.isalpha() for var in segment_variants):
+        if all(var.isupper() for var in segment_variants):
+            return r'[A-Z]+'
+        elif all(var.islower() for var in segment_variants):
+            return r'[a-z]+'
+        else:
+            return r'[A-Za-z]+'
+    else:
+        return r'\S+'
+
+def segment_examples(examples: List[str]) -> List[str]:
+    """
+    Segment examples into common parts for analysis.
+    
+    Args:
+        examples: List of examples
+        
+    Returns:
+        List of common segments or empty list if segmentation failed
+    """
+    # This is a placeholder for a more sophisticated segmentation algorithm
+    # In a real implementation, you would use techniques like:
+    # - Longest common subsequence
+    # - Multiple sequence alignment
+    # - Character n-gram analysis
+    
+    # For now, we'll use a simple approach with common prefix/suffix
+    prefix = os.path.commonprefix(examples)
+    if not prefix or len(prefix) < 2:
+        return []
+    
+    # Remove prefix and check for common suffix
+    examples_without_prefix = [ex[len(prefix):] for ex in examples]
+    reversed_examples = [ex[::-1] for ex in examples_without_prefix]
+    suffix_reversed = os.path.commonprefix(reversed_examples)
+    suffix = suffix_reversed[::-1]
+    
+    if not suffix or len(suffix) < 2:
+        if prefix:
+            return [prefix]
+        return []
+    
+    # Return segments
+    return [prefix, suffix]
 
 def get_entity_context(
     doc: Doc,

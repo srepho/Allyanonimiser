@@ -137,10 +137,11 @@ def create_pattern_from_examples(
     examples,
     context=None,
     name=None,
-    pattern_type="regex"
+    pattern_type="regex",
+    generalization_level="none"
 ):
     """
-    Create a custom pattern definition from examples.
+    Create a custom pattern definition from examples with optional generalization.
     
     Args:
         entity_type: Entity type this pattern detects
@@ -148,12 +149,15 @@ def create_pattern_from_examples(
         context: Optional list of context words
         name: Optional name for the pattern
         pattern_type: Type of pattern to create (regex or spacy)
+        generalization_level: Level of pattern generalization (none, low, medium, high)
         
     Returns:
         CustomPatternDefinition
     """
     if pattern_type == "regex":
-        pattern = create_regex_from_examples(examples)
+        # Import from utils to get the generalization-enabled function
+        from utils.spacy_helpers import create_regex_from_examples as utils_create_regex
+        pattern = utils_create_regex(examples, generalization_level=generalization_level)
         patterns = [pattern]
     else:
         # Import here to avoid circular imports
