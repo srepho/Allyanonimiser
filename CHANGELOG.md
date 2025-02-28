@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (2025-02-28)
+
+### Fixed
+- Fixed import issue with `create_simple_generalized_regex` function in package
+- Corrected relative vs. absolute imports in pattern generation functionality
+- Added missing pattern generation functions to package structure
+- Fixed syntax errors in regex pattern matchers
+
 ## 0.2.0 (2025-02-28)
 
 ### Added

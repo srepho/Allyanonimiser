@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -191,8 +191,8 @@ def create_pattern_from_examples(
         >>> # Pattern will match structural variations while preserving format
     """
     if pattern_type == "regex":
-        # Import from utils to get the generalization-enabled function
-        from utils.spacy_helpers import create_regex_from_examples as utils_create_regex
+        # Import from allyanonimiser.utils to get the generalization-enabled function
+        from allyanonimiser.utils.spacy_helpers import create_regex_from_examples as utils_create_regex
         pattern = utils_create_regex(examples, generalization_level=generalization_level)
         patterns = [pattern]
     else:

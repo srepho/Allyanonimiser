@@ -23,7 +23,7 @@ class StructureTestCommand(build_py):
 
 setup(
     name="allyanonimiser",
-    version="0.2.0",
+    version="0.2.1",
     description="Australian-focused PII detection and anonymization for the insurance industry",
     author="Stephen Oates",
     author_email="stephen.j.a.oates@gmail.com",

@@ -8,7 +8,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.2.0 - Enhanced Pattern Generation
+## Version 0.2.1 - Enhanced Pattern Generation with Bugfixes
 
 This version significantly enhances the pattern detection capabilities of the package, making it much more effective at identifying personally identifiable information in Australian and insurance-specific contexts.
 
@@ -90,7 +90,7 @@ This version significantly enhances the pattern detection capabilities of the pa
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.2.0
+pip install allyanonimiser==0.2.1
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg
