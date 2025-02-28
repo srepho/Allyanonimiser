@@ -8,35 +8,41 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.1.8 - Package Structure Improvements
+## Version 0.1.9 - Enhanced Pattern Generation
 
 This version significantly enhances the pattern detection capabilities of the package, making it much more effective at identifying personally identifiable information in Australian and insurance-specific contexts.
 
 ### Key Improvements
 
-1. **Comprehensive Pattern Libraries**:
-   - Expanded Australian patterns for TFNs, Medicare numbers, phone numbers, driver's licenses, and addresses
-   - Added detailed insurance patterns for policy numbers, claim references, and vehicle identifiers
-   - Enhanced general patterns for detecting names, email addresses, dates, and monetary amounts
+1. **Multi-Level Pattern Generalization**:
+   - Four levels of pattern generalization: none, low, medium, high
+   - Create flexible regex patterns that match structure without requiring exact examples
+   - Intelligent format detection for dates, emails, phone numbers, and more
+   - Automatically recognize character classes and structure in examples
 
-2. **Improved Detection Accuracy**:
-   - Refined regex patterns for higher precision matching
-   - Better context-aware detection to reduce false positives
-   - Expanded pattern variants to catch different formatting styles
+2. **Improved Pattern Matching**:
+   - Generate patterns that can match variations of input examples
+   - Detect common prefixes and suffixes across examples
+   - Analyze variable parts to create appropriate character class patterns
+   - Balance precision and recall based on selected generalization level
 
-3. **Australian-Specific Focus**:
-   - Specialized patterns for Australian postal codes, state abbreviations, and addresses
-   - Tailored patterns for Australian phone number formats, including mobile and landline variants
-   - Proper detection of Australian financial identifiers like BSB and account numbers
+3. **Simplified Custom Pattern Creation**:
+   - Added `generalization_level` parameter to `create_pattern_from_examples` function
+   - Backward compatible with existing code
+   - Simple interface to create powerful detection patterns
+   - Extensive examples in `example_advanced_pattern_generation.py`
 
-4. **Insurance Industry Patterns**:
-   - Purpose-built patterns for policy numbers, claim references, and insurance documents
-   - Detection of vehicle-related information including registrations and VINs
-   - Recognition of claim-specific data like incident dates and repair quotes
+4. **Enhanced Format Detection**:
+   - Special handling for common formats like dates, phone numbers, and emails
+   - Australian-specific format recognition
+   - Automatic token-based pattern generation for complex examples
+   - Smart segmentation of long examples for better pattern extraction
 
-5. **Enhanced Example Functionality**:
-   - Fixed detection in example claim notes to showcase the package's capabilities
-   - Updated pattern matching to identify all key entities in sample documents
+5. **Developer-Friendly Pattern Creation**:
+   - Comprehensive debugging output to understand pattern generation
+   - Each generalization level builds on the previous one with more flexibility
+   - Full control over the precision-recall tradeoff
+   - Advanced algorithms for structure analysis
 
 ### Benefits
 
@@ -62,7 +68,7 @@ This version significantly enhances the pattern detection capabilities of the pa
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.1.8
+pip install allyanonimiser==0.1.9
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.9 (2025-02-28)
+
+### Added
+- Added multi-level pattern generalization to create flexible regex patterns
+- Implemented four generalization levels: none, low, medium, high
+- Added intelligent format detection for common patterns (dates, emails, phone numbers)
+- Created prefix/suffix analysis and character class recognition algorithms
+- Added `generalization_level` parameter to `create_pattern_from_examples`
+- Created new example script `example_advanced_pattern_generation.py`
+
+### Fixed
+- Fixed imports in the pattern generator modules
+- Improved pattern matching capability for variations of examples
+- Fixed path issues in the pattern creation utility functions
+
 ## 0.1.8 (2025-02-28)
 
 ### Added

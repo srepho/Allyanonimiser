@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "allyanonimiser"
-version = "0.1.8"
+version = "0.1.9"
 description = "Australian-focused PII detection and anonymization for the insurance industry"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -53,7 +53,6 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "--cov=allyanonimiser --cov-report=term-missing"
 
 [tool.black]
 line-length = 100
