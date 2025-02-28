@@ -21,6 +21,8 @@ This version adds functionality to export configuration settings to shareable fi
    - Seamless integration with existing settings management
    
    ```python
+   from allyanonimiser import create_allyanonimiser
+   
    # Export configuration to share with team members
    ally = create_allyanonimiser()
    ally.set_acronym_dictionary({'POL': 'Policy', 'CL': 'Claim'})
@@ -80,18 +82,21 @@ This version adds comprehensive custom pattern creation and management capabilit
    - Create patterns with different levels of generalization
    
    ```python
+   from allyanonimiser import create_allyanonimiser, CustomPatternDefinition
+   
    # Create a custom pattern directly
+   ally = create_allyanonimiser()
    pattern = CustomPatternDefinition(
        entity_type="PROJECT_ID",
        patterns=["PRJ-\d{4}"],  # Regex patterns
        context=["project", "task"],  # Context words
        name="Project ID Pattern"
    )
-   analyzer.add_pattern(pattern)
+   ally.add_pattern(pattern)
    
    # Or generate a pattern from examples
    ally = create_allyanonimiser()
-   ally.create_pattern_from_examples(
+   pattern = ally.create_pattern_from_examples(
        entity_type="MEMBERSHIP_NUMBER",
        examples=["MEM-12345", "MEM-78901", "MEMBER-12345"],
        context=["member", "membership"],
@@ -105,6 +110,12 @@ This version adds comprehensive custom pattern creation and management capabilit
    - Share patterns between applications
    
    ```python
+   from allyanonimiser import create_allyanonimiser
+   
+   # Create and configure your analyzer with patterns
+   ally = create_allyanonimiser()
+   # ... add patterns as shown above
+   
    # Save patterns to a file
    ally.save_patterns("my_custom_patterns.json")
    
@@ -173,7 +184,10 @@ This version integrates spaCy's Named Entity Recognition (NER) system to dramati
    - Fixed issues with duplicate entity detections for the same text span
    
    ```python
+   from allyanonimiser import create_au_insurance_analyzer
+   
    # The analyzer now correctly handles conflicts like this:
+   analyzer = create_au_insurance_analyzer()
    results = analyzer.analyze("Policy POL123456 was reviewed by John Smith")
    # POL123456 is correctly identified as INSURANCE_POLICY_NUMBER, not as a PERSON
    # John Smith is correctly identified as a PERSON
@@ -694,18 +708,20 @@ These tests are designed to be lightweight and run without requiring a full pack
 ## Usage
 
 ```python
-import allyanonimiser
+from allyanonimiser import create_allyanonimiser
+from allyanonimiser.insurance import ClaimNotesAnalyzer
+from allyanonimiser.utils.long_text_processor import analyze_claim_notes
 
 # Create an Allyanonimiser instance
-ally = allyanonimiser.create_allyanonimiser()
+ally = create_allyanonimiser()
 
 # Process a text
 text = "Patient John Smith with policy number POL123456 reported a claim"
 result = ally.analyze(text)
 
 # Alternatively, use specialized analyzers
-claim_analyzer = allyanonimiser.ClaimNotesAnalyzer()
-result = allyanonimiser.analyze_claim_note(text)
+claim_analyzer = ClaimNotesAnalyzer()
+result = analyze_claim_notes(text)
 ```
 
 See `example_fixed_imports.py` for a complete example.
