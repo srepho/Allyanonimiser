@@ -5,7 +5,7 @@ This example demonstrates using absolute imports, which is how you
 should import the package when installed via pip.
 
 Usage:
-    1. Install the package: pip install allyanonimiser==0.1.2
+    1. Install the package: pip install allyanonimiser==0.1.8
     2. Run this script: python example_fixed_imports.py
 """
 
