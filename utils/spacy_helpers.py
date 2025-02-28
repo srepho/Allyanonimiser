@@ -222,12 +222,44 @@ def create_regex_from_examples(examples: List[str], generalization_level: str = 
     """
     Create a regex pattern from example strings with optional generalization.
     
+    This function generates regular expression patterns with different levels of flexibility
+    based on the provided examples. Higher generalization levels create patterns that can
+    match more variations of the examples.
+    
     Args:
-        examples: List of example strings
-        generalization_level: Level of pattern generalization ("none", "low", "medium", "high")
+        examples (List[str]): List of example strings to generate pattern from
+        generalization_level (str, optional): Level of pattern generalization:
+            - "none": Exact match only (OR-joined escaped examples)
+            - "low": Basic generalization (common structure with digit/letter classes)
+            - "medium": Smart pattern with format detection for common formats
+            - "high": Advanced generalization with structural analysis
         
     Returns:
-        Regex pattern string
+        str: Regex pattern string that can be used with re.match/re.search
+        
+    Examples:
+        >>> # Exact matching (no generalization)
+        >>> create_regex_from_examples(["REF-12345", "REF-67890"], "none")
+        '(REF\\-12345)|(REF\\-67890)'
+        
+        >>> # Low generalization - preserves structure but generalizes digits
+        >>> create_regex_from_examples(["REF-12345", "REF-67890"], "low")
+        'REF\\-\\d+'
+        
+        >>> # Medium generalization - detects common formats
+        >>> create_regex_from_examples(["ABC-12345", "DEF-67890"], "medium")
+        '[A-Z]{3}-\\d{5}'
+        
+        >>> # High generalization - advanced structural analysis
+        >>> create_regex_from_examples(["Customer: ABC (2023)", "Customer: XYZ (2024)"], "high")
+        'Customer: [A-Z]+ \\(\\d{4}\\)'
+        
+        >>> # Automatic format detection (works at medium+ levels)
+        >>> create_regex_from_examples(["user@example.com", "john.doe@company.org"], "medium")
+        '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}'
+    
+    Raises:
+        ValueError: If examples list is empty or generalization_level is not supported
     """
     if not examples:
         raise ValueError("At least one example string is required")

@@ -8,7 +8,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry.
 
-## Version 0.1.9 - Enhanced Pattern Generation
+## Version 0.2.0 - Enhanced Pattern Generation
 
 This version significantly enhances the pattern detection capabilities of the package, making it much more effective at identifying personally identifiable information in Australian and insurance-specific contexts.
 
@@ -30,13 +30,35 @@ This version significantly enhances the pattern detection capabilities of the pa
    - Added `generalization_level` parameter to `create_pattern_from_examples` function
    - Backward compatible with existing code
    - Simple interface to create powerful detection patterns
+   - Comprehensive docstrings with detailed examples
    - Extensive examples in `example_advanced_pattern_generation.py`
+   
+   ```python
+   # Create a flexible pattern for Australian phone numbers
+   phone_pattern = create_pattern_from_examples(
+       entity_type="PHONE_NUMBER",
+       examples=["0412 345 678", "(02) 9876 5432", "+61 4 1234 5678"],
+       context=["phone", "mobile", "call"],
+       generalization_level="medium"
+   )
+   analyzer.add_pattern(phone_pattern)
+   ```
 
 4. **Enhanced Format Detection**:
    - Special handling for common formats like dates, phone numbers, and emails
    - Australian-specific format recognition
    - Automatic token-based pattern generation for complex examples
    - Smart segmentation of long examples for better pattern extraction
+   
+   ```python
+   # Common format detection examples
+   formats = {
+       "Dates": ["01/02/2023", "15/06/2022"],                       # Generates: \d{1,2}[/-]\d{1,2}[/-]\d{2,4}
+       "Emails": ["user@example.com", "john.doe@company.co.uk"],    # Generates: [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+       "IP Addresses": ["192.168.0.1", "10.0.0.1"],                 # Generates: (\d{1,3}\.){3}\d{1,3}
+       "Phone Numbers": ["0412-345-678", "(02) 9876 5432"]          # Detects phone number format
+   }
+   ```
 
 5. **Developer-Friendly Pattern Creation**:
    - Comprehensive debugging output to understand pattern generation
@@ -68,7 +90,7 @@ This version significantly enhances the pattern detection capabilities of the pa
 
 ```bash
 # Install from PyPI
-pip install allyanonimiser==0.1.9
+pip install allyanonimiser==0.2.0
 
 # Install the required spaCy model
 python -m spacy download en_core_web_lg

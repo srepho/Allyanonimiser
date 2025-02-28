@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "0.1.9"
+__version__ = "0.2.0"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -85,7 +85,12 @@ from .utils.spacy_helpers import (
     extract_patterns_from_spans,
     create_regex_from_examples,
     get_entity_context,
-    auto_generate_context_terms
+    auto_generate_context_terms,
+    # Pattern generalization functions
+    create_simple_generalized_regex,
+    create_generalized_regex,
+    create_advanced_generalized_regex,
+    detect_common_format
 )
 
 from .utils.presidio_helpers import (
@@ -144,15 +149,46 @@ def create_pattern_from_examples(
     Create a custom pattern definition from examples with optional generalization.
     
     Args:
-        entity_type: Entity type this pattern detects
-        examples: List of example strings
-        context: Optional list of context words
-        name: Optional name for the pattern
-        pattern_type: Type of pattern to create (regex or spacy)
-        generalization_level: Level of pattern generalization (none, low, medium, high)
-        
+        entity_type (str): Entity type this pattern detects (e.g., "POLICY_NUMBER")
+        examples (List[str]): List of example strings to generate pattern from
+        context (List[str], optional): List of context words that often appear near this entity
+        name (str, optional): Name for the pattern, defaults to entity_type if not provided
+        pattern_type (str, optional): Type of pattern to create - "regex" or "spacy". Defaults to "regex"
+        generalization_level (str, optional): Level of pattern generalization:
+            - "none": Exact match only (creates patterns like "(A123)|(B456)")
+            - "low": Basic generalization (replaces numbers with \\d+, preserves structure)
+            - "medium": Flexible pattern with character classes and format detection
+            - "high": Advanced pattern generation with structural analysis
+    
     Returns:
-        CustomPatternDefinition
+        CustomPatternDefinition: A pattern definition that can be added to an analyzer
+    
+    Examples:
+        >>> # Create an exact-matching pattern for policy numbers
+        >>> policy_pattern = create_pattern_from_examples(
+        ...     entity_type="POLICY_NUMBER",
+        ...     examples=["POL-12345", "POL-67890"],
+        ...     context=["policy", "number"],
+        ...     generalization_level="none"
+        ... )
+        >>> # Pattern will only match "POL-12345" or "POL-67890"
+        
+        >>> # Create a flexible pattern for Australian dates
+        >>> date_pattern = create_pattern_from_examples(
+        ...     entity_type="DATE",
+        ...     examples=["01/02/2023", "15/06/2022", "31/12/2021"],
+        ...     context=["date", "on", "dated"],
+        ...     generalization_level="medium"
+        ... )
+        >>> # Pattern will match variations like "05/07/2024" and "10-11-2020"
+        
+        >>> # Create a highly generalized pattern for customer references
+        >>> ref_pattern = create_pattern_from_examples(
+        ...     entity_type="REFERENCE",
+        ...     examples=["Customer Ref: ABC-123/456", "Customer Ref: XYZ-789/012"],
+        ...     generalization_level="high"
+        ... )
+        >>> # Pattern will match structural variations while preserving format
     """
     if pattern_type == "regex":
         # Import from utils to get the generalization-enabled function
