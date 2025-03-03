@@ -63,6 +63,37 @@ print(anonymized["text"])
 # Output: "Please reference your policy ********** for claims related to your vehicle rego <VEHICLE_REGISTRATION>."
 ```
 
+### Adding Custom Patterns
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Add a custom pattern with regex
+ally.add_pattern({
+    "entity_type": "REFERENCE_CODE",
+    "patterns": [r"REF-\d{6}-[A-Z]{2}", r"Reference\s+#\d{6}"],
+    "context": ["reference", "code", "ref"],
+    "name": "Reference Code"
+})
+
+# Generate a pattern from examples
+ally.create_pattern_from_examples(
+    entity_type="EMPLOYEE_ID",
+    examples=["EMP00123", "EMP45678", "EMP98765"],
+    context=["employee", "staff", "id"],
+    generalization_level="medium"
+)
+
+# Test custom patterns
+text = "Employee EMP12345 created REF-123456-AB for the project."
+results = ally.analyze(text)
+for result in results:
+    print(f"Found {result.entity_type}: {result.text}")
+```
+
 ## New in Version 2.0.0: Comprehensive Reporting System
 
 Allyanonimiser now includes a comprehensive reporting system that allows you to track, analyze, and visualize anonymization activities.
@@ -128,6 +159,55 @@ report.export_report("report.csv", "csv")    # CSV statistics
 - **Customizable**: Extend with your own patterns and entity types
 
 ## Usage Examples
+
+### Pattern Management
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create an instance
+ally = create_allyanonimiser()
+
+# 1. Adding pattern to an existing group in pattern files
+# If you want to contribute a new pattern to the codebase,
+# edit the appropriate file in patterns/ directory:
+#  - patterns/au_patterns.py: For Australian-specific patterns
+#  - patterns/general_patterns.py: For general PII patterns 
+#  - patterns/insurance_patterns.py: For insurance-specific patterns
+
+# 2. Using custom patterns without modifying code
+# Add a custom pattern with detailed options
+ally.add_pattern({
+    "entity_type": "COMPANY_PROJECT_ID",
+    "patterns": [
+        r"PRJ-\d{4}-[A-Z]{3}",       # Format: PRJ-1234-ABC
+        r"Project\s+ID:\s*(\d{4})"   # Format: Project ID: 1234
+    ],
+    "context": ["project", "id", "identifier", "code"],
+    "name": "Company Project ID",
+    "score": 0.85,                   # Confidence score (0-1)
+    "language": "en",                # Language code
+    "description": "Internal project identifier format"
+})
+
+# 3. Save patterns for reuse
+ally.export_config("company_patterns.json")
+
+# 4. Load saved patterns in another session
+new_ally = create_allyanonimiser(settings_path="company_patterns.json")
+
+# 5. Pattern testing and validation
+from allyanonimiser.validators import test_pattern_against_examples
+
+# Test if a pattern works against examples
+results = test_pattern_against_examples(
+    pattern=r"PRJ-\d{4}-[A-Z]{3}",
+    positive_examples=["PRJ-1234-ABC", "PRJ-5678-XYZ"],
+    negative_examples=["PRJ-123-AB", "PROJECT-1234"]
+)
+print(f"Pattern is valid: {results['is_valid']}")
+print(f"Diagnostic info: {results['message']}")
+```
 
 ### Analyze Text for PII Entities
 
