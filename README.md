@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.0.0-blue)](https://pypi.org/project/allyanonimiser/2.0.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v2.1.0-blue)](https://pypi.org/project/allyanonimiser/2.1.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
@@ -12,16 +12,16 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==2.0.0
+pip install allyanonimiser==2.1.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==2.0.0"
+pip install "allyanonimiser[stream]==2.1.0"
 
 # With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==2.0.0"
+pip install "allyanonimiser[llm]==2.1.0"
 
 # Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==2.0.0"
+pip install "allyanonimiser[stream,llm]==2.1.0"
 ```
 
 **Prerequisites:**

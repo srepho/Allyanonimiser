@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0 (2025-03-03)
+
+### Added
+- NSW legacy driver's license pattern support (licenses issued until 1990)
+- Comprehensive pattern reference table in documentation
+- Enhanced pattern management examples in README
+
+### Fixed
+- Fixed package build with proper dependency specifications
+- Added missing dependencies in pyproject.toml (pandas, tqdm)
+- Updated documentation with clearer pattern examples
+
 ## 2.0.0 (2025-03-30)
 
 ### Added
