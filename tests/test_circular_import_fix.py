@@ -43,8 +43,8 @@ def test_factory_function_import_order():
     import allyanonimiser
     
     # Check that the key factory functions exist
-    assert hasattr(allyanonimiser, 'create_au_analyzer')
-    assert hasattr(allyanonimiser, 'create_au_insurance_analyzer')
+    # Note: updated to match the new API (v1.2.0+)
+    assert hasattr(allyanonimiser, 'create_analyzer')
     assert hasattr(allyanonimiser, 'create_allyanonimiser')
     
     # Now import the insurance module directly

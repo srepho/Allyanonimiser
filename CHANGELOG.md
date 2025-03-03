@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.0.0 (2025-03-30)
+
+### Added
+- Comprehensive reporting system with rich visualization capabilities:
+  - Added `AnonymizationReport` class for tracking statistics and metrics
+  - Added `ReportingManager` class for handling report sessions
+  - Added integration with Jupyter notebooks for rich visualizations
+  - Added multiple export formats (HTML, JSON, CSV) for report sharing
+  - Added detailed entity type tracking and distribution analysis
+  - Added performance metrics tracking for anonymization operations
+  - Added document-level statistics and batch reporting features
+  - Added visual charts for entity distribution and operator usage
+  - Created example scripts demonstrating reporting capabilities
+
+### Enhanced
+- Integrated reporting system with existing functionality:
+  - Added reporting to anonymize(), process(), and process_files() methods
+  - Added report display capabilities for Jupyter notebook environments
+  - Added methods to start, retrieve, and finalize reports
+  - Added automated reporting for batch operations
+  - Improved reporting of anonymization effectiveness with rate metrics
+  - Enhanced documentation with comprehensive reporting examples
+  - Added test suite for reporting functionality
+
 ## 1.2.0 (2025-03-29)
 
 ### Added

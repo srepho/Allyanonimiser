@@ -2,7 +2,6 @@
 Main interface for the Allyanonimiser package.
 """
 import re
-import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Any, Tuple
 
@@ -16,7 +15,6 @@ from .pattern_manager import CustomPatternDefinition, PatternManager
 from .pattern_registry import PatternRegistry
 from .utils.text_preprocessor import TextPreprocessor, create_text_preprocessor
 from .utils.settings_manager import SettingsManager, create_default_settings
-from .reporting import report_manager, AnonymizationReport
 
 @dataclass
 class AnonymizationConfig:
@@ -459,8 +457,7 @@ class Allyanonimiser:
         return self.analyzer.analyze(processed_text, language, score_adjustment)
     
     def anonymize(self, text, operators=None, language="en", active_entity_types=None, 
-                 expand_acronyms=False, age_bracket_size=5, keep_postcode=True, config=None,
-                 document_id=None, report=True):
+                 expand_acronyms=False, age_bracket_size=5, keep_postcode=True, config=None):
         """
         Anonymize PII entities in text.
         
@@ -474,8 +471,6 @@ class Allyanonimiser:
             age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
             keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             config: Optional AnonymizationConfig object (overrides individual parameters)
-            document_id: Optional identifier for the document (for reporting)
-            report: Whether to record this operation in the reporting system (default: True)
             
         Returns:
             Dict with anonymized text and other metadata
@@ -526,9 +521,6 @@ class Allyanonimiser:
             - "age_bracket": Replace age/DOB with age bracket (e.g., <40-45>)
             - "custom": Use a custom function (defined separately)
         """
-        # Record start time for performance tracking
-        start_time = time.time()
-        
         # Use config object if provided
         if config is not None:
             operators = config.operators
@@ -547,51 +539,17 @@ class Allyanonimiser:
         if expand_acronyms and self.text_preprocessor.acronym_dict:
             processed_text, _ = self.text_preprocessor.expand_acronyms(text)
             
-        # Perform anonymization
-        result = self.anonymizer.anonymize(
+        return self.anonymizer.anonymize(
             processed_text, 
             operators, 
             language, 
             age_bracket_size=age_bracket_size,
             keep_postcode=keep_postcode
         )
-        
-        # Calculate processing time
-        processing_time = time.time() - start_time
-        
-        # Add processing time to result
-        result["processing_time"] = processing_time
-        
-        # Add document_id to the result for tracking
-        if document_id:
-            result["document_id"] = document_id
-        else:
-            # Generate a document ID if not provided
-            result["document_id"] = f"doc_{int(time.time()*1000)}"
-            
-        # Add original text to the result for reporting purposes
-        result["original_text"] = text
-        
-        # Record the anonymization in the reporting system if enabled
-        if report:
-            # Ensure we have an active report
-            if not report_manager.get_current_report():
-                report_manager.start_new_report()
-                
-            # Record this anonymization operation
-            report_manager.get_current_report().record_anonymization(
-                document_id=result["document_id"],
-                original_text=text,
-                anonymization_result=result,
-                processing_time=processing_time
-            )
-        
-        return result
     
     def process(self, text, language="en", active_entity_types=None, score_adjustment=None, 
               min_score_threshold=None, expand_acronyms=False, operators=None, 
-              age_bracket_size=5, keep_postcode=True, analysis_config=None, anonymization_config=None,
-              document_id=None, report=True):
+              age_bracket_size=5, keep_postcode=True, analysis_config=None, anonymization_config=None):
         """
         Process text to analyze and anonymize in a single operation.
         
@@ -611,8 +569,6 @@ class Allyanonimiser:
             keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             analysis_config: Optional AnalysisConfig object (overrides individual analysis parameters)
             anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
-            document_id: Optional identifier for the document (for reporting)
-            report: Whether to record this operation in the reporting system (default: True)
             
         Returns:
             Dict with the following keys:
@@ -621,7 +577,6 @@ class Allyanonimiser:
             - segments: List of PII-rich segments with their anonymized versions
             - structured_data: Extracted structured data from entities
             - preprocessing: (if acronyms expanded) Information about expanded acronyms
-            - processing_time: Time taken to process the document (in seconds)
             
         Example:
             ```python
@@ -631,35 +586,42 @@ class Allyanonimiser:
             ally = create_allyanonimiser()
             
             # Process text with configuration objects
-            text = "Customer: John Smith (DOB: 15/6/1980)\nPolicy #: POL-12345678\nEmail: john.smith@example.com\nPhone: 0412-345-678\n\nCustomer reported an accident on 10/5/2024."
+        text = """
+        Customer: John Smith (DOB: 15/6/1980)
+        Policy #: POL-12345678
+        Email: john.smith@example.com
+        Phone: 0412-345-678
+        
+        Customer reported an accident on 10/5/2024.
+        """
             
-            analysis_config = AnalysisConfig(
-                active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "DATE_OF_BIRTH"],
-                min_score_threshold=0.7,
-                expand_acronyms=True
-            )
-            
-            anonymization_config = AnonymizationConfig(
-                operators={
-                    "PERSON": "replace",
-                    "EMAIL_ADDRESS": "mask",
-                    "PHONE_NUMBER": "redact",
-                    "DATE_OF_BIRTH": "age_bracket"
+        analysis_config = AnalysisConfig(
+            active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "DATE_OF_BIRTH"],
+            min_score_threshold=0.7,
+            expand_acronyms=True
+        )
+        
+        anonymization_config = AnonymizationConfig(
+            operators={
+                "PERSON": "replace",
+                "EMAIL_ADDRESS": "mask",
+                "PHONE_NUMBER": "redact",
+                "DATE_OF_BIRTH": "age_bracket"
                 },
-                age_bracket_size=10
-            )
+            age_bracket_size=10
+                )
             
-            result = ally.process(text, analysis_config=analysis_config, anonymization_config=anonymization_config)
-            
-            # Access different parts of the result
-            print("Anonymized text:")
-            print(result["anonymized"])
-            
-            print("\nDetected entities:")
-            for entity in result["analysis"]["entities"]:
-                print(f"{entity['entity_type']}: {entity['text']} (score: {entity['score']:.2f})")
-            
-            print("\nPII-rich segments:")
+        result = ally.process(text, analysis_config=analysis_config, anonymization_config=anonymization_config)
+        
+        # Access different parts of the result
+        print("Anonymized text:")
+        print(result["anonymized"])
+        
+        print("\nDetected entities:")
+        for entity in result["analysis"]["entities"]:
+            print(f"{entity['entity_type']}: {entity['text']} (score: {entity['score']:.2f})")
+        
+        print("\nPII-rich segments:")
             for segment in result["segments"]:
                 print(f"Original: {segment['text']}")
                 print(f"Anonymized: {segment['anonymized']}")
@@ -667,10 +629,8 @@ class Allyanonimiser:
             print("\nStructured data:")
             for key, value in result["structured_data"].items():
                 print(f"{key}: {value}")
+        ```
         """
-        # Record start time for performance tracking
-        start_time = time.time()
-        
         # Create config objects if not provided
         if analysis_config is None:
             analysis_config = AnalysisConfig(
@@ -709,12 +669,10 @@ class Allyanonimiser:
             config=analysis_config
         )
         
-        # Anonymize the text using config object - pass document_id and report flags through
+        # Anonymize the text using config object
         anonymized_results = self.anonymize(
             processed_text, 
-            config=anonymization_config,
-            document_id=document_id,
-            report=report
+            config=anonymization_config
         )
         
         # Get PII-rich segments
@@ -723,19 +681,14 @@ class Allyanonimiser:
         # Add anonymized versions of segments
         for segment in segments:
             segment_text = segment['text']
-            # Don't report these segment anonymizations separately
             anonymized_segment = self.anonymize(
                 segment_text, 
-                config=anonymization_config,
-                report=False
+                config=anonymization_config
             )
             segment['anonymized'] = anonymized_segment['text']
         
         # Extract structured data from entities
         structured_data = self._extract_structured_data(analysis_results)
-        
-        # Calculate processing time
-        processing_time = time.time() - start_time
         
         result = {
             'analysis': {
@@ -752,13 +705,8 @@ class Allyanonimiser:
             },
             'anonymized': anonymized_results['text'],
             'segments': segments,
-            'structured_data': structured_data,
-            'processing_time': processing_time
+            'structured_data': structured_data
         }
-        
-        # Add document_id if provided
-        if document_id:
-            result['document_id'] = document_id
         
         # Add preprocessing metadata if acronyms were expanded
         if analysis_config.expand_acronyms and expansions_metadata:
@@ -771,16 +719,6 @@ class Allyanonimiser:
                     for exp in expansions_metadata
                 ]
             }
-        
-        # Add statistics about entities found
-        result['statistics'] = {
-            'entity_count': len(analysis_results),
-            'entity_types': list(set(r.entity_type for r in analysis_results)),
-            'entity_type_counts': {
-                entity_type: sum(1 for r in analysis_results if r.entity_type == entity_type)
-                for entity_type in set(r.entity_type for r in analysis_results)
-            }
-        }
             
         return result
     
@@ -1345,8 +1283,7 @@ class Allyanonimiser:
         
     def process_files(self, file_paths, output_dir=None, anonymize=True, operators=None,
                      language="en", active_entity_types=None, expand_acronyms=False,
-                     save_results=False, analysis_config=None, anonymization_config=None,
-                     report=True, report_output=None, report_format="html"):
+                     save_results=False, analysis_config=None, anonymization_config=None):
         """
         Process multiple files.
         
@@ -1361,27 +1298,12 @@ class Allyanonimiser:
             save_results: Whether to save results to output_dir
             analysis_config: Optional AnalysisConfig object (overrides individual analysis parameters)
             anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
-            report: Whether to generate a processing report (default: True)
-            report_output: Path to save the report file (if None, only return the report)
-            report_format: Format for the report file ("html", "json", or "csv")
             
         Returns:
-            Dict containing:
-              - 'results': List of result dictionaries, one per input file
-              - 'report': Report summary if report=True
+            List of result dictionaries, one per input file
         """
         import os
         import json
-        
-        # Start batch processing timer
-        batch_start_time = time.time()
-        
-        # Start a new report if requested
-        if report:
-            batch_report = report_manager.start_new_report()
-            batch_id = batch_report.session_id
-        else:
-            batch_id = f"batch_{int(time.time()*1000)}"
         
         # Create config objects if not provided
         if analysis_config is None:
@@ -1405,96 +1327,50 @@ class Allyanonimiser:
             
         results = []
         
-        for i, file_path in enumerate(file_paths):
-            try:
-                # Read file
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                    
-                # Get file basename for output
-                basename = os.path.basename(file_path)
-                name, _ = os.path.splitext(basename)
+        for file_path in file_paths:
+            # Read file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
                 
-                # Generate document ID
-                document_id = f"{batch_id}_{i}_{name}"
-                    
-                # Process file
-                result = self.process(
-                    text=text,
-                    analysis_config=analysis_config,
-                    anonymization_config=anonymization_config,
-                    document_id=document_id,
-                    report=report
-                )
+            # Get file basename for output
+            basename = os.path.basename(file_path)
+            name, _ = os.path.splitext(basename)
                 
-                # Add file info to result
-                result["file_info"] = {
-                    "path": file_path,
-                    "name": name
+            # Process file
+            result = self.process(
+                text=text,
+                analysis_config=analysis_config,
+                anonymization_config=anonymization_config
+            )
+            
+            # Add file info to result
+            result["file_info"] = {
+                "path": file_path,
+                "name": name
+            }
+            
+            # Save results if requested
+            if save_results and output_dir:
+                # Save anonymized text
+                anon_path = os.path.join(output_dir, f"{name}_anonymized.txt")
+                with open(anon_path, 'w', encoding='utf-8') as f:
+                    f.write(result["anonymized"])
+                    
+                # Save analysis results
+                analysis_path = os.path.join(output_dir, f"{name}_analysis.json")
+                with open(analysis_path, 'w', encoding='utf-8') as f:
+                    json.dump(result, f, indent=2)
+                    
+                # Add output paths to result
+                result["output_files"] = {
+                    "anonymized": anon_path,
+                    "analysis": analysis_path
                 }
                 
-                # Save results if requested
-                if save_results and output_dir:
-                    # Save anonymized text
-                    anon_path = os.path.join(output_dir, f"{name}_anonymized.txt")
-                    with open(anon_path, 'w', encoding='utf-8') as f:
-                        f.write(result["anonymized"])
-                        
-                    # Save analysis results
-                    analysis_path = os.path.join(output_dir, f"{name}_analysis.json")
-                    with open(analysis_path, 'w', encoding='utf-8') as f:
-                        json.dump(result, f, indent=2)
-                        
-                    # Add output paths to result
-                    result["output_files"] = {
-                        "anonymized": anon_path,
-                        "analysis": analysis_path
-                    }
-                    
-                # Add to results
-                results.append(result)
-                
-            except Exception as e:
-                # Record the error in results
-                error_result = {
-                    "file_info": {
-                        "path": file_path,
-                        "name": os.path.basename(file_path)
-                    },
-                    "error": str(e),
-                    "success": False
-                }
-                results.append(error_result)
-        
-        # Create response dictionary
-        response = {
-            "results": results,
-            "success": True,
-            "total_files": len(file_paths),
-            "successful_files": sum(1 for r in results if r.get("success", True))
-        }
-        
-        # Add report if requested
-        if report:
-            # Finalize the report
-            batch_report.finalize()
+            # Add to results
+            results.append(result)
             
-            # Add report summary to response
-            response["report"] = batch_report.get_summary()
-            
-            # Save report file if path provided
-            if report_output:
-                try:
-                    # Create directory if it doesn't exist
-                    os.makedirs(os.path.dirname(report_output), exist_ok=True)
-                    
-                    # Export report in requested format
-                    report_file = batch_report.export_report(report_output, report_format)
-                    response["report_file"] = report_file
-                except Exception as e:
-                    response["report_error"] = str(e)
-        
-        return response
+        return results
         
     def _extract_structured_data(self, analysis_results):
         """
@@ -1534,76 +1410,3 @@ class Allyanonimiser:
                 structured_data[field_name] = [e['text'] for e in entities]
         
         return structured_data
-    
-    def get_report(self, session_id=None):
-        """
-        Get a report of anonymization operations.
-        
-        Args:
-            session_id: Optional session ID to retrieve a specific report
-        
-        Returns:
-            AnonymizationReport object or None if not found
-        """
-        if session_id:
-            return report_manager.get_report(session_id)
-        return report_manager.get_current_report()
-    
-    def start_new_report(self, session_id=None):
-        """
-        Start a new anonymization report.
-        
-        Args:
-            session_id: Optional session ID for the report
-        
-        Returns:
-            The new AnonymizationReport object
-        """
-        return report_manager.start_new_report(session_id)
-    
-    def finalize_report(self, output_path=None, format="html"):
-        """
-        Finalize the current report and optionally save it to a file.
-        
-        Args:
-            output_path: Optional path to save the report
-            format: Format for the report file (html, json, or csv)
-        
-        Returns:
-            Dict with report summary
-        """
-        report = report_manager.get_current_report()
-        if not report:
-            return {"error": "No active report to finalize"}
-        
-        # Finalize the report
-        report.finalize()
-        
-        # Export the report if a path is provided
-        if output_path:
-            try:
-                report.export_report(output_path, format)
-            except Exception as e:
-                return {
-                    "error": f"Failed to save report: {str(e)}",
-                    "summary": report.get_summary()
-                }
-        
-        return report.get_summary()
-    
-    def display_report_in_notebook(self, session_id=None):
-        """
-        Display a report in a Jupyter notebook.
-        
-        This method generates rich visualizations in a notebook environment.
-        
-        Args:
-            session_id: Optional session ID to display a specific report
-        """
-        report = self.get_report(session_id)
-        if not report:
-            print("No report available to display.")
-            return
-        
-        # Display the report in the notebook
-        report.display_in_notebook()
