@@ -84,7 +84,7 @@ ally.create_pattern_from_examples(
     entity_type="EMPLOYEE_ID",
     examples=["EMP00123", "EMP45678", "EMP98765"],
     context=["employee", "staff", "id"],
-    generalization_level="medium"
+    generalization_level="medium"  # Options: none, low, medium, high
 )
 
 # Test custom patterns
@@ -154,6 +154,47 @@ report.export_report("report.csv", "csv")    # CSV statistics
 - **Reporting System**: Comprehensive tracking and visualization of anonymization activities
 - **Jupyter Integration**: Rich visualization capabilities in notebook environments
 - **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
+
+## Pattern Generalization Levels
+
+When creating patterns from examples using `create_pattern_from_examples()`, you can specify a generalization level that controls how flexible the resulting pattern will be:
+
+| Level | Description | Example Input | Generated Pattern | Will Match |
+|-------|-------------|--------------|------------------|------------|
+| `none` | Exact matching only | "EMP12345" | `\bEMP12345\b` | Only "EMP12345" |
+| `low` | Basic generalization | "EMP12345" | `\bEMP\d{5}\b` | "EMP12345", "EMP67890", but not "EMP123" |
+| `medium` | Moderate flexibility | "EMP12345" | `\bEMP\d+\b` | "EMP12345", "EMP123", "EMP9", but not "EMPLOYEE12345" |
+| `high` | Maximum flexibility | "EMP12345" | `\b[A-Z]{3}\d+\b` | "EMP12345", "ABC123", etc. |
+
+Higher generalization levels detect more variants but may increase false positives. Choose the appropriate level based on your needs for precision vs. recall.
+
+## Anonymization Operators
+
+The package supports several anonymization operators that control how detected entities are transformed:
+
+| Operator | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `replace` | Replace with entity type | "John Smith" | `<PERSON>` |
+| `redact` | Fully redact the entity | "john.smith@example.com" | `[REDACTED]` |
+| `mask` | Partially mask while preserving structure | "john.smith@example.com" | `j***.s****@e******.com` |
+| `hash` | Replace with consistent hash | "John Smith" | `7f9d6a...` (same for all "John Smith") |
+| `encrypt` | Encrypt with a key (recoverable) | "John Smith" | `AES256:a7f9c...` |
+| `age_bracket` | Convert dates to age brackets | "DOB: 15/03/1980" | `DOB: 40-44` |
+| `custom` | User-defined function | (depends on function) | (custom output) |
+
+Example usage:
+
+```python
+result = ally.anonymize(
+    text="Please contact John Smith at john.smith@example.com",
+    operators={
+        "PERSON": "replace",       # Replace with entity type
+        "EMAIL_ADDRESS": "mask",   # Partially mask the email
+        "PHONE_NUMBER": "redact",  # Fully redact phone numbers
+        "DATE_OF_BIRTH": "age_bracket"  # Convert DOB to age bracket
+    }
+)
+```
 
 ## Built-in Pattern Reference
 
