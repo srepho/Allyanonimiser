@@ -43,7 +43,7 @@ jobs:
         python -c "import allyanonimiser; print(f'Successfully installed version {allyanonimiser.__version__}')"
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/
