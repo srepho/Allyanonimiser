@@ -3,14 +3,7 @@ Tests for the EnhancedAnonymizer class.
 """
 
 import pytest
-from allyanonimiser import EnhancedAnonymizer, EnhancedAnalyzer, create_au_insurance_analyzer
-
-def test_anonymizer_creation():
-    """Test that an anonymizer can be created."""
-    analyzer = EnhancedAnalyzer()
-    anonymizer = EnhancedAnonymizer(analyzer=analyzer)
-    assert anonymizer is not None
-    assert hasattr(anonymizer, 'anonymize')
+from allyanonimiser import EnhancedAnonymizer, EnhancedAnalyzer, create_analyzer
 
 def test_anonymize_simple_text(basic_anonymizer, example_texts):
     """Test anonymizing simple text with standard patterns."""

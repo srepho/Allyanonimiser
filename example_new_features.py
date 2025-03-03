@@ -5,24 +5,25 @@ Example script demonstrating the new features in version 1.0.0:
 2. Converting dates of birth to age brackets 
 """
 
-from allyanonimiser import create_analyzer, create_allyanonimiser
+from allyanonimiser import create_analyzer, create_allyanonimiser, EnhancedAnonymizer
 import pandas as pd
 
 def main():
-    # Create analyzer
+    # Create analyzer and anonymizer
     analyzer = create_analyzer()
+    anonymizer = EnhancedAnonymizer(analyzer=analyzer)
 
     # Example with address and postcode
     address_text = "Customer lives at 123 Main Street, Sydney, NSW 2000. Contact at 0411222333."
     
     # Regular anonymization
-    result1 = analyzer.anonymize(address_text)
+    result1 = anonymizer.anonymize(address_text)
     print("Regular anonymization:")
     print(result1['text'])
     print()
     
     # With postcode preservation
-    result2 = analyzer.anonymize(address_text, keep_postcode=True)
+    result2 = anonymizer.anonymize(address_text, keep_postcode=True)
     print("Anonymization with postcode preservation:")
     print(result2['text'])
     print()
@@ -35,13 +36,13 @@ def main():
         "DATE_OF_BIRTH": "age_bracket"
     }
     
-    result3 = analyzer.anonymize(dob_text, operators=operators)
+    result3 = anonymizer.anonymize(dob_text, operators=operators)
     print("Anonymization with age brackets:")
     print(result3['text'])
     print()
     
     # With age bracket operator and custom bracket size
-    result4 = analyzer.anonymize(dob_text, operators=operators, age_bracket_size=10)
+    result4 = anonymizer.anonymize(dob_text, operators=operators, age_bracket_size=10)
     print("Anonymization with larger age brackets (10 years):")
     print(result4['text'])
     print()

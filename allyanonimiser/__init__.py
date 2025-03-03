@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -59,7 +59,7 @@ def create_analyzer():
     return create_unified_analyzer()
 
 # Now that factory functions are defined, import the remaining components
-from .allyanonimiser import Allyanonimiser
+from .allyanonimiser import Allyanonimiser, AnonymizationConfig, AnalysisConfig
 
 # Import generators
 from .generators.au_synthetic_data import AustralianSyntheticDataGenerator

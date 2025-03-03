@@ -2,6 +2,9 @@
 Main interface for the Allyanonimiser package.
 """
 import re
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Union, Any, Tuple
+
 from .enhanced_analyzer import EnhancedAnalyzer, RecognizerResult
 from .enhanced_anonymizer import EnhancedAnonymizer
 from .utils.long_text_processor import (
@@ -12,6 +15,25 @@ from .pattern_manager import CustomPatternDefinition, PatternManager
 from .pattern_registry import PatternRegistry
 from .utils.text_preprocessor import TextPreprocessor, create_text_preprocessor
 from .utils.settings_manager import SettingsManager, create_default_settings
+
+@dataclass
+class AnonymizationConfig:
+    """Configuration options for anonymization process."""
+    operators: Optional[Dict[str, str]] = None
+    language: str = "en"
+    active_entity_types: Optional[List[str]] = None
+    expand_acronyms: bool = False
+    age_bracket_size: int = 5
+    keep_postcode: bool = True
+
+@dataclass
+class AnalysisConfig:
+    """Configuration options for analysis process."""
+    language: str = "en"
+    active_entity_types: Optional[List[str]] = None
+    score_adjustment: Optional[Dict[str, float]] = None
+    min_score_threshold: Optional[float] = None
+    expand_acronyms: bool = False
 
 def create_allyanonimiser(pattern_filepath=None, settings_path=None):
     """
@@ -128,93 +150,116 @@ class Allyanonimiser:
         
         return success
     
+    def manage_acronyms(self, action, data=None, case_sensitive=False, csv_path=None, settings_path=None, 
+                      acronym_col='acronym', expansion_col='expansion'):
+        """
+        Unified method for managing acronyms with multiple operations.
+        
+        Args:
+            action: The action to perform ('set', 'add', 'remove', 'get', 'import')
+            data: Dictionary mapping acronyms to their expanded forms or list of acronyms to remove
+            case_sensitive: Whether acronym matching should be case-sensitive
+            csv_path: Path to CSV file (for 'import' action)
+            settings_path: Optional path to save settings (for 'import' action)
+            acronym_col: Column name for acronyms (for 'import' action)
+            expansion_col: Column name for expansions (for 'import' action)
+            
+        Returns:
+            Dictionary of acronyms for 'get' action,
+            Number of acronyms for 'import' action,
+            None for other actions
+            
+        Raises:
+            ValueError: If action is not recognized
+        """
+        if action == 'set':
+            self.text_preprocessor = TextPreprocessor(acronym_dict=data, case_sensitive=case_sensitive)
+            self.settings_manager.set_acronyms(data, case_sensitive)
+            return None
+            
+        elif action == 'add':
+            self.text_preprocessor.add_acronyms(data)
+            self.settings_manager.add_acronyms(data)
+            return None
+            
+        elif action == 'remove':
+            self.text_preprocessor.remove_acronyms(data)
+            self.settings_manager.remove_acronyms(data)
+            return None
+            
+        elif action == 'get':
+            return self.text_preprocessor.acronym_dict.copy()
+            
+        elif action == 'import':
+            from .utils.settings_manager import import_acronyms_from_csv
+            
+            if not csv_path:
+                raise ValueError("csv_path is required for 'import' action")
+                
+            success, count, settings = import_acronyms_from_csv(
+                csv_path, settings_path, acronym_col, expansion_col, case_sensitive
+            )
+            
+            if success and count > 0:
+                # Update the text preprocessor with the new acronyms
+                self.text_preprocessor = TextPreprocessor(
+                    acronym_dict=settings.get('acronyms', {}).get('dictionary', {}),
+                    case_sensitive=settings.get('acronyms', {}).get('case_sensitive', False)
+                )
+                
+            return count
+            
+        else:
+            raise ValueError(f"Unknown acronym action: {action}. " 
+                             f"Valid actions are: 'set', 'add', 'remove', 'get', 'import'")
+    
+    # Backward compatibility methods - these will be deprecated in future versions
+    
     def set_acronym_dictionary(self, acronym_dict, case_sensitive=False):
         """
         Set the acronym dictionary for text preprocessing.
-        
-        Args:
-            acronym_dict: Dictionary mapping acronyms to their expanded forms
-            case_sensitive: Whether acronym matching should be case-sensitive
-            
-        Returns:
-            None
+        DEPRECATED: Use manage_acronyms('set', data=acronym_dict, case_sensitive=case_sensitive) instead.
         """
-        self.text_preprocessor = TextPreprocessor(acronym_dict=acronym_dict, case_sensitive=case_sensitive)
-        
-        # Update settings
-        self.settings_manager.set_acronyms(acronym_dict, case_sensitive)
+        return self.manage_acronyms('set', data=acronym_dict, case_sensitive=case_sensitive)
     
     def add_acronyms(self, acronym_dict):
         """
         Add acronyms to the existing acronym dictionary.
-        
-        Args:
-            acronym_dict: Dictionary mapping acronyms to their expanded forms
-            
-        Returns:
-            None
+        DEPRECATED: Use manage_acronyms('add', data=acronym_dict) instead.
         """
-        self.text_preprocessor.add_acronyms(acronym_dict)
-        
-        # Update settings
-        self.settings_manager.add_acronyms(acronym_dict)
+        return self.manage_acronyms('add', data=acronym_dict)
         
     def import_acronyms_from_csv(self, csv_path, settings_path=None, acronym_col='acronym',
                                expansion_col='expansion', case_sensitive=False):
         """
         Import acronyms from a CSV file.
-        
-        Args:
-            csv_path: Path to the CSV file
-            settings_path: Optional path to save the settings
-            acronym_col: Column name for acronyms
-            expansion_col: Column name for expansions
-            case_sensitive: Whether acronym matching should be case-sensitive
-            
-        Returns:
-            Number of acronyms imported
+        DEPRECATED: Use manage_acronyms('import', csv_path=csv_path, ...) instead.
         """
-        from .utils.settings_manager import import_acronyms_from_csv
-        
-        success, count, settings = import_acronyms_from_csv(
-            csv_path, settings_path, acronym_col, expansion_col, case_sensitive
+        return self.manage_acronyms(
+            'import', 
+            csv_path=csv_path, 
+            settings_path=settings_path,
+            acronym_col=acronym_col,
+            expansion_col=expansion_col,
+            case_sensitive=case_sensitive
         )
-        
-        if success and count > 0:
-            # Update the text preprocessor with the new acronyms
-            self.text_preprocessor = TextPreprocessor(
-                acronym_dict=settings.get('acronyms', {}).get('dictionary', {}),
-                case_sensitive=settings.get('acronyms', {}).get('case_sensitive', False)
-            )
-            
-        return count
     
     def remove_acronyms(self, acronyms):
         """
         Remove acronyms from the dictionary.
-        
-        Args:
-            acronyms: List of acronym keys to remove
-            
-        Returns:
-            None
+        DEPRECATED: Use manage_acronyms('remove', data=acronyms) instead.
         """
-        self.text_preprocessor.remove_acronyms(acronyms)
-        
-        # Update settings
-        self.settings_manager.remove_acronyms(acronyms)
+        return self.manage_acronyms('remove', data=acronyms)
         
     def get_acronyms(self):
         """
         Get the current acronym dictionary.
-        
-        Returns:
-            Dictionary mapping acronyms to their expanded forms
+        DEPRECATED: Use manage_acronyms('get') instead.
         """
-        return self.text_preprocessor.acronym_dict.copy()
+        return self.manage_acronyms('get')
     
     def analyze(self, text, language="en", active_entity_types=None, score_adjustment=None, 
-                min_score_threshold=None, expand_acronyms=False):
+                min_score_threshold=None, expand_acronyms=False, config=None):
         """
         Analyze text to detect PII entities.
         
@@ -225,10 +270,19 @@ class Allyanonimiser:
             score_adjustment: Optional dict mapping entity_type to score adjustment
             min_score_threshold: Optional minimum score threshold (0.0-1.0)
             expand_acronyms: Whether to expand acronyms using the configured dictionary
+            config: Optional AnalysisConfig object (overrides individual parameters)
             
         Returns:
             List of detected entities
         """
+        # Use config object if provided
+        if config is not None:
+            language = config.language
+            active_entity_types = config.active_entity_types
+            score_adjustment = config.score_adjustment
+            min_score_threshold = config.min_score_threshold
+            expand_acronyms = config.expand_acronyms
+        
         # Configure the analyzer
         if active_entity_types is not None:
             self.analyzer.set_active_entity_types(active_entity_types)
@@ -245,7 +299,7 @@ class Allyanonimiser:
         return self.analyzer.analyze(processed_text, language, score_adjustment)
     
     def anonymize(self, text, operators=None, language="en", active_entity_types=None, 
-                 expand_acronyms=False, age_bracket_size=5, keep_postcode=True):
+                 expand_acronyms=False, age_bracket_size=5, keep_postcode=True, config=None):
         """
         Anonymize PII entities in text.
         
@@ -257,10 +311,20 @@ class Allyanonimiser:
             expand_acronyms: Whether to expand acronyms using the configured dictionary
             age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
             keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
+            config: Optional AnonymizationConfig object (overrides individual parameters)
             
         Returns:
             Dict with anonymized text and other metadata
         """
+        # Use config object if provided
+        if config is not None:
+            operators = config.operators
+            language = config.language
+            active_entity_types = config.active_entity_types
+            expand_acronyms = config.expand_acronyms
+            age_bracket_size = config.age_bracket_size
+            keep_postcode = config.keep_postcode
+            
         # Configure the analyzer if active entity types are specified
         if active_entity_types is not None:
             self.analyzer.set_active_entity_types(active_entity_types)
@@ -280,7 +344,7 @@ class Allyanonimiser:
     
     def process(self, text, language="en", active_entity_types=None, score_adjustment=None, 
               min_score_threshold=None, expand_acronyms=False, operators=None, 
-              age_bracket_size=5, keep_postcode=True):
+              age_bracket_size=5, keep_postcode=True, analysis_config=None, anonymization_config=None):
         """
         Process text to analyze and anonymize in a single operation.
         
@@ -294,40 +358,54 @@ class Allyanonimiser:
             operators: Dict of entity_type to anonymization operator
             age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
             keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
+            analysis_config: Optional AnalysisConfig object (overrides individual analysis parameters)
+            anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
             
         Returns:
             Dict with analysis, anonymized text, and other metadata
         """
-        # Configure the analyzer
-        if active_entity_types is not None:
-            self.analyzer.set_active_entity_types(active_entity_types)
+        # Create config objects if not provided
+        if analysis_config is None:
+            analysis_config = AnalysisConfig(
+                language=language,
+                active_entity_types=active_entity_types,
+                score_adjustment=score_adjustment,
+                min_score_threshold=min_score_threshold,
+                expand_acronyms=expand_acronyms
+            )
             
-        if min_score_threshold is not None:
-            self.analyzer.set_min_score_threshold(min_score_threshold)
+        if anonymization_config is None:
+            anonymization_config = AnonymizationConfig(
+                operators=operators,
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms,
+                age_bracket_size=age_bracket_size,
+                keep_postcode=keep_postcode
+            )
+        
+        # Ensure the same active_entity_types are used for both operations
+        if anonymization_config.active_entity_types is None and analysis_config.active_entity_types is not None:
+            anonymization_config.active_entity_types = analysis_config.active_entity_types
+        elif analysis_config.active_entity_types is None and anonymization_config.active_entity_types is not None:
+            analysis_config.active_entity_types = anonymization_config.active_entity_types
         
         # Preprocess the text if needed
         processed_text = text
         expansions_metadata = []
-        if expand_acronyms and self.text_preprocessor.acronym_dict:
+        if analysis_config.expand_acronyms and self.text_preprocessor.acronym_dict:
             processed_text, expansions_metadata = self.text_preprocessor.expand_acronyms(text)
         
-        # Analyze the text
+        # Analyze the text using config object
         analysis_results = self.analyze(
             processed_text, 
-            language, 
-            active_entity_types, 
-            score_adjustment, 
-            min_score_threshold
+            config=analysis_config
         )
         
-        # Anonymize the text
+        # Anonymize the text using config object
         anonymized_results = self.anonymize(
             processed_text, 
-            operators=operators,
-            language=language, 
-            active_entity_types=active_entity_types,
-            age_bracket_size=age_bracket_size,
-            keep_postcode=keep_postcode
+            config=anonymization_config
         )
         
         # Get PII-rich segments
@@ -338,11 +416,7 @@ class Allyanonimiser:
             segment_text = segment['text']
             anonymized_segment = self.anonymize(
                 segment_text, 
-                operators=operators,
-                language=language, 
-                active_entity_types=active_entity_types,
-                age_bracket_size=age_bracket_size,
-                keep_postcode=keep_postcode
+                config=anonymization_config
             )
             segment['anonymized'] = anonymized_segment['text']
         
@@ -368,7 +442,7 @@ class Allyanonimiser:
         }
         
         # Add preprocessing metadata if acronyms were expanded
-        if expand_acronyms and expansions_metadata:
+        if analysis_config.expand_acronyms and expansions_metadata:
             result['preprocessing'] = {
                 'expanded_acronyms': [
                     {
@@ -412,127 +486,176 @@ class Allyanonimiser:
         
         return self.analyzer.explain_detection(text, entity_result)
         
+    def manage_patterns(self, action, data=None, filepath=None, entity_type=None, examples=None, 
+                      context=None, name=None, generalization_level="medium", csv_path=None, 
+                      entity_type_col='entity_type', pattern_col='pattern', context_col='context',
+                      name_col='name', score_col='score'):
+        """
+        Unified method for managing patterns with multiple operations.
+        
+        Args:
+            action: The action to perform ('add', 'create_from_examples', 'load', 'import', 'save')
+            data: Pattern definition for 'add' action
+            filepath: Path to JSON file for 'load' and 'save' actions
+            entity_type: Entity type name for 'create_from_examples'
+            examples: List of example strings for 'create_from_examples'
+            context: Optional list of context words for 'create_from_examples'
+            name: Optional pattern name for 'create_from_examples'
+            generalization_level: Level of pattern generalization for 'create_from_examples'
+            csv_path: Path to CSV file for 'import' action
+            entity_type_col: Column name for entity types in CSV
+            pattern_col: Column name for patterns in CSV
+            context_col: Column name for context in CSV
+            name_col: Column name for pattern names in CSV
+            score_col: Column name for confidence scores in CSV
+            
+        Returns:
+            - For 'add': True if pattern was added successfully, False otherwise
+            - For 'create_from_examples': The created pattern definition
+            - For 'load': Number of patterns loaded
+            - For 'import': Number of patterns imported
+            - For 'save': Path where patterns were saved
+            
+        Raises:
+            ValueError: If action is not recognized or required parameters are missing
+        """
+        if action == 'add':
+            if data is None:
+                raise ValueError("data is required for 'add' action")
+                
+            # Convert dict to CustomPatternDefinition if needed
+            if isinstance(data, dict):
+                pattern = CustomPatternDefinition(**data)
+            else:
+                pattern = data
+                
+            # Add to analyzer
+            result = self.analyzer.add_pattern(pattern)
+            
+            # Also register with pattern registry
+            if result:
+                self.pattern_registry.register_pattern(pattern)
+                
+            return result
+            
+        elif action == 'create_from_examples':
+            if entity_type is None or examples is None:
+                raise ValueError("entity_type and examples are required for 'create_from_examples' action")
+                
+            from .utils.spacy_helpers import create_regex_from_examples
+            
+            # Generate regex pattern from examples
+            regex = create_regex_from_examples(examples, generalization_level=generalization_level)
+            
+            # Create pattern definition
+            pattern = CustomPatternDefinition(
+                entity_type=entity_type,
+                patterns=[regex],
+                context=context,
+                name=name,
+                description=f"Custom pattern for {entity_type} generated from {len(examples)} examples"
+            )
+            
+            # Add to analyzer and registry
+            self.manage_patterns('add', data=pattern)
+            
+            return pattern
+            
+        elif action == 'load':
+            if filepath is None:
+                raise ValueError("filepath is required for 'load' action")
+                
+            count = self.pattern_registry.load_patterns(filepath)
+            
+            # Add loaded patterns to analyzer
+            for pattern in self.pattern_registry.get_patterns():
+                self.analyzer.add_pattern(pattern)
+                
+            return count
+            
+        elif action == 'import':
+            if csv_path is None:
+                raise ValueError("csv_path is required for 'import' action")
+                
+            from .utils.settings_manager import import_patterns_from_csv as import_patterns
+            
+            success, count, settings = import_patterns(
+                csv_path, filepath, 
+                entity_type_col, pattern_col, context_col, name_col, score_col
+            )
+            
+            # Add patterns to analyzer
+            if success and 'patterns' in settings:
+                for pattern_def in settings['patterns']:
+                    self.manage_patterns('add', data=pattern_def)
+                    
+            return count
+            
+        elif action == 'save':
+            if filepath is None:
+                raise ValueError("filepath is required for 'save' action")
+                
+            return self.pattern_registry.save_patterns(filepath)
+            
+        else:
+            raise ValueError(f"Unknown pattern action: {action}. "
+                             f"Valid actions are: 'add', 'create_from_examples', 'load', 'import', 'save'")
+    
+    # Backward compatibility methods - these will be deprecated in future versions
+    
     def add_pattern(self, pattern_definition):
         """
         Add a custom pattern to the analyzer.
-        
-        Args:
-            pattern_definition: Either a CustomPatternDefinition object or a dictionary
-                with entity_type, patterns, and optional fields
-                
-        Returns:
-            True if pattern was added successfully, False otherwise
+        DEPRECATED: Use manage_patterns('add', data=pattern_definition) instead.
         """
-        # Convert dict to CustomPatternDefinition if needed
-        if isinstance(pattern_definition, dict):
-            pattern = CustomPatternDefinition(**pattern_definition)
-        else:
-            pattern = pattern_definition
-            
-        # Add to analyzer
-        result = self.analyzer.add_pattern(pattern)
-        
-        # Also register with pattern registry
-        if result:
-            self.pattern_registry.register_pattern(pattern)
-            
-        return result
+        return self.manage_patterns('add', data=pattern_definition)
         
     def create_pattern_from_examples(self, entity_type, examples, context=None, name=None, 
                                     generalization_level="medium"):
         """
         Create and add a custom pattern from example strings.
-        
-        Args:
-            entity_type: The entity type name (e.g., "CUSTOMER_ID")
-            examples: List of example strings that match this pattern
-            context: Optional list of context words often found near this entity
-            name: Optional friendly name for this pattern
-            generalization_level: Level of pattern generalization (none, low, medium, high)
-            
-        Returns:
-            The created pattern definition
+        DEPRECATED: Use manage_patterns('create_from_examples', entity_type=..., examples=...) instead.
         """
-        from .utils.spacy_helpers import create_regex_from_examples
-        
-        # Generate regex pattern from examples
-        regex = create_regex_from_examples(examples, generalization_level=generalization_level)
-        
-        # Create pattern definition
-        pattern = CustomPatternDefinition(
+        return self.manage_patterns(
+            'create_from_examples',
             entity_type=entity_type,
-            patterns=[regex],
+            examples=examples,
             context=context,
             name=name,
-            description=f"Custom pattern for {entity_type} generated from {len(examples)} examples"
+            generalization_level=generalization_level
         )
-        
-        # Add to analyzer and registry
-        self.add_pattern(pattern)
-        
-        return pattern
         
     def load_patterns(self, filepath):
         """
         Load patterns from a JSON file.
-        
-        Args:
-            filepath: Path to the JSON file
-            
-        Returns:
-            Number of patterns loaded
+        DEPRECATED: Use manage_patterns('load', filepath=filepath) instead.
         """
-        count = self.pattern_registry.load_patterns(filepath)
-        
-        # Add loaded patterns to analyzer
-        for pattern in self.pattern_registry.get_patterns():
-            self.analyzer.add_pattern(pattern)
-            
-        return count
+        return self.manage_patterns('load', filepath=filepath)
         
     def import_patterns_from_csv(self, csv_path, pattern_filepath=None, entity_type_col='entity_type',
                               pattern_col='pattern', context_col='context', 
                               name_col='name', score_col='score'):
         """
         Import pattern definitions from a CSV file.
-        
-        Args:
-            csv_path: Path to the CSV file
-            pattern_filepath: Optional path to save imported patterns
-            entity_type_col: Column name for entity types
-            pattern_col: Column name for regex patterns
-            context_col: Column name for context words (comma-separated)
-            name_col: Column name for pattern names
-            score_col: Column name for confidence scores
-            
-        Returns:
-            Number of patterns imported
+        DEPRECATED: Use manage_patterns('import', csv_path=csv_path, ...) instead.
         """
-        from .utils.settings_manager import import_patterns_from_csv as import_patterns
-        
-        success, count, settings = import_patterns(
-            csv_path, pattern_filepath, 
-            entity_type_col, pattern_col, context_col, name_col, score_col
+        return self.manage_patterns(
+            'import',
+            csv_path=csv_path,
+            filepath=pattern_filepath,
+            entity_type_col=entity_type_col,
+            pattern_col=pattern_col,
+            context_col=context_col,
+            name_col=name_col,
+            score_col=score_col
         )
-        
-        # Add patterns to analyzer
-        if success and 'patterns' in settings:
-            for pattern_def in settings['patterns']:
-                self.add_pattern(pattern_def)
-                
-        return count
         
     def save_patterns(self, filepath):
         """
         Save all patterns to a JSON file.
-        
-        Args:
-            filepath: Path to save the JSON file
-            
-        Returns:
-            Path where patterns were saved
+        DEPRECATED: Use manage_patterns('save', filepath=filepath) instead.
         """
-        return self.pattern_registry.save_patterns(filepath)
+        return self.manage_patterns('save', filepath=filepath)
     
     def export_config(self, config_path, include_metadata=True):
         """
@@ -556,16 +679,81 @@ class Allyanonimiser:
         
         return self.settings_manager.export_config(config_path, include_metadata)
     
+    def process_dataframe(self, df, text_columns=None, column=None, operation='process', 
+                          n_workers=None, use_pyarrow=None, analysis_config=None, 
+                          anonymization_config=None, **kwargs):
+        """
+        Unified method for processing DataFrames with various operations.
+        
+        Args:
+            df: Input DataFrame
+            text_columns: Column name(s) containing text to process for 'process' operation
+            column: Column name for 'detect' and 'anonymize' operations
+            operation: The operation to perform ('process', 'detect', 'anonymize')
+            n_workers: Number of worker processes for parallel processing
+            use_pyarrow: Whether to use PyArrow for performance optimization
+            analysis_config: Optional AnalysisConfig object
+            anonymization_config: Optional AnonymizationConfig object
+            **kwargs: Additional arguments to pass to the underlying DataFrame processor
+            
+        Returns:
+            - For 'process': Dict with processed DataFrame and entity DataFrame
+            - For 'detect': DataFrame with detected entities
+            - For 'anonymize': DataFrame with anonymized text
+            
+        Raises:
+            ValueError: If operation is not recognized or required parameters are missing
+        """
+        from .dataframe_processor import DataFrameProcessor
+        
+        # Use instance setting if not explicitly provided
+        if use_pyarrow is None and hasattr(self, 'use_pyarrow'):
+            use_pyarrow = self.use_pyarrow
+            
+        # Create processor
+        processor = DataFrameProcessor(self, n_workers=n_workers, use_pyarrow=use_pyarrow)
+        
+        # Extract config parameters if provided
+        if analysis_config is not None:
+            if 'active_entity_types' not in kwargs and analysis_config.active_entity_types is not None:
+                kwargs['active_entity_types'] = analysis_config.active_entity_types
+            if 'min_score_threshold' not in kwargs and analysis_config.min_score_threshold is not None:
+                kwargs['min_score_threshold'] = analysis_config.min_score_threshold
+        
+        if anonymization_config is not None:
+            if 'operators' not in kwargs and anonymization_config.operators is not None:
+                kwargs['operators'] = anonymization_config.operators
+            if 'age_bracket_size' not in kwargs:
+                kwargs['age_bracket_size'] = anonymization_config.age_bracket_size
+            if 'keep_postcode' not in kwargs:
+                kwargs['keep_postcode'] = anonymization_config.keep_postcode
+        
+        # Perform requested operation
+        if operation == 'process':
+            if text_columns is None:
+                raise ValueError("text_columns is required for 'process' operation")
+            return processor.process_dataframe(df, text_columns, **kwargs)
+            
+        elif operation == 'detect':
+            if column is None:
+                raise ValueError("column is required for 'detect' operation")
+            return processor.detect_pii(df, column, **kwargs)
+            
+        elif operation == 'anonymize':
+            if column is None:
+                raise ValueError("column is required for 'anonymize' operation")
+            return processor.anonymize_column(df, column, **kwargs)
+            
+        else:
+            raise ValueError(f"Unknown DataFrame operation: {operation}. "
+                             f"Valid operations are: 'process', 'detect', 'anonymize'")
+    
+    # Backward compatibility methods - these will be deprecated in future versions
+    
     def create_dataframe_processor(self, n_workers=None, use_pyarrow=None):
         """
         Create a DataFrame processor for handling pandas DataFrames.
-        
-        Args:
-            n_workers: Number of worker processes for parallel processing
-            use_pyarrow: Whether to use PyArrow for performance optimization
-            
-        Returns:
-            DataFrameProcessor instance
+        DEPRECATED: Use process_dataframe() directly instead.
         """
         from .dataframe_processor import DataFrameProcessor
         
@@ -578,50 +766,20 @@ class Allyanonimiser:
     def detect_pii_in_dataframe(self, df, column, **kwargs):
         """
         Detect PII in a DataFrame column.
-        
-        Args:
-            df: Input DataFrame
-            column: Column name containing text to analyze
-            **kwargs: Additional arguments to pass to DataFrameProcessor.detect_pii
-            
-        Returns:
-            DataFrame with detected entities
+        DEPRECATED: Use process_dataframe(df, column=column, operation='detect', **kwargs) instead.
         """
-        processor = self.create_dataframe_processor()
-        return processor.detect_pii(df, column, **kwargs)
+        return self.process_dataframe(df, column=column, operation='detect', **kwargs)
     
     def anonymize_dataframe(self, df, column, **kwargs):
         """
         Anonymize PII in a DataFrame column.
-        
-        Args:
-            df: Input DataFrame
-            column: Column name containing text to anonymize
-            **kwargs: Additional arguments to pass to DataFrameProcessor.anonymize_column
-            
-        Returns:
-            DataFrame with anonymized text
+        DEPRECATED: Use process_dataframe(df, column=column, operation='anonymize', **kwargs) instead.
         """
-        processor = self.create_dataframe_processor()
-        return processor.anonymize_column(df, column, **kwargs)
-    
-    def process_dataframe(self, df, text_columns, **kwargs):
-        """
-        Process a DataFrame for comprehensive PII handling.
-        
-        Args:
-            df: Input DataFrame
-            text_columns: Column name(s) containing text to process
-            **kwargs: Additional arguments to pass to DataFrameProcessor.process_dataframe
-            
-        Returns:
-            Dict with processed DataFrame and entity DataFrame
-        """
-        processor = self.create_dataframe_processor()
-        return processor.process_dataframe(df, text_columns, **kwargs)
+        return self.process_dataframe(df, column=column, operation='anonymize', **kwargs)
         
     def batch_process(self, texts, content_types=None, anonymize=True, operators=None, 
-                     language="en", active_entity_types=None, expand_acronyms=False):
+                     language="en", active_entity_types=None, expand_acronyms=False,
+                     analysis_config=None, anonymization_config=None):
         """
         Process multiple texts in batch mode.
         
@@ -633,10 +791,28 @@ class Allyanonimiser:
             language: The language of the texts (default: en)
             active_entity_types: Optional list of entity types to activate
             expand_acronyms: Whether to expand acronyms
+            analysis_config: Optional AnalysisConfig object (overrides individual analysis parameters)
+            anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
             
         Returns:
             List of result dictionaries, one per input text
         """
+        # Create config objects if not provided
+        if analysis_config is None:
+            analysis_config = AnalysisConfig(
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
+            
+        if anonymization_config is None and anonymize:
+            anonymization_config = AnonymizationConfig(
+                operators=operators,
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
+            
         results = []
         
         for i, text in enumerate(texts):
@@ -648,9 +824,8 @@ class Allyanonimiser:
             # Process this text
             result = self.process(
                 text=text,
-                language=language,
-                active_entity_types=active_entity_types,
-                expand_acronyms=expand_acronyms
+                analysis_config=analysis_config,
+                anonymization_config=anonymization_config
             )
             
             # Set content type if provided
@@ -664,7 +839,7 @@ class Allyanonimiser:
         
     def process_files(self, file_paths, output_dir=None, anonymize=True, operators=None,
                      language="en", active_entity_types=None, expand_acronyms=False,
-                     save_results=False):
+                     save_results=False, analysis_config=None, anonymization_config=None):
         """
         Process multiple files.
         
@@ -677,12 +852,30 @@ class Allyanonimiser:
             active_entity_types: Optional list of entity types to activate
             expand_acronyms: Whether to expand acronyms
             save_results: Whether to save results to output_dir
+            analysis_config: Optional AnalysisConfig object (overrides individual analysis parameters)
+            anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
             
         Returns:
             List of result dictionaries, one per input file
         """
         import os
         import json
+        
+        # Create config objects if not provided
+        if analysis_config is None:
+            analysis_config = AnalysisConfig(
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
+            
+        if anonymization_config is None and anonymize:
+            anonymization_config = AnonymizationConfig(
+                operators=operators,
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
         
         # Create output directory if it doesn't exist
         if save_results and output_dir:
@@ -702,9 +895,8 @@ class Allyanonimiser:
             # Process file
             result = self.process(
                 text=text,
-                language=language,
-                active_entity_types=active_entity_types,
-                expand_acronyms=expand_acronyms
+                analysis_config=analysis_config,
+                anonymization_config=anonymization_config
             )
             
             # Add file info to result

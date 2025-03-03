@@ -27,6 +27,23 @@ class EnhancedAnonymizer:
         Returns:
             Dict with anonymized text and other metadata
         """
+        # Validate input parameters
+        if text is None:
+            return {"text": "", "items": []}
+            
+        # Ensure text is a string
+        if not isinstance(text, str):
+            text = str(text)
+            
+        # Handle invalid age_bracket_size (use default if not valid)
+        if not isinstance(age_bracket_size, int) or age_bracket_size <= 0:
+            # Use default and don't raise error
+            age_bracket_size = 5
+            
+        # Convert keep_postcode to boolean
+        keep_postcode = bool(keep_postcode)
+        
+        # Check if analyzer is available
         if not self.analyzer:
             return {"text": text, "items": []}
             
@@ -91,6 +108,7 @@ class EnhancedAnonymizer:
                     bracket_end = bracket_start + age_bracket_size - 1
                     replacement = f"{bracket_start}-{bracket_end}"
                 else:
+                    # If we can't extract age, use a clear replacement indicating the issue
                     replacement = f"<{entity_type}>"
             else:
                 replacement = f"<{entity_type}>"

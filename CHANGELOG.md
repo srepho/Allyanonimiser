@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0 (2025-03-28)
+
+### Added
+- Simplified API with unified interface methods for common operations:
+  - Added `manage_acronyms(action, data, ...)` to replace multiple acronym methods
+  - Added `manage_patterns(action, data, ...)` to replace multiple pattern methods
+  - Added unified `process_dataframe(operation, ...)` to consolidate DataFrame methods
+- Added configuration objects for improved parameter organization:
+  - `AnalysisConfig` for grouping analysis parameters
+  - `AnonymizationConfig` for grouping anonymization parameters
+- Created new example script (`example_simplified_api.py`) demonstrating the simplified API
+- Maintained backward compatibility with deprecated method support
+- Added comprehensive docstrings for all new methods
+
+### Improved
+- Reduced total public API method count while preserving all functionality
+- Consolidated parameter handling for better code organization
+- Enhanced code maintainability and reduced duplication
+- Simplified pattern and acronym management workflows
+
 ## 1.0.0 (2025-03-27)
 
 ### Breaking Changes
