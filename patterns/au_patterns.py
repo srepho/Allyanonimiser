@@ -43,6 +43,8 @@ MEDICARE_CONTEXT = [
 DRIVERS_LICENSE_PATTERNS = [
     # NSW: 8-digit number (e.g., 12345678)
     r'\b\d{8}\b',
+    # NSW: 4 digits followed by 2 letters (eg 1234AB, in use until 1990)
+    r'\bd{4}[a-zA-Z]{2}\b'
     # VIC: 9-digit number starting with X followed by 8 digits (e.g., X12345678)
     r'\b[Xx]\d{8}\b',
     # QLD: 9-digit number (e.g., 123456789)
