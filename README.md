@@ -94,153 +94,6 @@ for result in results:
     print(f"Found {result.entity_type}: {result.text}")
 ```
 
-## New in Version 2.0.0: Comprehensive Reporting System
-
-Allyanonimiser now includes a comprehensive reporting system that allows you to track, analyze, and visualize anonymization activities.
-
-```python
-from allyanonimiser import create_allyanonimiser
-
-# Create instance
-ally = create_allyanonimiser()
-
-# Start a new report session
-ally.start_new_report("my_session")
-
-# Process multiple texts
-texts = [
-    "Customer John Smith (DOB: 15/06/1980) called about claim CL-12345.",
-    "Jane Doe (email: jane.doe@example.com) requested policy information.",
-    "Claims assessor reviewed case for Robert Johnson (ID: 987654321)."
-]
-
-for i, text in enumerate(texts):
-    ally.anonymize(
-        text=text,
-        operators={
-            "PERSON": "replace",
-            "EMAIL_ADDRESS": "mask",
-            "DATE_OF_BIRTH": "age_bracket"
-        },
-        document_id=f"doc_{i+1}"
-    )
-
-# Get report summary
-report = ally.get_report()
-summary = report.get_summary()
-
-print(f"Total documents processed: {summary['total_documents']}")
-print(f"Total entities detected: {summary['total_entities']}")
-print(f"Entities per document: {summary['entities_per_document']:.2f}")
-print(f"Anonymization rate: {summary['anonymization_rate']*100:.2f}%")
-print(f"Average processing time: {summary['avg_processing_time']*1000:.2f} ms")
-
-# Export report to different formats
-report.export_report("report.html", "html")  # Rich HTML visualization
-report.export_report("report.json", "json")  # Detailed JSON data
-report.export_report("report.csv", "csv")    # CSV statistics
-
-# In Jupyter notebooks, display rich visualizations
-# ally.display_report_in_notebook()
-```
-
-## Features
-
-- **Australian-Focused PII Detection**: Specialized patterns for TFNs, Medicare numbers, vehicle registrations, addresses, and more
-- **Insurance Industry Specialization**: Detect policy numbers, claim references, and other industry-specific identifiers
-- **Multiple Entity Types**: Comprehensive detection of general and specialized PII
-- **Flexible Anonymization**: Multiple anonymization operators (replace, mask, redact, hash, and more)
-- **Stream Processing**: Memory-efficient processing of large files with chunking support
-- **Reporting System**: Comprehensive tracking and visualization of anonymization activities
-- **Jupyter Integration**: Rich visualization capabilities in notebook environments
-- **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
-
-## Pattern Generalization Levels
-
-When creating patterns from examples using `create_pattern_from_examples()`, you can specify a generalization level that controls how flexible the resulting pattern will be:
-
-| Level | Description | Example Input | Generated Pattern | Will Match |
-|-------|-------------|--------------|------------------|------------|
-| `none` | Exact matching only | "EMP12345" | `\bEMP12345\b` | Only "EMP12345" |
-| `low` | Basic generalization | "EMP12345" | `\bEMP\d{5}\b` | "EMP12345", "EMP67890", but not "EMP123" |
-| `medium` | Moderate flexibility | "EMP12345" | `\bEMP\d+\b` | "EMP12345", "EMP123", "EMP9", but not "EMPLOYEE12345" |
-| `high` | Maximum flexibility | "EMP12345" | `\b[A-Z]{3}\d+\b` | "EMP12345", "ABC123", etc. |
-
-Higher generalization levels detect more variants but may increase false positives. Choose the appropriate level based on your needs for precision vs. recall.
-
-## Anonymization Operators
-
-The package supports several anonymization operators that control how detected entities are transformed:
-
-| Operator | Description | Example | Result |
-|----------|-------------|---------|--------|
-| `replace` | Replace with entity type | "John Smith" | `<PERSON>` |
-| `redact` | Fully redact the entity | "john.smith@example.com" | `[REDACTED]` |
-| `mask` | Partially mask while preserving structure | "john.smith@example.com" | `j***.s****@e******.com` |
-| `hash` | Replace with consistent hash | "John Smith" | `7f9d6a...` (same for all "John Smith") |
-| `encrypt` | Encrypt with a key (recoverable) | "John Smith" | `AES256:a7f9c...` |
-| `age_bracket` | Convert dates to age brackets | "DOB: 15/03/1980" | `DOB: 40-44` |
-| `custom` | User-defined function | (depends on function) | (custom output) |
-
-Example usage:
-
-```python
-result = ally.anonymize(
-    text="Please contact John Smith at john.smith@example.com",
-    operators={
-        "PERSON": "replace",       # Replace with entity type
-        "EMAIL_ADDRESS": "mask",   # Partially mask the email
-        "PHONE_NUMBER": "redact",  # Fully redact phone numbers
-        "DATE_OF_BIRTH": "age_bracket"  # Convert DOB to age bracket
-    }
-)
-```
-
-### Custom Operator Example
-
-The custom operator allows you to define your own transformation function:
-
-```python
-from allyanonimiser import create_allyanonimiser
-
-# Create a custom transformation function
-def randomize_names(entity_text, entity_type):
-    """Replace person names with random names from a predefined list."""
-    if entity_type != "PERSON":
-        return entity_text
-        
-    # Simple list of random replacement names
-    replacements = ["Alex Taylor", "Sam Johnson", "Jordan Lee", "Casey Brown"]
-    
-    # Use hash of original name to consistently select the same replacement
-    import hashlib
-    hash_val = int(hashlib.md5(entity_text.encode()).hexdigest(), 16)
-    index = hash_val % len(replacements)
-    
-    return replacements[index]
-
-# Create an Allyanonimiser instance
-ally = create_allyanonimiser()
-
-# Use the custom operator
-result = ally.anonymize(
-    text="Customer John Smith sent an email to Mary Johnson about policy POL-123456.",
-    operators={
-        "PERSON": randomize_names,  # Pass the function directly
-        "POLICY_NUMBER": "mask"     # Other operators work as usual
-    }
-)
-
-print(result["text"])
-# Output: "Customer Alex Taylor sent an email to Sam Johnson about policy ***-******."
-```
-
-Custom operators are powerful for specialized anonymization needs like:
-- Generating synthetic but realistic replacements
-- Contextual anonymization based on entity values
-- Domain-specific transformations (e.g., preserving data distributions)
-- Implementing differential privacy mechanisms
-
 ## Built-in Pattern Reference
 
 ### Australian Patterns
@@ -282,56 +135,18 @@ Custom operators are powerful for specialized anonymization needs like:
 | CASE_REFERENCE | Case Reference Numbers | Case ID patterns | insurance_patterns.py |
 | VEHICLE_DETAILS | Vehicle Details | Make/model patterns | insurance_patterns.py |
 
+## Features
+
+- **Australian-Focused PII Detection**: Specialized patterns for TFNs, Medicare numbers, vehicle registrations, addresses, and more
+- **Insurance Industry Specialization**: Detect policy numbers, claim references, and other industry-specific identifiers
+- **Multiple Entity Types**: Comprehensive detection of general and specialized PII
+- **Flexible Anonymization**: Multiple anonymization operators (replace, mask, redact, hash, and more)
+- **Stream Processing**: Memory-efficient processing of large files with chunking support
+- **Reporting System**: Comprehensive tracking and visualization of anonymization activities
+- **Jupyter Integration**: Rich visualization capabilities in notebook environments
+- **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
+
 ## Usage Examples
-
-### Pattern Management
-
-```python
-from allyanonimiser import create_allyanonimiser
-
-# Create an instance
-ally = create_allyanonimiser()
-
-# 1. Adding pattern to an existing group in pattern files
-# If you want to contribute a new pattern to the codebase,
-# edit the appropriate file in patterns/ directory:
-#  - patterns/au_patterns.py: For Australian-specific patterns
-#  - patterns/general_patterns.py: For general PII patterns 
-#  - patterns/insurance_patterns.py: For insurance-specific patterns
-
-# 2. Using custom patterns without modifying code
-# Add a custom pattern with detailed options
-ally.add_pattern({
-    "entity_type": "COMPANY_PROJECT_ID",
-    "patterns": [
-        r"PRJ-\d{4}-[A-Z]{3}",       # Format: PRJ-1234-ABC
-        r"Project\s+ID:\s*(\d{4})"   # Format: Project ID: 1234
-    ],
-    "context": ["project", "id", "identifier", "code"],
-    "name": "Company Project ID",
-    "score": 0.85,                   # Confidence score (0-1)
-    "language": "en",                # Language code
-    "description": "Internal project identifier format"
-})
-
-# 3. Save patterns for reuse
-ally.export_config("company_patterns.json")
-
-# 4. Load saved patterns in another session
-new_ally = create_allyanonimiser(settings_path="company_patterns.json")
-
-# 5. Pattern testing and validation
-from allyanonimiser.validators import test_pattern_against_examples
-
-# Test if a pattern works against examples
-results = test_pattern_against_examples(
-    pattern=r"PRJ-\d{4}-[A-Z]{3}",
-    positive_examples=["PRJ-1234-ABC", "PRJ-5678-XYZ"],
-    negative_examples=["PRJ-123-AB", "PROJECT-1234"]
-)
-print(f"Pattern is valid: {results['is_valid']}")
-print(f"Diagnostic info: {results['message']}")
-```
 
 ### Analyze Text for PII Entities
 
@@ -422,7 +237,7 @@ for segment in result["segments"]:
     print(f"Anonymized: {segment['anonymized']}")
 ```
 
-## Working with DataFrames
+### Working with DataFrames
 
 ```python
 import pandas as pd
@@ -458,7 +273,144 @@ anonymized_df = ally.process_dataframe(
 print(anonymized_df[["id", "notes", "anonymized_notes"]])
 ```
 
-## Generating Reports
+## Pattern Generalization Levels
+
+When creating patterns from examples using `create_pattern_from_examples()`, you can specify a generalization level that controls how flexible the resulting pattern will be:
+
+| Level | Description | Example Input | Generated Pattern | Will Match |
+|-------|-------------|--------------|------------------|------------|
+| `none` | Exact matching only | "EMP12345" | `\bEMP12345\b` | Only "EMP12345" |
+| `low` | Basic generalization | "EMP12345" | `\bEMP\d{5}\b` | "EMP12345", "EMP67890", but not "EMP123" |
+| `medium` | Moderate flexibility | "EMP12345" | `\bEMP\d+\b` | "EMP12345", "EMP123", "EMP9", but not "EMPLOYEE12345" |
+| `high` | Maximum flexibility | "EMP12345" | `\b[A-Z]{3}\d+\b` | "EMP12345", "ABC123", etc. |
+
+Higher generalization levels detect more variants but may increase false positives. Choose the appropriate level based on your needs for precision vs. recall.
+
+## Anonymization Operators
+
+The package supports several anonymization operators that control how detected entities are transformed:
+
+| Operator | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `replace` | Replace with entity type | "John Smith" | `<PERSON>` |
+| `redact` | Fully redact the entity | "john.smith@example.com" | `[REDACTED]` |
+| `mask` | Partially mask while preserving structure | "john.smith@example.com" | `j***.s****@e******.com` |
+| `hash` | Replace with consistent hash | "John Smith" | `7f9d6a...` (same for all "John Smith") |
+| `encrypt` | Encrypt with a key (recoverable) | "John Smith" | `AES256:a7f9c...` |
+| `age_bracket` | Convert dates to age brackets | "DOB: 15/03/1980" | `DOB: 40-44` |
+| `custom` | User-defined function | (depends on function) | (custom output) |
+
+Example usage:
+
+```python
+result = ally.anonymize(
+    text="Please contact John Smith at john.smith@example.com",
+    operators={
+        "PERSON": "replace",       # Replace with entity type
+        "EMAIL_ADDRESS": "mask",   # Partially mask the email
+        "PHONE_NUMBER": "redact",  # Fully redact phone numbers
+        "DATE_OF_BIRTH": "age_bracket"  # Convert DOB to age bracket
+    }
+)
+```
+
+### Custom Operator Example
+
+The custom operator allows you to define your own transformation function:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create a custom transformation function
+def randomize_names(entity_text, entity_type):
+    """Replace person names with random names from a predefined list."""
+    if entity_type != "PERSON":
+        return entity_text
+        
+    # Simple list of random replacement names
+    replacements = ["Alex Taylor", "Sam Johnson", "Jordan Lee", "Casey Brown"]
+    
+    # Use hash of original name to consistently select the same replacement
+    import hashlib
+    hash_val = int(hashlib.md5(entity_text.encode()).hexdigest(), 16)
+    index = hash_val % len(replacements)
+    
+    return replacements[index]
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Use the custom operator
+result = ally.anonymize(
+    text="Customer John Smith sent an email to Mary Johnson about policy POL-123456.",
+    operators={
+        "PERSON": randomize_names,  # Pass the function directly
+        "POLICY_NUMBER": "mask"     # Other operators work as usual
+    }
+)
+
+print(result["text"])
+# Output: "Customer Alex Taylor sent an email to Sam Johnson about policy ***-******."
+```
+
+Custom operators are powerful for specialized anonymization needs like:
+- Generating synthetic but realistic replacements
+- Contextual anonymization based on entity values
+- Domain-specific transformations (e.g., preserving data distributions)
+- Implementing differential privacy mechanisms
+
+### Pattern Management
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create an instance
+ally = create_allyanonimiser()
+
+# 1. Adding pattern to an existing group in pattern files
+# If you want to contribute a new pattern to the codebase,
+# edit the appropriate file in patterns/ directory:
+#  - patterns/au_patterns.py: For Australian-specific patterns
+#  - patterns/general_patterns.py: For general PII patterns 
+#  - patterns/insurance_patterns.py: For insurance-specific patterns
+
+# 2. Using custom patterns without modifying code
+# Add a custom pattern with detailed options
+ally.add_pattern({
+    "entity_type": "COMPANY_PROJECT_ID",
+    "patterns": [
+        r"PRJ-\d{4}-[A-Z]{3}",       # Format: PRJ-1234-ABC
+        r"Project\s+ID:\s*(\d{4})"   # Format: Project ID: 1234
+    ],
+    "context": ["project", "id", "identifier", "code"],
+    "name": "Company Project ID",
+    "score": 0.85,                   # Confidence score (0-1)
+    "language": "en",                # Language code
+    "description": "Internal project identifier format"
+})
+
+# 3. Save patterns for reuse
+ally.export_config("company_patterns.json")
+
+# 4. Load saved patterns in another session
+new_ally = create_allyanonimiser(settings_path="company_patterns.json")
+
+# 5. Pattern testing and validation
+from allyanonimiser.validators import test_pattern_against_examples
+
+# Test if a pattern works against examples
+results = test_pattern_against_examples(
+    pattern=r"PRJ-\d{4}-[A-Z]{3}",
+    positive_examples=["PRJ-1234-ABC", "PRJ-5678-XYZ"],
+    negative_examples=["PRJ-123-AB", "PROJECT-1234"]
+)
+print(f"Pattern is valid: {results['is_valid']}")
+print(f"Diagnostic info: {results['message']}")
+```
+
+## Advanced Features
+
+### Generating Reports
 
 ```python
 from allyanonimiser import create_allyanonimiser
@@ -501,10 +453,57 @@ result = ally.process_files(
 # Display summary
 print(f"Processed {result['total_files']} files")
 print(f"Detected {result['report']['total_entities']} entities")
-print(f"Average processing time: {result['report']['avg_processing_time']*1000:.2f} ms")
+print(f"Average processing time: {result['report']['report']['avg_processing_time']*1000:.2f} ms")
 ```
 
-## In Jupyter Notebooks
+### Comprehensive Reporting System
+
+Allyanonimiser includes a comprehensive reporting system that allows you to track, analyze, and visualize anonymization activities.
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create instance
+ally = create_allyanonimiser()
+
+# Start a new report session
+ally.start_new_report("my_session")
+
+# Process multiple texts
+texts = [
+    "Customer John Smith (DOB: 15/06/1980) called about claim CL-12345.",
+    "Jane Doe (email: jane.doe@example.com) requested policy information.",
+    "Claims assessor reviewed case for Robert Johnson (ID: 987654321)."
+]
+
+for i, text in enumerate(texts):
+    ally.anonymize(
+        text=text,
+        operators={
+            "PERSON": "replace",
+            "EMAIL_ADDRESS": "mask",
+            "DATE_OF_BIRTH": "age_bracket"
+        },
+        document_id=f"doc_{i+1}"
+    )
+
+# Get report summary
+report = ally.get_report()
+summary = report.get_summary()
+
+print(f"Total documents processed: {summary['total_documents']}")
+print(f"Total entities detected: {summary['total_entities']}")
+print(f"Entities per document: {summary['entities_per_document']:.2f}")
+print(f"Anonymization rate: {summary['anonymization_rate']*100:.2f}%")
+print(f"Average processing time: {summary['avg_processing_time']*1000:.2f} ms")
+
+# Export report to different formats
+report.export_report("report.html", "html")  # Rich HTML visualization
+report.export_report("report.json", "json")  # Detailed JSON data
+report.export_report("report.csv", "csv")    # CSV statistics
+```
+
+### In Jupyter Notebooks
 
 ```python
 from allyanonimiser import create_allyanonimiser
@@ -535,6 +534,17 @@ plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 ```
+
+## What's New in Version 2.1.0
+
+- Added support for NSW legacy driver's license pattern
+- Improved pattern recognition for Australian TFNs
+- Enhanced handling of date formats
+- Fixed issues with BSB recognition
+- Added more comprehensive test suite for Australian patterns
+- Performance improvements for large file processing
+
+For older versions and detailed change history, see the [CHANGELOG.md](CHANGELOG.md) file.
 
 ## Documentation
 

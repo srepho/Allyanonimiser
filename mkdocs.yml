@@ -1,0 +1,84 @@
+site_name: Allyanonimiser
+site_description: Australian-focused PII detection and anonymization for the insurance industry
+site_author: Allyanonimiser Team
+repo_url: https://github.com/srepho/Allyanonimiser
+repo_name: srepho/Allyanonimiser
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - css/extra.css
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - tables
+  - footnotes
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
+  - mkdocstrings
+  - git-revision-date-localized
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+  - Usage Guide:
+    - Basic Usage: usage/basic-usage.md
+    - Analyzing Text: usage/analyzing-text.md
+    - Anonymizing Text: usage/anonymizing-text.md
+    - Working with DataFrames: usage/dataframes.md
+  - Pattern Reference:
+    - Overview: patterns/overview.md
+    - Australian Patterns: patterns/australian.md
+    - General Patterns: patterns/general.md
+    - Insurance Patterns: patterns/insurance.md
+    - Creating Custom Patterns: patterns/custom.md
+  - Advanced Features:
+    - Pattern Generalization: advanced/pattern-generalization.md
+    - Anonymization Operators: advanced/anonymization-operators.md
+    - Custom Operators: advanced/custom-operators.md
+    - Stream Processing: advanced/stream-processing.md
+    - Reporting System: advanced/reporting.md
+  - API Reference:
+    - Main API: api/main.md
+    - Analyzer: api/analyzer.md
+    - Anonymizer: api/anonymizer.md
+    - Pattern Manager: api/pattern-manager.md
+    - Utilities: api/utilities.md
+  - Examples:
+    - Basic Examples: examples/basic.md
+    - Pattern Creation: examples/pattern-creation.md
+    - Custom Anonymization: examples/custom-anonymization.md
+    - Jupyter Integration: examples/jupyter.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/srepho/Allyanonimiser
+      name: Allyanonimiser on GitHub

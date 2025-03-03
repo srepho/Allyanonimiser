@@ -1,0 +1,3 @@
+# Insurance Patterns
+
+*Coming soon...*
