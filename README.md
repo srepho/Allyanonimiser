@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v0.3.2-blue)](https://pypi.org/project/allyanonimiser/0.3.2/)
+[![PyPI version](https://img.shields.io/badge/pypi-v0.3.3-blue)](https://pypi.org/project/allyanonimiser/0.3.3/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
@@ -105,6 +105,27 @@ pattern = ally.create_pattern_from_examples(
 - **Extensible Architecture**: Built on Presidio and spaCy with a modular, extensible design.
 
 ## Version History
+
+### Version 0.3.3 - Python 3.10+ Compatibility
+
+This version updates the package to ensure compatibility with Python 3.10 and newer versions, addressing dependency changes and improving CI/CD workflows.
+
+#### Key Updates
+
+1. **Python Version Requirements**:
+   - Updated minimum Python version to 3.10+
+   - Added support for Python 3.11 and 3.12
+   - Removed support for Python 3.8 and 3.9 due to dependency requirements
+   
+2. **Improved Compatibility**:
+   - Fixed circular import issues in the insurance module
+   - Enhanced batch processing capabilities
+   - Addressed issues with newer NumPy (2.0+) requirements
+   
+3. **CI/CD Improvements**:
+   - Updated GitHub Actions workflows to test on Python 3.10-3.12
+   - Fixed failing tests and improved test coverage
+   - Enhanced build process for PyPI deployment
 
 ### Version 0.3.2 - Configuration Sharing and PyArrow Integration
 

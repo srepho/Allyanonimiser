@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.3 (2025-03-27)
+
+### Changed
+- Updated minimum Python version requirement to 3.10+
+- Added support for Python 3.11 and 3.12
+- Removed support for Python 3.8 and 3.9 due to dependency requirements (particularly NumPy 2.0+)
+- Updated GitHub Actions workflows to test on Python 3.10-3.12 only
+
+### Fixed
+- Fixed circular import issues in the insurance module
+- Enhanced batch processing capabilities for better performance
+- Addressed compatibility issues with newer NumPy (2.0+) requirements
+- Fixed package build and CI/CD processes
+- Improved documentation for Python version requirements
+
 ## 0.3.2 (2025-03-25)
 
 ### Added
