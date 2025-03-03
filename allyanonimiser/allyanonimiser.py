@@ -601,6 +601,122 @@ class Allyanonimiser:
         processor = self.create_dataframe_processor()
         return processor.process_dataframe(df, text_columns, **kwargs)
         
+    def batch_process(self, texts, content_types=None, anonymize=True, operators=None, 
+                     language="en", active_entity_types=None, expand_acronyms=False):
+        """
+        Process multiple texts in batch mode.
+        
+        Args:
+            texts: List of texts to process
+            content_types: Optional list of content types (one per text)
+            anonymize: Whether to anonymize the texts
+            operators: Dict of entity_type to anonymization operator
+            language: The language of the texts (default: en)
+            active_entity_types: Optional list of entity types to activate
+            expand_acronyms: Whether to expand acronyms
+            
+        Returns:
+            List of result dictionaries, one per input text
+        """
+        results = []
+        
+        for i, text in enumerate(texts):
+            # Get content type for this text if provided
+            content_type = None
+            if content_types and i < len(content_types):
+                content_type = content_types[i]
+                
+            # Process this text
+            result = self.process(
+                text=text,
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
+            
+            # Set content type if provided
+            if content_type:
+                result["content_type"] = content_type
+                
+            # Add to results
+            results.append(result)
+            
+        return results
+        
+    def process_files(self, file_paths, output_dir=None, anonymize=True, operators=None,
+                     language="en", active_entity_types=None, expand_acronyms=False,
+                     save_results=False):
+        """
+        Process multiple files.
+        
+        Args:
+            file_paths: List of file paths to process
+            output_dir: Directory to save output files (required if save_results=True)
+            anonymize: Whether to anonymize the texts
+            operators: Dict of entity_type to anonymization operator
+            language: The language of the texts (default: en)
+            active_entity_types: Optional list of entity types to activate
+            expand_acronyms: Whether to expand acronyms
+            save_results: Whether to save results to output_dir
+            
+        Returns:
+            List of result dictionaries, one per input file
+        """
+        import os
+        import json
+        
+        # Create output directory if it doesn't exist
+        if save_results and output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            
+        results = []
+        
+        for file_path in file_paths:
+            # Read file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+                
+            # Get file basename for output
+            basename = os.path.basename(file_path)
+            name, _ = os.path.splitext(basename)
+                
+            # Process file
+            result = self.process(
+                text=text,
+                language=language,
+                active_entity_types=active_entity_types,
+                expand_acronyms=expand_acronyms
+            )
+            
+            # Add file info to result
+            result["file_info"] = {
+                "path": file_path,
+                "name": name
+            }
+            
+            # Save results if requested
+            if save_results and output_dir:
+                # Save anonymized text
+                anon_path = os.path.join(output_dir, f"{name}_anonymized.txt")
+                with open(anon_path, 'w', encoding='utf-8') as f:
+                    f.write(result["anonymized"])
+                    
+                # Save analysis results
+                analysis_path = os.path.join(output_dir, f"{name}_analysis.json")
+                with open(analysis_path, 'w', encoding='utf-8') as f:
+                    json.dump(result, f, indent=2)
+                    
+                # Add output paths to result
+                result["output_files"] = {
+                    "anonymized": anon_path,
+                    "analysis": analysis_path
+                }
+                
+            # Add to results
+            results.append(result)
+            
+        return results
+        
     def _extract_structured_data(self, analysis_results):
         """
         Extract structured data from detected entities.

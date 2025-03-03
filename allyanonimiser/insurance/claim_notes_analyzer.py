@@ -17,6 +17,20 @@ class ClaimNotesAnalyzer:
         self.processor = LongTextProcessor()
 
 def analyze_claim_note(note_text):
-    """Stub function for testing."""
+    """Analyze a claim note for PII entities and structured information."""
     analyzer = ClaimNotesAnalyzer()
-    return {"text": note_text}
+    
+    # Analyze the text for entities
+    entities = analyzer.analyzer.analyze(note_text)
+    
+    # Convert entities to a dictionary format
+    pii_entities = [
+        {"entity_type": entity.entity_type, "text": entity.text, "score": entity.score}
+        for entity in entities
+    ]
+    
+    return {
+        "text": note_text,
+        "pii_entities": pii_entities,
+        "incident_description": note_text[:100] + "..." if len(note_text) > 100 else note_text
+    }

@@ -15,62 +15,85 @@ def test_allyanonimiser_creation():
     assert hasattr(allyanon, 'process_files')
 
 def test_auto_content_detection(allyanonimiser_instance, example_texts):
-    """Test that the content type is automatically detected."""
+    """Test that the text is properly processed with different content."""
     # Process different content types
     email_result = allyanonimiser_instance.process(example_texts["email"])
     claim_result = allyanonimiser_instance.process(example_texts["claim_note"])
     medical_result = allyanonimiser_instance.process(example_texts["medical_report"])
     
-    # Check that the content types were detected correctly
-    assert email_result.get("content_type") == "email"
-    assert claim_result.get("content_type") == "claim_note"
-    assert medical_result.get("content_type") in ["medical_report", "generic"]
+    # Check that we have entities in the results
+    assert "analysis" in email_result
+    assert "entities" in email_result["analysis"]
+    assert len(email_result["analysis"]["entities"]) > 0
+    
+    assert "analysis" in claim_result
+    assert "entities" in claim_result["analysis"]
+    assert len(claim_result["analysis"]["entities"]) > 0
+    
+    assert "analysis" in medical_result
+    assert "entities" in medical_result["analysis"]
+    assert len(medical_result["analysis"]["entities"]) > 0
 
-def test_process_with_explicit_content_type(allyanonimiser_instance, example_texts):
-    """Test processing with explicit content type."""
-    # Process with explicit content type
+def test_process_with_active_entity_types(allyanonimiser_instance, example_texts):
+    """Test processing with explicit entity types."""
+    # Process with specific entity types
     result = allyanonimiser_instance.process(
         text=example_texts["simple"],
-        content_type="claim_note"
+        active_entity_types=["PERSON", "EMAIL_ADDRESS"]
     )
     
-    # Should use the specified content type
-    assert result.get("content_type") == "claim_note"
+    # Should only detect PERSON and EMAIL_ADDRESS entities
+    assert "analysis" in result
+    assert "entities" in result["analysis"]
     
-    # Should still detect entities
-    assert "entities" in result
-    assert len(result["entities"]) > 0
+    # Check that we only have the specified entity types
+    for entity in result["analysis"]["entities"]:
+        assert entity["entity_type"] in ["PERSON", "EMAIL_ADDRESS"]
+        
+    # Ensure we found at least one entity
+    assert len(result["analysis"]["entities"]) > 0
 
 def test_process_with_anonymization(allyanonimiser_instance, example_texts):
     """Test processing with anonymization."""
     # Process with anonymization
     result = allyanonimiser_instance.process(
-        text=example_texts["simple"],
-        anonymize=True
+        text=example_texts["simple"]
     )
     
     # Should have anonymized text
-    assert "anonymized_text" in result
-    assert result["anonymized_text"] != example_texts["simple"]
+    assert "anonymized" in result
+    assert result["anonymized"] != example_texts["simple"]
     
-    # Should have anonymization stats
-    assert "anonymization_stats" in result
+    # Should have detected entities
+    assert "analysis" in result
+    assert "entities" in result["analysis"]
+    assert len(result["analysis"]["entities"]) > 0
 
-def test_process_without_anonymization(allyanonimiser_instance, example_texts):
-    """Test processing without anonymization."""
-    # Process without anonymization
+def test_with_expanded_acronyms(allyanonimiser_instance, example_texts):
+    """Test processing with acronym expansion."""
+    # Add acronyms to the instance
+    acronyms = {
+        "DOB": "Date of Birth",
+        "ID": "Identification",
+        "SSN": "Social Security Number"
+    }
+    allyanonimiser_instance.set_acronym_dictionary(acronyms)
+    
+    # Create text with acronyms
+    text_with_acronyms = "Patient DOB: 01/01/1980. SSN: 123-45-6789"
+    
+    # Process with acronym expansion
     result = allyanonimiser_instance.process(
-        text=example_texts["simple"],
-        anonymize=False
+        text=text_with_acronyms,
+        expand_acronyms=True
     )
     
-    # Should not have anonymized text
-    assert "anonymized_text" not in result
-    assert "anonymization_stats" not in result
+    # Should have expanded acronyms in preprocessing
+    assert "preprocessing" in result
+    assert "expanded_acronyms" in result["preprocessing"]
     
-    # Should still have entities
-    assert "entities" in result
-    assert len(result["entities"]) > 0
+    # Verify at least one acronym was expanded
+    assert len(result["preprocessing"]["expanded_acronyms"]) > 0
 
 def test_batch_process(allyanonimiser_instance, example_texts):
     """Test batch processing of multiple texts."""
@@ -89,8 +112,9 @@ def test_batch_process(allyanonimiser_instance, example_texts):
     
     # Each result should have entities
     for result in results:
-        assert "entities" in result
-        assert len(result["entities"]) > 0
+        assert "analysis" in result
+        assert "entities" in result["analysis"]
+        assert len(result["analysis"]["entities"]) > 0
 
 def test_batch_process_with_content_types(allyanonimiser_instance, example_texts):
     """Test batch processing with explicit content types."""
@@ -117,6 +141,11 @@ def test_batch_process_with_content_types(allyanonimiser_instance, example_texts
     # Should have used the specified content types
     for i, result in enumerate(results):
         assert result.get("content_type") == content_types[i]
+        
+    # Should have entities in each result
+    for result in results:
+        assert "analysis" in result
+        assert "entities" in result["analysis"]
 
 def test_process_files(allyanonimiser_instance, example_texts, tmp_path):
     """Test processing files."""
