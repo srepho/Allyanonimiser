@@ -223,6 +223,7 @@ class DataFrameProcessor:
     def _to_arrow_table(self, df: pd.DataFrame) -> pa.Table:
         """
         Convert pandas DataFrame to PyArrow Table for performance optimization.
+        Uses zero-copy conversion when possible for maximum performance.
         
         Args:
             df: Input pandas DataFrame
@@ -232,7 +233,8 @@ class DataFrameProcessor:
         """
         if self.use_pyarrow and PYARROW_AVAILABLE:
             try:
-                return pa.Table.from_pandas(df)
+                # Use zero-copy whenever possible
+                return pa.Table.from_pandas(df, preserve_index=True, nthreads=self.n_workers or 1)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(
@@ -242,23 +244,124 @@ class DataFrameProcessor:
                 return None
         return None
         
-    def _get_column_from_arrow(self, table: pa.Table, column: str) -> Union[List, None]:
+    def _get_column_from_arrow(self, table: pa.Table, column: str, batch_indices=None) -> Union[List, None]:
         """
         Extract a column from a PyArrow Table as a Python list.
+        Optimized for batch processing with optional index filtering.
         
         Args:
             table: PyArrow Table
             column: Column name
+            batch_indices: Optional list of indices to select (for batch processing)
             
         Returns:
             List of column values or None if PyArrow is not available
         """
         if table is not None and column in table.column_names:
             try:
-                return table.column(column).to_pylist()
-            except:
+                if batch_indices is not None:
+                    # Create a boolean mask for the indices in this batch
+                    if 'index' in table.column_names:
+                        # Use the preserved pandas index column
+                        index_array = table.column('index')
+                        mask = pc.is_in(index_array, pa.array(batch_indices))
+                        # Apply the mask to filter the table
+                        filtered_table = table.filter(mask)
+                        # Return the column we want
+                        return filtered_table.column(column).to_pylist()
+                    else:
+                        # Direct slicing by position if no index column is available
+                        return table.column(column).to_pylist()
+                else:
+                    # Return the entire column if no batch indices are specified
+                    return table.column(column).to_pylist()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"Failed to extract column from Arrow Table: {str(e)}. Falling back to pandas."
+                )
                 return None
         return None
+        
+    def _batch_process_arrow(self, 
+                            arrow_table: pa.Table, 
+                            column: str, 
+                            batch_size: int,
+                            process_func: Callable,
+                            progress_iterator=None) -> Tuple[List, List]:
+        """
+        Process a PyArrow table column in batches using optimized memory management.
+        
+        Args:
+            arrow_table: PyArrow Table to process
+            column: Column name to process
+            batch_size: Number of rows in each batch
+            process_func: Function to process each batch
+            progress_iterator: Optional progress bar iterator
+            
+        Returns:
+            Tuple of (all_entities, all_anonymized_texts)
+        """
+        if arrow_table is None or not PYARROW_AVAILABLE:
+            return [], []
+
+        try:
+            total_rows = len(arrow_table)
+            all_entities = []
+            all_anonymized_texts = []
+            
+            # Get the indices column if available
+            has_index = 'index' in arrow_table.column_names
+            indices = arrow_table.column('index').to_pylist() if has_index else list(range(total_rows))
+            
+            # Process in batches
+            for i in range(0, total_rows, batch_size):
+                # Get batch indices
+                batch_end = min(i + batch_size, total_rows)
+                if progress_iterator is not None:
+                    progress_iterator.update(1)
+                
+                # Get batch indices for filter
+                batch_indices = indices[i:batch_end]
+                
+                # Get batch data using optimized filtering
+                col_data = self._get_column_from_arrow(arrow_table, column, batch_indices)
+                
+                # Process the batch
+                batch_entities = []
+                batch_anonymized = []
+                
+                # Use parallel processing if enabled
+                if self.n_workers and self.n_workers > 1:
+                    with concurrent.futures.ProcessPoolExecutor(max_workers=self.n_workers) as executor:
+                        results = list(executor.map(
+                            process_func,
+                            col_data,
+                            batch_indices
+                        ))
+                        
+                    # Unpack results
+                    for entities, anonymized_text in results:
+                        batch_entities.extend(entities)
+                        batch_anonymized.append(anonymized_text)
+                else:
+                    # Sequential processing
+                    for text, idx in zip(col_data, batch_indices):
+                        entities, anonymized_text = process_func(text, idx)
+                        batch_entities.extend(entities)
+                        batch_anonymized.append(anonymized_text)
+                
+                # Collect results
+                all_entities.extend(batch_entities)
+                all_anonymized_texts.extend(batch_anonymized)
+                
+            return all_entities, all_anonymized_texts
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Error in Arrow batch processing: {str(e)}. Falling back to pandas."
+            )
+            return [], []
     
     def process_dataframe(self,
                           df: pd.DataFrame,
@@ -273,9 +376,11 @@ class DataFrameProcessor:
                           progress_bar: bool = True,
                           use_pyarrow: Optional[bool] = None,
                           age_bracket_size: int = 5,
-                          keep_postcode: bool = True) -> Dict[str, pd.DataFrame]:
+                          keep_postcode: bool = True,
+                          adaptive_batch_size: bool = True) -> Dict[str, pd.DataFrame]:
         """
         Process multiple columns of a DataFrame for comprehensive PII handling.
+        Uses optimized PyArrow integration and adaptive batch sizing for maximum performance.
         
         Args:
             df: Input DataFrame
@@ -291,6 +396,7 @@ class DataFrameProcessor:
             use_pyarrow: Whether to use PyArrow for performance optimization (overrides instance setting)
             age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
             keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
+            adaptive_batch_size: Dynamically adjust batch size based on data size (default: True)
             
         Returns:
             Dict with processed DataFrame and entity DataFrame (if save_entities=True)
@@ -315,7 +421,21 @@ class DataFrameProcessor:
         if use_pyarrow is not None:
             self.use_pyarrow = use_pyarrow and PYARROW_AVAILABLE
         
-        # Convert to Arrow Table if enabled
+        # Apply adaptive batch sizing if requested
+        if adaptive_batch_size:
+            # Adjust batch size based on DataFrame size and available workers
+            row_count = len(df)
+            if row_count > 100000 and batch_size < 5000:
+                batch_size = min(10000, max(5000, row_count // 20))
+            elif row_count < 1000 and batch_size > 100:
+                batch_size = max(100, row_count // 5)
+                
+            # Consider number of available workers
+            if self.n_workers and self.n_workers > 1:
+                # Make batch size a multiple of worker count for optimal distribution
+                batch_size = max(100, (batch_size // self.n_workers) * self.n_workers)
+        
+        # Convert to Arrow Table if enabled - only once for all columns
         arrow_table = self._to_arrow_table(df) if self.use_pyarrow else None
             
         # Create a copy of the DataFrame
@@ -330,63 +450,89 @@ class DataFrameProcessor:
             # Create iterator with progress bar if requested
             total_batches = (len(df) + batch_size - 1) // batch_size
             if progress_bar:
-                iterator = tqdm(range(0, len(df), batch_size), desc=f"Processing {column}", total=total_batches)
+                iterator = tqdm(range(0, total_batches), desc=f"Processing {column}", total=total_batches)
             else:
-                iterator = range(0, len(df), batch_size)
+                iterator = None
             
-            # Process in batches
-            for i in iterator:
+            # Define processing function
+            def process_text(text, idx):
+                if pd.isna(text):
+                    return [], text
+                    
+                # Analyze text
+                entities = self.analyzer.analyze(text, 
+                                                active_entity_types=active_entity_types,
+                                                min_score_threshold=min_score_threshold)
+                
+                # Format entities
+                formatted_entities = [
+                    {
+                        'row_index': idx,
+                        'column': column,
+                        'entity_type': entity.entity_type,
+                        'start': entity.start,
+                        'end': entity.end,
+                        'text': entity.text or text[entity.start:entity.end],
+                        'score': entity.score
+                    }
+                    for entity in entities
+                ]
+                
+                # Anonymize if requested
+                if anonymize:
+                    result = self.analyzer.anonymize(
+                        text, 
+                        operators=operators,
+                        age_bracket_size=age_bracket_size,
+                        keep_postcode=keep_postcode
+                    )
+                    anonymized_text = result['text']
+                else:
+                    anonymized_text = text
+                    
+                return formatted_entities, anonymized_text
+            
+            # Process using optimized Arrow-based batch processing if available
+            if self.use_pyarrow and arrow_table is not None:
+                batch_entities, batch_anonymized = self._batch_process_arrow(
+                    arrow_table=arrow_table,
+                    column=column,
+                    batch_size=batch_size,
+                    process_func=process_text,
+                    progress_iterator=iterator
+                )
+                
+                # If Arrow processing succeeded
+                if batch_anonymized:
+                    # Update the DataFrame with all results at once
+                    if anonymize:
+                        # Optimize bulk update by creating a Series and assigning once
+                        result_df[output_column] = pd.Series(
+                            batch_anonymized, 
+                            index=arrow_table.column('index').to_pylist() if 'index' in arrow_table.column_names 
+                                  else df.index
+                        )
+                    
+                    # Save entities
+                    if save_entities:
+                        all_entities.extend(batch_entities)
+                    
+                    # Continue to next column - we've processed the entire column already
+                    continue
+            
+            # Fall back to pandas-based processing if PyArrow is not available or failed
+            if progress_bar and iterator is None:
+                iterator = tqdm(range(0, len(df), batch_size), desc=f"Processing {column}", total=total_batches)
+            
+            # Process in batches using pandas
+            batch_indices = range(0, len(df), batch_size) if iterator is None else iterator
+            for i in batch_indices:
                 batch = df.iloc[i:i+batch_size]
                 batch_entities = []
                 batch_anonymized = []
                 
-                # Define processing function
-                def process_text(text, idx):
-                    if pd.isna(text):
-                        return [], text
-                        
-                    # Analyze text
-                    entities = self.analyzer.analyze(text, 
-                                                    active_entity_types=active_entity_types,
-                                                    min_score_threshold=min_score_threshold)
-                    
-                    # Format entities
-                    formatted_entities = [
-                        {
-                            'row_index': idx,
-                            'column': column,
-                            'entity_type': entity.entity_type,
-                            'start': entity.start,
-                            'end': entity.end,
-                            'text': entity.text or text[entity.start:entity.end],
-                            'score': entity.score
-                        }
-                        for entity in entities
-                    ]
-                    
-                    # Anonymize if requested
-                    if anonymize:
-                        result = self.analyzer.anonymize(
-                            text, 
-                            operators=operators,
-                            age_bracket_size=age_bracket_size,
-                            keep_postcode=keep_postcode
-                        )
-                        anonymized_text = result['text']
-                    else:
-                        anonymized_text = text
-                        
-                    return formatted_entities, anonymized_text
-                
-                # Get column data - use PyArrow if available
-                if self.use_pyarrow and arrow_table is not None:
-                    col_data = self._get_column_from_arrow(arrow_table, column)
-                    
-                    # Fall back to pandas if PyArrow extraction failed
-                    if col_data is None:
-                        col_data = batch[column].tolist()
-                else:
-                    col_data = batch[column].tolist()
+                # Get column data
+                col_data = batch[column].tolist()
                     
                 # Process the batch
                 if self.n_workers and self.n_workers > 1:
