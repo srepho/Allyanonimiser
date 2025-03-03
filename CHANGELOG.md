@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0 (2025-03-27)
+
+### Breaking Changes
+- Removed legacy analyzer factory functions (`create_au_analyzer`, `create_insurance_analyzer`, `create_au_insurance_analyzer`)
+- Added cleaner `create_analyzer()` function as the main entry point
+- Increased major version number to indicate production readiness
+- Removed backward compatibility with 0.x versions
+- Streamlined and simplified internal implementation
+- Improved documentation and examples with clearer API usage
+
 ## 0.3.3 (2025-03-27)
 
 ### Changed

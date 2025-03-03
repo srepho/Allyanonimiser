@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v0.3.3-blue)](https://pypi.org/project/allyanonimiser/0.3.3/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.0.0-blue)](https://pypi.org/project/allyanonimiser/1.0.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
@@ -105,6 +105,22 @@ pattern = ally.create_pattern_from_examples(
 - **Extensible Architecture**: Built on Presidio and spaCy with a modular, extensible design.
 
 ## Version History
+
+### Version 1.0.0 - Simplified API and Breaking Changes
+
+This version introduces a simplified API with cleaner function names and removes legacy functions for a more intuitive developer experience. This is a breaking change from previous versions.
+
+#### Key Updates
+
+1. **Simplified API**:
+   - Removed legacy analyzer factory functions (`create_au_analyzer`, `create_insurance_analyzer`, `create_au_insurance_analyzer`) 
+   - Added cleaner `create_analyzer()` function as the main entry point
+   - Streamlined and simplified internal implementation
+   
+2. **Major Version Upgrade**:
+   - Increased major version number to 1.0.0 to indicate production readiness
+   - Removed backward compatibility with 0.x versions
+   - Improved documentation and examples
 
 ### Version 0.3.3 - Python 3.10+ Compatibility
 

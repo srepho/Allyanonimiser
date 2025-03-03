@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "0.3.3"
+__version__ = "1.0.0"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -45,42 +45,16 @@ def create_unified_analyzer():
     
     return analyzer
 
-# Legacy factory functions maintained for backward compatibility
-def create_au_analyzer():
-    """
-    Create an analyzer with Australian-specific patterns pre-configured.
-    
-    Returns:
-        EnhancedAnalyzer with Australian patterns
-    """
-    return create_unified_analyzer()
-
-def create_insurance_analyzer():
-    """
-    Create an analyzer with insurance-specific patterns pre-configured.
-    
-    Returns:
-        EnhancedAnalyzer with insurance patterns
-    """
-    return create_unified_analyzer()
-
+# Main public API
 def create_analyzer():
     """
     Create an analyzer with all patterns pre-configured.
     
+    This creates a single analyzer that can handle all document types and patterns,
+    including Australian-specific, insurance-specific, and general patterns.
+    
     Returns:
         EnhancedAnalyzer with all available patterns
-    """
-    return create_unified_analyzer()
-
-def create_au_insurance_analyzer():
-    """
-    Create an analyzer with both Australian and insurance patterns pre-configured.
-    
-    Deprecated: Use create_analyzer() instead.
-    
-    Returns:
-        EnhancedAnalyzer with Australian and insurance patterns
     """
     return create_unified_analyzer()
 
