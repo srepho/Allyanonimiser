@@ -196,6 +196,51 @@ result = ally.anonymize(
 )
 ```
 
+### Custom Operator Example
+
+The custom operator allows you to define your own transformation function:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+# Create a custom transformation function
+def randomize_names(entity_text, entity_type):
+    """Replace person names with random names from a predefined list."""
+    if entity_type != "PERSON":
+        return entity_text
+        
+    # Simple list of random replacement names
+    replacements = ["Alex Taylor", "Sam Johnson", "Jordan Lee", "Casey Brown"]
+    
+    # Use hash of original name to consistently select the same replacement
+    import hashlib
+    hash_val = int(hashlib.md5(entity_text.encode()).hexdigest(), 16)
+    index = hash_val % len(replacements)
+    
+    return replacements[index]
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Use the custom operator
+result = ally.anonymize(
+    text="Customer John Smith sent an email to Mary Johnson about policy POL-123456.",
+    operators={
+        "PERSON": randomize_names,  # Pass the function directly
+        "POLICY_NUMBER": "mask"     # Other operators work as usual
+    }
+)
+
+print(result["text"])
+# Output: "Customer Alex Taylor sent an email to Sam Johnson about policy ***-******."
+```
+
+Custom operators are powerful for specialized anonymization needs like:
+- Generating synthetic but realistic replacements
+- Contextual anonymization based on entity values
+- Domain-specific transformations (e.g., preserving data distributions)
+- Implementing differential privacy mechanisms
+
 ## Built-in Pattern Reference
 
 ### Australian Patterns
