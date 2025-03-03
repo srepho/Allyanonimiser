@@ -8,6 +8,31 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
+## Installation
+
+```bash
+# Basic installation
+pip install allyanonimiser
+
+# With stream processing support for large files
+pip install "allyanonimiser[stream]"
+
+# With LLM integration for advanced pattern generation
+pip install "allyanonimiser[llm]"
+
+# Complete installation with all optional dependencies
+pip install "allyanonimiser[stream,llm]"
+```
+
+**Prerequisites:**
+- Python 3.10 or higher
+- A spaCy language model (recommended):
+  ```bash
+  python -m spacy download en_core_web_lg  # Recommended
+  # OR for limited resources:
+  python -m spacy download en_core_web_sm  # Smaller model
+  ```
+
 ## Quick Start
 
 ```python
@@ -431,29 +456,6 @@ This version adds comprehensive custom pattern creation and management capabilit
    - Get diagnostic information for pattern matching
    - Identify and fix issues in pattern definitions
 
-## Installation
-
-```bash
-# Basic installation
-pip install allyanonimiser==1.1.0
-
-# With stream processing support for large files
-pip install "allyanonimiser[stream]==1.1.0"
-
-# With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==1.1.0"
-
-# Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==1.1.0"
-```
-
-### Prerequisites
-
-1. Python 3.10 or higher
-2. For optimal performance, also install a spaCy model:
-   ```bash
-   python -m spacy download en_core_web_lg
-   ```
 
 ## Usage Examples
 
