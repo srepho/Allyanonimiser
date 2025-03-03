@@ -89,7 +89,7 @@ class AnalysisConfig:
     min_score_threshold: Optional[float] = None
     expand_acronyms: bool = False
 
-def create_allyanonimiser(pattern_filepath=None, settings_path=None):
+def create_allyanonimiser(pattern_filepath=None, settings_path=None, enable_caching=True, max_cache_size=10000):
     """
     Create and configure an Allyanonimiser instance.
     
@@ -99,6 +99,8 @@ def create_allyanonimiser(pattern_filepath=None, settings_path=None):
     Args:
         pattern_filepath: Optional path to a JSON file with pattern definitions
         settings_path: Optional path to a settings file (JSON or YAML)
+        enable_caching: Whether to enable result caching for improved performance (default: True)
+        max_cache_size: Maximum number of cached entries (default: 10000)
         
     Returns:
         Configured Allyanonimiser instance
@@ -119,6 +121,12 @@ def create_allyanonimiser(pattern_filepath=None, settings_path=None):
             pattern_filepath="custom_patterns.json",
             settings_path="settings.yaml"
         )
+        
+        # Create with caching disabled (for memory-constrained environments)
+        ally = create_allyanonimiser(enable_caching=False)
+        
+        # Create with larger cache for high-throughput applications
+        ally = create_allyanonimiser(max_cache_size=50000)
         ```
     """
     # Create settings manager
@@ -129,8 +137,15 @@ def create_allyanonimiser(pattern_filepath=None, settings_path=None):
         # Use default settings
         settings_manager = SettingsManager(settings=create_default_settings())
     
-    # Create Allyanonimiser with settings
-    ally = Allyanonimiser(settings_manager=settings_manager)
+    # Create Allyanonimiser with settings and caching configuration
+    ally = Allyanonimiser(
+        settings_manager=settings_manager,
+        enable_caching=enable_caching
+    )
+    
+    # Configure the analyzer's cache size if specified
+    if max_cache_size and hasattr(ally.analyzer, 'max_cache_size'):
+        ally.analyzer.max_cache_size = max_cache_size
     
     # Load patterns if filepath provided
     if pattern_filepath:
@@ -144,9 +159,9 @@ class Allyanonimiser:
     This class provides a unified interface for processing all types of content.
     """
     def __init__(self, analyzer=None, anonymizer=None, pattern_registry=None, 
-                text_preprocessor=None, settings_manager=None):
+                text_preprocessor=None, settings_manager=None, enable_caching=True):
         self.settings_manager = settings_manager or SettingsManager()
-        self.analyzer = analyzer or EnhancedAnalyzer()
+        self.analyzer = analyzer or EnhancedAnalyzer(enable_caching=enable_caching)
         self.anonymizer = anonymizer or EnhancedAnonymizer(analyzer=self.analyzer)
         self.pattern_registry = pattern_registry or PatternRegistry()
         

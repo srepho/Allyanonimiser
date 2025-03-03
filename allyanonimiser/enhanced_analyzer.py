@@ -45,8 +45,9 @@ class EnhancedAnalyzer:
     """
     Unified analyzer for PII detection.
     Combines pattern-based and NER-based entity detection with configurable active entities.
+    Includes result caching for improved performance with repetitive content.
     """
-    def __init__(self, min_score_threshold=0.7):
+    def __init__(self, min_score_threshold=0.7, enable_caching=True, max_cache_size=10000):
         self.patterns = []
         self.active_entity_types = set()  # Empty set means all types are active
         self.min_score_threshold = min_score_threshold
@@ -58,6 +59,15 @@ class EnhancedAnalyzer:
         except Exception as e:
             print(f"Warning: Could not load spaCy model: {e}")
             self.use_spacy = False
+            
+        # Result caching system
+        self.enable_caching = enable_caching
+        self.max_cache_size = max_cache_size
+        self._result_cache = {}
+        self._pattern_result_cache = {}
+        self._spacy_result_cache = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
             
         # Entity type metadata for transparency
         self.entity_type_metadata = {
@@ -193,16 +203,53 @@ class EnhancedAnalyzer:
         Returns:
             List of RecognizerResult objects representing detected entities
         """
+        if not text:
+            return []
+            
         if score_adjustment is None:
             score_adjustment = {}
             
-        # Get results from pattern-based detection
-        pattern_results = self._analyze_with_patterns(text)
+        # Check result cache for exact text match if caching is enabled
+        if self.enable_caching:
+            # Create a cache key that includes active entity types and score adjustment
+            cache_key = self._create_cache_key(text, score_adjustment)
+            
+            # Check if we have a cached result
+            if cache_key in self._result_cache:
+                self._cache_hits += 1
+                # Return a deep copy to prevent modification of cached results
+                return [RecognizerResult(**result.__dict__) for result in self._result_cache[cache_key]]
+                
+            self._cache_misses += 1
+            
+        # Check if we have cached pattern results
+        pattern_results = []
+        if self.enable_caching and text in self._pattern_result_cache:
+            pattern_results = self._pattern_result_cache[text].copy()
+        else:
+            # Get results from pattern-based detection
+            pattern_results = self._analyze_with_patterns(text)
+            # Cache pattern results if caching is enabled
+            if self.enable_caching:
+                self._pattern_result_cache[text] = pattern_results.copy()
+                # Limit pattern cache size
+                if len(self._pattern_result_cache) > self.max_cache_size:
+                    self._pattern_result_cache = {}
         
-        # Get results from spaCy NER if available
+        # Check if we have cached spaCy results
         spacy_results = []
         if self.use_spacy:
-            spacy_results = self._analyze_with_spacy(text)
+            if self.enable_caching and text in self._spacy_result_cache:
+                spacy_results = self._spacy_result_cache[text].copy()
+            else:
+                # Get results from spaCy NER
+                spacy_results = self._analyze_with_spacy(text)
+                # Cache spaCy results if caching is enabled
+                if self.enable_caching:
+                    self._spacy_result_cache[text] = spacy_results.copy()
+                    # Limit spaCy cache size
+                    if len(self._spacy_result_cache) > self.max_cache_size:
+                        self._spacy_result_cache = {}
         
         # Add entity-specific extraction for common formats
         format_results = self._analyze_common_formats(text)
@@ -227,7 +274,84 @@ class EnhancedAnalyzer:
         # De-duplicate results and resolve entity conflicts
         deduplicated_results = self._deduplicate_and_resolve_conflicts(combined_results)
         
+        # Cache the final result if caching is enabled
+        if self.enable_caching:
+            # Manage cache size
+            if len(self._result_cache) >= self.max_cache_size:
+                # Simple LRU implementation: clear half the cache when full
+                self._result_cache = {}
+                
+            # Store a copy of the results
+            self._result_cache[cache_key] = deduplicated_results.copy()
+            
         return deduplicated_results
+        
+    def _create_cache_key(self, text, score_adjustment=None):
+        """
+        Create a unique cache key for the given text and parameters.
+        
+        Args:
+            text: The text to analyze
+            score_adjustment: Optional score adjustment dictionary
+            
+        Returns:
+            A hashable cache key
+        """
+        # For very long texts, use a truncated version + hash to save memory
+        if len(text) > 200:
+            import hashlib
+            # Use first 100 chars + hash of full text
+            text_hash = hashlib.md5(text.encode()).hexdigest()
+            text_key = f"{text[:100]}...{text_hash}"
+        else:
+            text_key = text
+            
+        # Include active entity types in the key
+        entity_types_key = tuple(sorted(self.active_entity_types)) if self.active_entity_types else "all"
+        
+        # Include score adjustment in the key if provided
+        if score_adjustment:
+            adj_items = tuple(sorted(score_adjustment.items()))
+            return (text_key, entity_types_key, adj_items, self.min_score_threshold)
+        
+        return (text_key, entity_types_key, None, self.min_score_threshold)
+        
+    def get_cache_statistics(self):
+        """
+        Get statistics about the cache usage.
+        
+        Returns:
+            Dictionary with cache statistics
+        """
+        if not self.enable_caching:
+            return {"caching_enabled": False}
+            
+        total_lookups = self._cache_hits + self._cache_misses
+        hit_rate = 0 if total_lookups == 0 else (self._cache_hits / total_lookups)
+        
+        return {
+            "caching_enabled": True,
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate": hit_rate,
+            "result_cache_size": len(self._result_cache),
+            "pattern_cache_size": len(self._pattern_result_cache),
+            "spacy_cache_size": len(self._spacy_result_cache),
+            "max_cache_size": self.max_cache_size
+        }
+        
+    def clear_cache(self):
+        """
+        Clear all caches.
+        
+        Returns:
+            Number of cached items cleared
+        """
+        total_cleared = len(self._result_cache) + len(self._pattern_result_cache) + len(self._spacy_result_cache)
+        self._result_cache = {}
+        self._pattern_result_cache = {}
+        self._spacy_result_cache = {}
+        return total_cleared
     
     def explain_detection(self, text, entity_result):
         """
