@@ -64,9 +64,20 @@ def create_insurance_analyzer():
     """
     return create_unified_analyzer()
 
+def create_analyzer():
+    """
+    Create an analyzer with all patterns pre-configured.
+    
+    Returns:
+        EnhancedAnalyzer with all available patterns
+    """
+    return create_unified_analyzer()
+
 def create_au_insurance_analyzer():
     """
     Create an analyzer with both Australian and insurance patterns pre-configured.
+    
+    Deprecated: Use create_analyzer() instead.
     
     Returns:
         EnhancedAnalyzer with Australian and insurance patterns
