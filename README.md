@@ -5,8 +5,11 @@
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://srepho.github.io/Allyanonimiser/)
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
+
+📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
 ## Installation
 
@@ -548,7 +551,13 @@ For older versions and detailed change history, see the [CHANGELOG.md](CHANGELOG
 
 ## Documentation
 
-For complete documentation, examples, and advanced usage, visit the [GitHub repository](https://github.com/srepho/Allyanonimiser).
+For complete documentation, examples, and advanced usage, visit our [documentation site](https://srepho.github.io/Allyanonimiser/):
+
+- [Installation Guide](https://srepho.github.io/Allyanonimiser/getting-started/installation/)
+- [Quick Start Tutorial](https://srepho.github.io/Allyanonimiser/getting-started/quick-start/)
+- [Pattern Reference](https://srepho.github.io/Allyanonimiser/patterns/overview/)
+- [Anonymization Operators](https://srepho.github.io/Allyanonimiser/advanced/anonymization-operators/)
+- [API Reference](https://srepho.github.io/Allyanonimiser/api/main/)
 
 ## License
 
