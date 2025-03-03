@@ -252,7 +252,7 @@ pip install allyanonimiser==0.3.2
 python -m spacy download en_core_web_lg
 ```
 
-Requires Python 3.8 or higher.
+Requires Python 3.10 or higher.
 
 ## Quick Start
 
