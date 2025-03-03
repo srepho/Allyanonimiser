@@ -18,7 +18,37 @@ from .utils.settings_manager import SettingsManager, create_default_settings
 
 @dataclass
 class AnonymizationConfig:
-    """Configuration options for anonymization process."""
+    """
+    Configuration options for anonymization process.
+    
+    Attributes:
+        operators: Dictionary mapping entity types to anonymization operators.
+            Available operators: "replace", "mask", "redact", "hash", "age_bracket", "custom".
+            Example: {"PERSON": "replace", "EMAIL_ADDRESS": "mask"}
+        language: Language code for text processing (default: "en").
+        active_entity_types: Optional list of entity types to activate. If None, all are active.
+        expand_acronyms: Whether to expand acronyms before anonymization using the configured dictionary.
+        age_bracket_size: Size of age brackets when using the "age_bracket" operator (default: 5).
+        keep_postcode: Whether to preserve postcodes when anonymizing addresses (default: True).
+    
+    Example:
+        ```python
+        from allyanonimiser import AnonymizationConfig
+        
+        config = AnonymizationConfig(
+            operators={
+                "PERSON": "replace",
+                "EMAIL_ADDRESS": "mask",
+                "PHONE_NUMBER": "redact",
+                "DATE_OF_BIRTH": "age_bracket"
+            },
+            age_bracket_size=10,
+            keep_postcode=True
+        )
+        
+        result = anonymizer.anonymize(text, config=config)
+        ```
+    """
     operators: Optional[Dict[str, str]] = None
     language: str = "en"
     active_entity_types: Optional[List[str]] = None
@@ -28,7 +58,31 @@ class AnonymizationConfig:
 
 @dataclass
 class AnalysisConfig:
-    """Configuration options for analysis process."""
+    """
+    Configuration options for analysis process.
+    
+    Attributes:
+        language: Language code for text processing (default: "en").
+        active_entity_types: Optional list of entity types to activate. If None, all are active.
+        score_adjustment: Optional dictionary mapping entity types to score adjustments.
+            Example: {"PERSON": 0.1, "EMAIL_ADDRESS": -0.05} to increase person detection confidence
+            and decrease email address detection confidence.
+        min_score_threshold: Optional minimum confidence score threshold (0.0-1.0).
+        expand_acronyms: Whether to expand acronyms before analysis using the configured dictionary.
+    
+    Example:
+        ```python
+        from allyanonimiser import AnalysisConfig
+        
+        config = AnalysisConfig(
+            active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+            min_score_threshold=0.7,
+            expand_acronyms=True
+        )
+        
+        results = analyzer.analyze(text, config=config)
+        ```
+    """
     language: str = "en"
     active_entity_types: Optional[List[str]] = None
     score_adjustment: Optional[Dict[str, float]] = None
@@ -39,12 +93,33 @@ def create_allyanonimiser(pattern_filepath=None, settings_path=None):
     """
     Create and configure an Allyanonimiser instance.
     
+    This factory function creates a pre-configured Allyanonimiser instance
+    with optional pattern and settings loading.
+    
     Args:
         pattern_filepath: Optional path to a JSON file with pattern definitions
         settings_path: Optional path to a settings file (JSON or YAML)
         
     Returns:
         Configured Allyanonimiser instance
+        
+    Example:
+        ```python
+        # Create with default settings
+        ally = create_allyanonimiser()
+        
+        # Create with custom patterns
+        ally = create_allyanonimiser(pattern_filepath="custom_patterns.json")
+        
+        # Create with custom settings
+        ally = create_allyanonimiser(settings_path="settings.yaml")
+        
+        # Create with both custom patterns and settings
+        ally = create_allyanonimiser(
+            pattern_filepath="custom_patterns.json",
+            settings_path="settings.yaml"
+        )
+        ```
     """
     # Create settings manager
     settings_manager = None
@@ -171,6 +246,41 @@ class Allyanonimiser:
             
         Raises:
             ValueError: If action is not recognized
+            
+        Examples:
+            ```python
+            # Set the acronym dictionary
+            ally.manage_acronyms(
+                action="set",
+                data={"TPD": "Total and Permanent Disability", "CTP": "Compulsory Third Party"},
+                case_sensitive=False
+            )
+            
+            # Add acronyms to the existing dictionary
+            ally.manage_acronyms(
+                action="add",
+                data={"DOL": "Date of Loss", "NTD": "Notice to Driver"}
+            )
+            
+            # Remove acronyms
+            ally.manage_acronyms(
+                action="remove",
+                data=["NTD"]
+            )
+            
+            # Get current acronyms
+            acronyms = ally.manage_acronyms(action="get")
+            print(acronyms)  # {'TPD': 'Total and Permanent Disability', 'CTP': '...', 'DOL': '...'}
+            
+            # Import acronyms from CSV
+            count = ally.manage_acronyms(
+                action="import",
+                csv_path="acronyms.csv",
+                acronym_col="short_form",
+                expansion_col="long_form"
+            )
+            print(f"Imported {count} acronyms")
+            ```
         """
         if action == 'set':
             self.text_preprocessor = TextPreprocessor(acronym_dict=data, case_sensitive=case_sensitive)
@@ -273,7 +383,40 @@ class Allyanonimiser:
             config: Optional AnalysisConfig object (overrides individual parameters)
             
         Returns:
-            List of detected entities
+            List of detected entities (RecognizerResult objects)
+            
+        Example:
+            ```python
+            from allyanonimiser import create_allyanonimiser, AnalysisConfig
+            
+            # Create instance
+            ally = create_allyanonimiser()
+            
+            # Analyze text with direct parameters
+            text = "My name is John Smith and my email is john.smith@example.com"
+            results = ally.analyze(
+                text,
+                active_entity_types=["PERSON", "EMAIL_ADDRESS"],
+                min_score_threshold=0.7
+            )
+            
+            # Display detected entities
+            for entity in results:
+                print(f"Found {entity.entity_type}: {entity.text} (score: {entity.score:.2f})")
+            
+            # Using configuration object
+            config = AnalysisConfig(
+                active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+                min_score_threshold=0.8,
+                score_adjustment={"PERSON": 0.1}  # Increase confidence for PERSON entities
+            )
+            
+            results = ally.analyze(text, config=config)
+            
+            # Output:
+            # Found PERSON: John Smith (score: 0.85)
+            # Found EMAIL_ADDRESS: john.smith@example.com (score: 0.95)
+            ```
         """
         # Use config object if provided
         if config is not None:
@@ -306,6 +449,7 @@ class Allyanonimiser:
         Args:
             text: The text to anonymize
             operators: Dict of entity_type to anonymization operator
+                Available operators: "replace", "mask", "redact", "hash", "age_bracket", "custom"
             language: The language of the text (default: en)
             active_entity_types: Optional list of entity types to activate (all are active if None)
             expand_acronyms: Whether to expand acronyms using the configured dictionary
@@ -315,6 +459,52 @@ class Allyanonimiser:
             
         Returns:
             Dict with anonymized text and other metadata
+            
+        Example:
+            ```python
+            from allyanonimiser import create_allyanonimiser, AnonymizationConfig
+            
+            # Create instance
+            ally = create_allyanonimiser()
+            
+            # Anonymize text with direct parameters
+            text = "My name is John Smith, I was born on 15/06/1980 and my email is john.smith@example.com"
+            result = ally.anonymize(
+                text,
+                operators={
+                    "PERSON": "replace",          # Replace with <PERSON>
+                    "DATE_OF_BIRTH": "age_bracket",  # Replace with age bracket
+                    "EMAIL_ADDRESS": "mask"       # Replace with *****
+                },
+                age_bracket_size=10,
+                active_entity_types=["PERSON", "EMAIL_ADDRESS", "DATE_OF_BIRTH"]
+            )
+            
+            print(result["text"])
+            # Output: "My name is <PERSON>, I was born on <40-50> and my email is *******************"
+            
+            # Using configuration object
+            config = AnonymizationConfig(
+                operators={
+                    "PERSON": "replace",
+                    "EMAIL_ADDRESS": "mask",
+                    "DATE_OF_BIRTH": "age_bracket"
+                },
+                age_bracket_size=10,
+                keep_postcode=True
+            )
+            
+            result = ally.anonymize(text, config=config)
+            print(result["text"])
+            ```
+            
+        Available Operators:
+            - "replace": Replace entity with entity type (e.g., <PERSON>)
+            - "mask": Replace with asterisks of the same length (e.g., ********)
+            - "redact": Replace with [REDACTED]
+            - "hash": Replace with SHA-256 hash of the entity
+            - "age_bracket": Replace age/DOB with age bracket (e.g., <40-45>)
+            - "custom": Use a custom function (defined separately)
         """
         # Use config object if provided
         if config is not None:
@@ -348,6 +538,10 @@ class Allyanonimiser:
         """
         Process text to analyze and anonymize in a single operation.
         
+        This comprehensive method performs analysis and anonymization in one step,
+        returning detailed results including detected entities, anonymized text,
+        PII-rich segments, and structured data extraction.
+        
         Args:
             text: The text to process
             language: The language of the text (default: en)
@@ -362,7 +556,65 @@ class Allyanonimiser:
             anonymization_config: Optional AnonymizationConfig object (overrides individual anonymization parameters)
             
         Returns:
-            Dict with analysis, anonymized text, and other metadata
+            Dict with the following keys:
+            - analysis: Dict containing detected entities
+            - anonymized: The anonymized text
+            - segments: List of PII-rich segments with their anonymized versions
+            - structured_data: Extracted structured data from entities
+            - preprocessing: (if acronyms expanded) Information about expanded acronyms
+            
+        Example:
+            ```python
+            from allyanonimiser import create_allyanonimiser, AnalysisConfig, AnonymizationConfig
+            
+            # Create instance
+            ally = create_allyanonimiser()
+            
+            # Process text with configuration objects
+            text = """
+            Customer: John Smith (DOB: 15/06/1980)
+            Policy #: POL-12345678
+            Email: john.smith@example.com
+            Phone: 0412 345 678
+            
+            Customer reported an accident on 10/05/2024.
+            """
+            
+            analysis_config = AnalysisConfig(
+                active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "DATE_OF_BIRTH"],
+                min_score_threshold=0.7,
+                expand_acronyms=True
+            )
+            
+            anonymization_config = AnonymizationConfig(
+                operators={
+                    "PERSON": "replace",
+                    "EMAIL_ADDRESS": "mask",
+                    "PHONE_NUMBER": "redact",
+                    "DATE_OF_BIRTH": "age_bracket"
+                },
+                age_bracket_size=10
+            )
+            
+            result = ally.process(text, analysis_config=analysis_config, anonymization_config=anonymization_config)
+            
+            # Access different parts of the result
+            print("Anonymized text:")
+            print(result["anonymized"])
+            
+            print("\nDetected entities:")
+            for entity in result["analysis"]["entities"]:
+                print(f"{entity['entity_type']}: {entity['text']} (score: {entity['score']:.2f})")
+                
+            print("\nPII-rich segments:")
+            for segment in result["segments"]:
+                print(f"Original: {segment['text']}")
+                print(f"Anonymized: {segment['anonymized']}")
+                
+            print("\nStructured data:")
+            for key, value in result["structured_data"].items():
+                print(f"{key}: {value}")
+            ```
         """
         # Create config objects if not provided
         if analysis_config is None:
@@ -502,6 +754,7 @@ class Allyanonimiser:
             context: Optional list of context words for 'create_from_examples'
             name: Optional pattern name for 'create_from_examples'
             generalization_level: Level of pattern generalization for 'create_from_examples'
+                Options: "low" (exact match), "medium" (balanced), "high" (more general)
             csv_path: Path to CSV file for 'import' action
             entity_type_col: Column name for entity types in CSV
             pattern_col: Column name for patterns in CSV
@@ -518,6 +771,60 @@ class Allyanonimiser:
             
         Raises:
             ValueError: If action is not recognized or required parameters are missing
+            
+        Examples:
+            ```python
+            # Add a custom pattern manually
+            success = ally.manage_patterns(
+                action="add",
+                data={
+                    "entity_type": "POLICY_NUMBER",
+                    "patterns": ["POL-\\d{8}"],
+                    "context": ["policy", "number"],
+                    "name": "Policy number format"
+                }
+            )
+            
+            # Create pattern from examples
+            pattern = ally.manage_patterns(
+                action="create_from_examples",
+                entity_type="CLAIM_ID",
+                examples=["CL-12345", "CL-67890", "CL-54321"],
+                context=["claim", "id", "number"],
+                name="Claim ID Pattern",
+                generalization_level="medium"  # Options: "low", "medium", "high"
+            )
+            print(f"Generated pattern: {pattern.patterns[0]}")
+            
+            # Load patterns from JSON file
+            count = ally.manage_patterns(
+                action="load",
+                filepath="/path/to/patterns.json"
+            )
+            print(f"Loaded {count} patterns")
+            
+            # Import patterns from CSV
+            count = ally.manage_patterns(
+                action="import",
+                csv_path="/path/to/patterns.csv",
+                entity_type_col="type",
+                pattern_col="regex"
+            )
+            
+            # Save patterns to JSON file
+            filepath = ally.manage_patterns(
+                action="save",
+                filepath="/path/to/output_patterns.json"
+            )
+            print(f"Saved patterns to {filepath}")
+            ```
+            
+        CSV Format for 'import' action:
+            ```csv
+            entity_type,pattern,context,name,score
+            POLICY_NUMBER,POL-\\d{8},"policy,number",Policy number format,0.8
+            CLAIM_ID,CL-\\d{5},"claim,id",Claim ID pattern,0.75
+            ```
         """
         if action == 'add':
             if data is None:
@@ -670,6 +977,46 @@ class Allyanonimiser:
             
         Returns:
             Boolean indicating success
+            
+        Example:
+            ```python
+            from allyanonimiser import create_allyanonimiser
+            
+            # Create and configure instance
+            ally = create_allyanonimiser()
+            
+            # Add acronyms
+            ally.manage_acronyms(
+                action="add",
+                data={
+                    "TPD": "Total and Permanent Disability",
+                    "CTP": "Compulsory Third Party"
+                }
+            )
+            
+            # Add patterns
+            ally.manage_patterns(
+                action="create_from_examples",
+                entity_type="POLICY_NUMBER",
+                examples=["POL-12345", "POL-67890"]
+            )
+            
+            # Export configuration to JSON
+            ally.export_config("config.json")
+            
+            # Export configuration to YAML
+            ally.export_config("config.yaml")
+            
+            # Export without metadata (more compact)
+            ally.export_config("config_minimal.json", include_metadata=False)
+            ```
+            
+        The exported configuration can be used to create a new instance with the same settings:
+        
+            ```python
+            # Create new instance with exported config
+            ally_new = create_allyanonimiser(settings_path="config.json")
+            ```
         """
         # Update settings from current state to ensure they're up to date
         self.settings_manager.set_acronyms(
@@ -695,6 +1042,8 @@ class Allyanonimiser:
             analysis_config: Optional AnalysisConfig object
             anonymization_config: Optional AnonymizationConfig object
             **kwargs: Additional arguments to pass to the underlying DataFrame processor
+                For 'anonymize': output_column, operators, age_bracket_size, keep_postcode
+                For 'detect': min_score_threshold, active_entity_types, score_adjustment
             
         Returns:
             - For 'process': Dict with processed DataFrame and entity DataFrame
@@ -703,6 +1052,86 @@ class Allyanonimiser:
             
         Raises:
             ValueError: If operation is not recognized or required parameters are missing
+            
+        Examples:
+            ```python
+            import pandas as pd
+            from allyanonimiser import create_allyanonimiser, AnalysisConfig, AnonymizationConfig
+            
+            # Create DataFrame
+            df = pd.DataFrame({
+                "id": [1, 2, 3],
+                "notes": [
+                    "Customer John Smith (DOB: 15/06/1980) called about policy POL-123456.",
+                    "Jane Doe (email: jane.doe@example.com) requested a refund.",
+                    "Alex Johnson from Sydney NSW 2000 reported an incident."
+                ]
+            })
+            
+            # Create Allyanonimiser
+            ally = create_allyanonimiser()
+            
+            # 1. Process DataFrame with detection
+            entities_df = ally.process_dataframe(
+                df, 
+                column="notes", 
+                operation="detect",
+                min_score_threshold=0.7,
+                active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"]
+            )
+            # Result: DataFrame with columns for entity_type, text, score, start, end, source_id
+            
+            # 2. Anonymize specific column
+            anonymized_df = ally.process_dataframe(
+                df, 
+                column="notes", 
+                operation="anonymize",
+                output_column="anonymized_notes",  # New column for anonymized text
+                operators={
+                    "PERSON": "replace",
+                    "EMAIL_ADDRESS": "mask",
+                    "PHONE_NUMBER": "redact"
+                }
+            )
+            # Result: Original DataFrame with new 'anonymized_notes' column
+            
+            # 3. Full processing of multiple columns
+            result = ally.process_dataframe(
+                df,
+                text_columns=["notes"],  # Can be a list of columns
+                operation="process",
+                n_workers=4,             # Parallel processing
+                use_pyarrow=True         # Use PyArrow for performance
+            )
+            # Result: Dict with 'df' (processed DataFrame) and 'entities' (entity DataFrame)
+            
+            # 4. Using configuration objects
+            analysis_config = AnalysisConfig(
+                active_entity_types=["PERSON", "EMAIL_ADDRESS"],
+                min_score_threshold=0.7
+            )
+            
+            anonymization_config = AnonymizationConfig(
+                operators={
+                    "PERSON": "replace",
+                    "EMAIL_ADDRESS": "mask"
+                }
+            )
+            
+            result = ally.process_dataframe(
+                df,
+                text_columns=["notes"],
+                operation="process",
+                analysis_config=analysis_config,
+                anonymization_config=anonymization_config
+            )
+            ```
+            
+        Performance Tips:
+            - Set `n_workers` to the number of CPU cores for parallel processing
+            - Enable `use_pyarrow=True` for large DataFrames (requires PyArrow to be installed)
+            - Process DataFrames in batches if they are very large
+            - Use specific `active_entity_types` to reduce processing time
         """
         from .dataframe_processor import DataFrameProcessor
         
