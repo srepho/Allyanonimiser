@@ -154,9 +154,47 @@ report.export_report("report.csv", "csv")    # CSV statistics
 - **Reporting System**: Comprehensive tracking and visualization of anonymization activities
 - **Jupyter Integration**: Rich visualization capabilities in notebook environments
 - **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
-- **Configuration Export**: Share settings between environments with export/import functionality
-- **Pattern Generation**: Create patterns from examples with various generalization levels
-- **Customizable**: Extend with your own patterns and entity types
+
+## Built-in Pattern Reference
+
+### Australian Patterns
+
+| Entity Type | Description | Example Pattern | Pattern File |
+|-------------|-------------|----------------|-------------|
+| AU_TFN | Australian Tax File Number | `\b\d{3}\s*\d{3}\s*\d{3}\b` | au_patterns.py |
+| AU_PHONE | Australian Phone Number | `\b(?:\+?61\|0)4\d{2}\s*\d{3}\s*\d{3}\b` | au_patterns.py |
+| AU_MEDICARE | Australian Medicare Number | `\b\d{4}\s*\d{5}\s*\d{1}\b` | au_patterns.py |
+| AU_DRIVERS_LICENSE | Australian Driver's License | Various formats including<br>`\b\d{8}\b` (NSW)<br>`\b\d{4}[a-zA-Z]{2}\b` (NSW legacy) | au_patterns.py |
+| AU_ADDRESS | Australian Address | Address patterns with street names | au_patterns.py |
+| AU_POSTCODE | Australian Postcode | `\b\d{4}\b` | au_patterns.py |
+| AU_BSB_ACCOUNT | Australian BSB and Account Number | `\b\d{3}-\d{3}\s*\d{6,10}\b` | au_patterns.py |
+| AU_ABN | Australian Business Number | `\b\d{2}\s*\d{3}\s*\d{3}\s*\d{3}\b` | au_patterns.py |
+| AU_PASSPORT | Australian Passport Number | `\b[A-Za-z]\d{8}\b` | au_patterns.py |
+
+### General Patterns
+
+| Entity Type | Description | Example Pattern | Pattern File |
+|-------------|-------------|----------------|-------------|
+| CREDIT_CARD | Credit Card Number | `\b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}\b` | general_patterns.py |
+| PERSON | Person Name | Name patterns with context | general_patterns.py |
+| EMAIL_ADDRESS | Email Address | `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z\|a-z]{2,}\b` | general_patterns.py |
+| DATE_OF_BIRTH | Date of Birth | `\bDOB:\s*\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b` | general_patterns.py |
+| LOCATION | Location | City and location patterns | general_patterns.py |
+| DATE | Date | `\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b` | general_patterns.py |
+| MONETARY_VALUE | Money Amount | `\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?\b` | general_patterns.py |
+| ORGANIZATION | Organization | Organization name patterns | general_patterns.py |
+
+### Insurance Patterns
+
+| Entity Type | Description | Example Pattern | Pattern File |
+|-------------|-------------|----------------|-------------|
+| INSURANCE_POLICY_NUMBER | Insurance Policy Number | `\b(?:POL\|P\|Policy)[- ]?\d{6,9}\b` | insurance_patterns.py |
+| INSURANCE_CLAIM_NUMBER | Insurance Claim Number | `\b(?:CL\|C)[- ]?\d{6,9}\b` | insurance_patterns.py |
+| INSURANCE_MEMBER_NUMBER | Insurance Member Number | Member ID patterns | insurance_patterns.py |
+| INSURANCE_GROUP_NUMBER | Group Policy Number | Group policy patterns | insurance_patterns.py |
+| VEHICLE_IDENTIFIER | Vehicle ID (VIN, plates) | `\b[A-HJ-NPR-Z0-9]{17}\b` | insurance_patterns.py |
+| CASE_REFERENCE | Case Reference Numbers | Case ID patterns | insurance_patterns.py |
+| VEHICLE_DETAILS | Vehicle Details | Make/model patterns | insurance_patterns.py |
 
 ## Usage Examples
 
