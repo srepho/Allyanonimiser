@@ -3,6 +3,7 @@
 [![PyPI version](https://img.shields.io/badge/pypi-v2.1.0-blue)](https://pypi.org/project/allyanonimiser/2.1.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://srepho.github.io/Allyanonimiser/)

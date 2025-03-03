@@ -1,0 +1,21 @@
+[run]
+source = allyanonimiser
+omit = 
+    */tests/*
+    */test_*
+    setup.py
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError
+    def __str__
+    
+[html]
+directory = coverage_html_report
