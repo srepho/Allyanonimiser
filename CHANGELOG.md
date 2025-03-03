@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.0 (2025-03-29)
+
+### Added
+- Stream processing for very large files with Polars integration:
+  - Implemented `StreamProcessor` class for memory-efficient processing
+  - Added chunk-by-chunk processing with minimal memory footprint
+  - Created streaming file reader for multi-gigabyte CSV files
+  - Added streaming API for custom chunk processing
+  - Added comprehensive error handling for stream processing failures
+  - Implemented graceful fallbacks when Polars is not available
+  - Added adaptive chunk sizing based on data volume
+  - Added example script (`example_stream_processing.py`) demonstrating stream processing
+
+### Improved
+- Enhanced memory efficiency when processing multi-gigabyte datasets
+- Added streaming progress bars for better user feedback
+- Updated documentation with comprehensive stream processing examples
+- Added tests for stream processing functionality
+
 ## 1.1.0 (2025-03-28)
 
 ### Added
@@ -10,6 +29,15 @@
 - Added configuration objects for improved parameter organization:
   - `AnalysisConfig` for grouping analysis parameters
   - `AnonymizationConfig` for grouping anonymization parameters
+- Added stream processing for very large files with Polars integration:
+  - Implemented `StreamProcessor` class for memory-efficient processing
+  - Added chunk-by-chunk processing with minimal memory footprint
+  - Created streaming file reader for multi-gigabyte CSV files
+  - Added streaming API for custom chunk processing
+  - Added comprehensive error handling for stream processing failures
+  - Implemented graceful fallbacks when Polars is not available
+  - Added adaptive chunk sizing based on data volume
+  - Added example script (`example_stream_processing.py`) demonstrating stream processing
 - Created new example script (`example_simplified_api.py`) demonstrating the simplified API
 - Maintained backward compatibility with deprecated method support
 - Added comprehensive docstrings for all new methods
@@ -19,6 +47,9 @@
 - Consolidated parameter handling for better code organization
 - Enhanced code maintainability and reduced duplication
 - Simplified pattern and acronym management workflows
+- Optimized large file processing with adaptive chunk sizing
+- Enhanced memory efficiency when processing multi-gigabyte datasets
+- Added streaming progress bars for better user feedback
 
 ## 1.0.0 (2025-03-27)
 

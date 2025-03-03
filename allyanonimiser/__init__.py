@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # First import the base classes and utilities
 from .pattern_manager import CustomPatternDefinition, PatternManager
@@ -99,6 +99,17 @@ from .utils.long_text_processor import (
     extract_pii_rich_segments,
     analyze_claim_notes
 )
+
+# Import DataFrame processor
+from .dataframe_processor import DataFrameProcessor
+
+# Import Stream processor (when available)
+try:
+    from .stream_processor import StreamProcessor, POLARS_AVAILABLE
+except ImportError:
+    # Define dummy for when Polars is not available
+    POLARS_AVAILABLE = False
+    StreamProcessor = None
 
 from .validators import (
     validate_regex,

@@ -1,12 +1,12 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.1.0-blue)](https://pypi.org/project/allyanonimiser/1.1.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.2.0-blue)](https://pypi.org/project/allyanonimiser/1.2.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Australian-focused PII detection and anonymization for the insurance industry.
+Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
 ## Quick Start
 
@@ -66,6 +66,71 @@ anonymized_df = ally.anonymize_dataframe(
     age_bracket_size=5,     # Use 5-year brackets (default)
     keep_postcode=True      # Preserve postcodes in addresses (default)
 )
+```
+
+### Stream Processing for Very Large Files
+
+```python
+from allyanonimiser import create_allyanonimiser, StreamProcessor
+
+# Create an Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Create a StreamProcessor for handling very large files
+stream_processor = StreamProcessor(allyanonimiser=ally)
+
+# Process a multi-gigabyte CSV file with minimal memory impact
+result = stream_processor.process_large_file(
+    file_path="very_large_dataset.csv",
+    text_columns=["notes", "comments"],
+    output_path="output/anonymized_dataset.csv",
+    active_entity_types=[
+        "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", 
+        "AU_ADDRESS", "AU_MEDICARE", "AU_TFN"
+    ],
+    operators={
+        "PERSON": "replace",
+        "EMAIL_ADDRESS": "redact",
+        "PHONE_NUMBER": "mask",
+        "AU_ADDRESS": "replace",
+        "AU_MEDICARE": "mask",
+        "AU_TFN": "redact"
+    },
+    chunk_size=10000,  # Process 10,000 rows at a time
+    save_entities=True,
+    entities_output_path="output/detected_entities.csv"
+)
+
+# Get statistics from the processing job
+print(f"Processed {result['total_rows_processed']} rows")
+print(f"Detected {result['total_entities_detected']} entities")
+print(f"Output saved to {result['output_file']}")
+print(f"Entities saved to {result['entities_file']}")
+```
+
+For more custom processing and greater control, you can use the streaming API directly:
+
+```python
+# Process a file in chunks with custom handling for each chunk
+for chunk in stream_processor.stream_from_file(
+    file_path="very_large_dataset.csv",
+    text_columns=["notes"],
+    active_entity_types=["PERSON", "EMAIL_ADDRESS"],
+    operators={"PERSON": "replace", "EMAIL_ADDRESS": "mask"},
+    chunk_size=5000,
+    progress_bar=True
+):
+    # Each chunk contains processed data and detected entities
+    processed_df = chunk['dataframe']
+    entities_df = chunk['entities']
+    
+    # Perform custom processing on each chunk
+    # For example, analyze entity distributions
+    entity_counts = entities_df.groupby('entity_type').size()
+    print(f"Entities in chunk: {entity_counts}")
+    
+    # Or save each chunk separately
+    processed_df.to_csv(f"output/chunk_{idx}.csv", index=False)
 ```
 
 ### Configuration and Pattern Management
@@ -182,11 +247,40 @@ df_result = ally.process_dataframe(
 
 See `example_simplified_api.py` for a complete demonstration of the simplified API.
 
+## Installation
+
+### Basic Installation
+
+```bash
+# Basic installation
+pip install allyanonimiser
+
+# Download a spaCy language model (required)
+python -m spacy download en_core_web_lg  # Recommended
+# OR for limited resources:
+python -m spacy download en_core_web_sm  # Smaller model
+```
+
+### Optional Features
+
+```bash
+# For stream processing of very large files (recommended for large datasets)
+pip install allyanonimiser[stream]
+
+# For LLM augmentation capabilities
+pip install allyanonimiser[llm]
+
+# For development and testing
+pip install allyanonimiser[dev]
+```
+
 ## Features
 
 - **Australian-Specific PII Detection**: Specialized recognizers for Australian TFNs, Medicare numbers, driver's licenses, and other Australian-specific identifiers.
 - **Insurance Industry Focus**: Recognition of policy numbers, claim references, vehicle identifiers, and other insurance-specific data.
 - **Long Text Processing**: Optimized for processing lengthy free-text fields like claim notes, medical reports, and emails.
+- **DataFrames and Large Files**: Process pandas DataFrames with PyArrow acceleration and stream very large files with Polars integration.
+- **Stream Processing**: Memory-efficient handling of multi-gigabyte CSV files with chunk-by-chunk processing.
 - **Custom Pattern Creation**: Easy creation of custom entity recognizers for organization-specific data.
 - **Synthetic Data Generation**: Generate realistic Australian test data for validation.
 - **LLM Integration**: Use Language Models to create challenging datasets for testing.
@@ -194,9 +288,9 @@ See `example_simplified_api.py` for a complete demonstration of the simplified A
 
 ## Version History
 
-### Version 1.1.0 - API Simplification
+### Version 1.2.0 - Stream Processing for Large Files
 
-This version introduces a simplified, more consistent API while maintaining backward compatibility.
+This version introduces a simplified, more consistent API and adds powerful stream processing capabilities for very large files.
 
 #### Key Features
 
@@ -212,8 +306,17 @@ This version introduces a simplified, more consistent API while maintaining back
    - Improved parameter organization and reduced parameter count in method signatures
    - Enhanced readability and maintainability
    
-3. **Improved Developer Experience**:
-   - New example script (`example_simplified_api.py`) demonstrating the simplified API
+3. **Stream Processing for Very Large Files**:
+   - Added `StreamProcessor` class for memory-efficient processing
+   - Implemented chunk-by-chunk processing with minimal memory impact
+   - Added adaptive chunk sizing based on data volume
+   - Created low-level streaming API for custom chunk processing
+   - Added comprehensive error handling for stream processing failures
+   - Implemented graceful fallbacks when Polars is not available
+   - Added stream processing example in `example_stream_processing.py`
+   
+4. **Improved Developer Experience**:
+   - New example scripts demonstrating the simplified API and stream processing
    - Maintained backward compatibility with deprecated method support
    - Comprehensive docstrings for all new methods
    - Consolidated parameter handling for better code organization
@@ -331,7 +434,17 @@ This version adds comprehensive custom pattern creation and management capabilit
 ## Installation
 
 ```bash
+# Basic installation
 pip install allyanonimiser==1.1.0
+
+# With stream processing support for large files
+pip install "allyanonimiser[stream]==1.1.0"
+
+# With LLM integration for advanced pattern generation
+pip install "allyanonimiser[llm]==1.1.0"
+
+# Complete installation with all optional dependencies
+pip install "allyanonimiser[stream,llm]==1.1.0"
 ```
 
 ### Prerequisites
@@ -587,7 +700,9 @@ Test coverage focuses on several key areas:
 2. **Entity Detection**: Tests for accurate detection of all entity types
 3. **Anonymization**: Tests for proper text replacement with different operators
 4. **Extensibility**: Tests for adding custom patterns and entity types
-5. **Edge Cases**: Tests for handling of boundary conditions and unusual inputs
+5. **Stream Processing**: Tests for the stream processor with large files and chunked processing
+6. **Package Structure**: Tests for import behavior, version consistency, and API correctness
+7. **Edge Cases**: Tests for handling of boundary conditions and unusual inputs
 
 ## Contributing
 

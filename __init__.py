@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry
 """
 
-__version__ = "0.1.3"
+__version__ = "1.2.0"
 
 # First, define factory functions to avoid circular imports
 def create_au_analyzer(patterns=None):

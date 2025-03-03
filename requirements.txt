@@ -23,5 +23,9 @@ mypy>=0.9.0
 # huggingface_hub>=0.12.0
 # pandas>=1.5.0
 
+# For stream processing large files (uncomment as needed)
+# polars>=0.20.0
+# pyarrow>=14.0.0
+
 # Project-specific dependencies
 en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.5.0/en_core_web_lg-3.5.0.tar.gz

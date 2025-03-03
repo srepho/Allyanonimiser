@@ -82,3 +82,38 @@ def test_no_circular_imports(mock_find_spec):
     
     # Here we're just asserting that our test structure exists
     assert True
+
+
+def test_import_stream_processor():
+    """Test that stream processor can be imported from the main package."""
+    try:
+        from allyanonimiser import StreamProcessor, POLARS_AVAILABLE
+        
+        # POLARS_AVAILABLE should always be importable
+        assert isinstance(POLARS_AVAILABLE, bool)
+        
+        # StreamProcessor will be None if Polars is not available
+        if POLARS_AVAILABLE:
+            assert StreamProcessor is not None
+            # Verify it's the correct class
+            assert "StreamProcessor" in StreamProcessor.__name__
+        else:
+            assert StreamProcessor is None
+            
+    except ImportError:
+        # If the import fails completely, the package structure is incorrect
+        assert False, "Failed to import StreamProcessor and POLARS_AVAILABLE from allyanonimiser"
+
+
+def test_direct_stream_processor_import():
+    """Test direct import of stream_processor module."""
+    try:
+        # This should succeed even if Polars is not installed
+        from allyanonimiser.stream_processor import StreamProcessor, POLARS_AVAILABLE
+        
+        assert StreamProcessor is not None
+        assert isinstance(POLARS_AVAILABLE, bool)
+        
+    except ImportError:
+        # This should only fail if the module doesn't exist
+        assert False, "Failed to import stream_processor module directly"
