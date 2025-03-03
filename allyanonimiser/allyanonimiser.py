@@ -483,7 +483,7 @@ class Allyanonimiser:
             ally = create_allyanonimiser()
             
             # Anonymize text with direct parameters
-            text = "My name is John Smith, I was born on 15/06/1980 and my email is john.smith@example.com"
+            text = "My name is John Smith, I was born on 15/6/1980 and my email is john.smith@example.com"
             result = ally.anonymize(
                 text,
                 operators={
@@ -586,14 +586,7 @@ class Allyanonimiser:
             ally = create_allyanonimiser()
             
             # Process text with configuration objects
-            text = """
-            Customer: John Smith (DOB: 15/06/1980)
-            Policy #: POL-12345678
-            Email: john.smith@example.com
-            Phone: 0412 345 678
-            
-            Customer reported an accident on 10/05/2024.
-            """
+            text = "Customer: John Smith (DOB: 15/6/1980)\nPolicy #: POL-12345678\nEmail: john.smith@example.com\nPhone: 0412-345-678\n\nCustomer reported an accident on 10/5/2024."
             
             analysis_config = AnalysisConfig(
                 active_entity_types=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "DATE_OF_BIRTH"],
@@ -620,16 +613,15 @@ class Allyanonimiser:
             print("\nDetected entities:")
             for entity in result["analysis"]["entities"]:
                 print(f"{entity['entity_type']}: {entity['text']} (score: {entity['score']:.2f})")
-                
+            
             print("\nPII-rich segments:")
             for segment in result["segments"]:
                 print(f"Original: {segment['text']}")
                 print(f"Anonymized: {segment['anonymized']}")
-                
+            
             print("\nStructured data:")
             for key, value in result["structured_data"].items():
                 print(f"{key}: {value}")
-            ```
         """
         # Create config objects if not provided
         if analysis_config is None:
@@ -1077,7 +1069,7 @@ class Allyanonimiser:
             df = pd.DataFrame({
                 "id": [1, 2, 3],
                 "notes": [
-                    "Customer John Smith (DOB: 15/06/1980) called about policy POL-123456.",
+                    "Customer John Smith (DOB: 15/6/1980) called about policy POL-123456.",
                     "Jane Doe (email: jane.doe@example.com) requested a refund.",
                     "Alex Johnson from Sydney NSW 2000 reported an incident."
                 ]
