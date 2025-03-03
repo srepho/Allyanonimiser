@@ -151,7 +151,9 @@ class DataFrameProcessor:
                         active_entity_types: Optional[List[str]] = None,
                         inplace: bool = False,
                         output_column: Optional[str] = None,
-                        batch_size: int = 1000) -> pd.DataFrame:
+                        batch_size: int = 1000,
+                        age_bracket_size: int = 5,
+                        keep_postcode: bool = True) -> pd.DataFrame:
         """
         Anonymize PII in a DataFrame column.
         
@@ -164,6 +166,8 @@ class DataFrameProcessor:
             inplace: If True, modify the DataFrame in place
             output_column: Optional name for the output column (if None, uses f"{column}_anonymized")
             batch_size: Number of rows to process in each batch
+            age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
+            keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             
         Returns:
             DataFrame with anonymized text
@@ -187,7 +191,12 @@ class DataFrameProcessor:
             if pd.isna(text):
                 return text
                 
-            result = self.analyzer.anonymize(text, operators=operators)
+            result = self.analyzer.anonymize(
+                text, 
+                operators=operators,
+                age_bracket_size=age_bracket_size,
+                keep_postcode=keep_postcode
+            )
             return result['text']
             
         # Process in batches
@@ -262,7 +271,9 @@ class DataFrameProcessor:
                           save_entities: bool = True,
                           output_prefix: str = '',
                           progress_bar: bool = True,
-                          use_pyarrow: Optional[bool] = None) -> Dict[str, pd.DataFrame]:
+                          use_pyarrow: Optional[bool] = None,
+                          age_bracket_size: int = 5,
+                          keep_postcode: bool = True) -> Dict[str, pd.DataFrame]:
         """
         Process multiple columns of a DataFrame for comprehensive PII handling.
         
@@ -278,6 +289,8 @@ class DataFrameProcessor:
             output_prefix: Prefix for output column names
             progress_bar: Whether to display a progress bar
             use_pyarrow: Whether to use PyArrow for performance optimization (overrides instance setting)
+            age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
+            keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             
         Returns:
             Dict with processed DataFrame and entity DataFrame (if save_entities=True)
@@ -353,7 +366,12 @@ class DataFrameProcessor:
                     
                     # Anonymize if requested
                     if anonymize:
-                        result = self.analyzer.anonymize(text, operators=operators)
+                        result = self.analyzer.anonymize(
+                            text, 
+                            operators=operators,
+                            age_bracket_size=age_bracket_size,
+                            keep_postcode=keep_postcode
+                        )
                         anonymized_text = result['text']
                     else:
                         anonymized_text = text

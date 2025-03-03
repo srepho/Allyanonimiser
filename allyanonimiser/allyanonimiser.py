@@ -244,7 +244,8 @@ class Allyanonimiser:
         # Run the analysis
         return self.analyzer.analyze(processed_text, language, score_adjustment)
     
-    def anonymize(self, text, operators=None, language="en", active_entity_types=None, expand_acronyms=False):
+    def anonymize(self, text, operators=None, language="en", active_entity_types=None, 
+                 expand_acronyms=False, age_bracket_size=5, keep_postcode=True):
         """
         Anonymize PII entities in text.
         
@@ -254,6 +255,8 @@ class Allyanonimiser:
             language: The language of the text (default: en)
             active_entity_types: Optional list of entity types to activate (all are active if None)
             expand_acronyms: Whether to expand acronyms using the configured dictionary
+            age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
+            keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             
         Returns:
             Dict with anonymized text and other metadata
@@ -267,10 +270,17 @@ class Allyanonimiser:
         if expand_acronyms and self.text_preprocessor.acronym_dict:
             processed_text, _ = self.text_preprocessor.expand_acronyms(text)
             
-        return self.anonymizer.anonymize(processed_text, operators, language)
+        return self.anonymizer.anonymize(
+            processed_text, 
+            operators, 
+            language, 
+            age_bracket_size=age_bracket_size,
+            keep_postcode=keep_postcode
+        )
     
     def process(self, text, language="en", active_entity_types=None, score_adjustment=None, 
-              min_score_threshold=None, expand_acronyms=False):
+              min_score_threshold=None, expand_acronyms=False, operators=None, 
+              age_bracket_size=5, keep_postcode=True):
         """
         Process text to analyze and anonymize in a single operation.
         
@@ -281,6 +291,9 @@ class Allyanonimiser:
             score_adjustment: Optional dict mapping entity_type to score adjustment
             min_score_threshold: Optional minimum score threshold (0.0-1.0)
             expand_acronyms: Whether to expand acronyms using the configured dictionary
+            operators: Dict of entity_type to anonymization operator
+            age_bracket_size: Size of age brackets when using "age_bracket" operator (default: 5)
+            keep_postcode: Whether to keep postcodes when anonymizing addresses (default: True)
             
         Returns:
             Dict with analysis, anonymized text, and other metadata
@@ -310,8 +323,11 @@ class Allyanonimiser:
         # Anonymize the text
         anonymized_results = self.anonymize(
             processed_text, 
+            operators=operators,
             language=language, 
-            active_entity_types=active_entity_types
+            active_entity_types=active_entity_types,
+            age_bracket_size=age_bracket_size,
+            keep_postcode=keep_postcode
         )
         
         # Get PII-rich segments
@@ -322,8 +338,11 @@ class Allyanonimiser:
             segment_text = segment['text']
             anonymized_segment = self.anonymize(
                 segment_text, 
+                operators=operators,
                 language=language, 
-                active_entity_types=active_entity_types
+                active_entity_types=active_entity_types,
+                age_bracket_size=age_bracket_size,
+                keep_postcode=keep_postcode
             )
             segment['anonymized'] = anonymized_segment['text']
         
