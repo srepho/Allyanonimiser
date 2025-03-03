@@ -168,8 +168,9 @@ def test_process_files(allyanonimiser_instance, example_texts, tmp_path):
         save_results=True
     )
     
-    # Should have a result for each file
-    assert len(results) == len(file_paths)
+    # Check results structure - should have a 'results' key with a list of results
+    assert 'results' in results
+    assert len(results['results']) == len(file_paths)
     
     # Output directory should contain files
     assert os.path.exists(output_dir)
@@ -191,11 +192,14 @@ def test_custom_operators(allyanonimiser_instance, example_texts):
         "AU_PHONE": "mask_preserve_last_4"
     }
     
-    # Process with custom operators
+    # Process with custom operators - create anonymization config
+    from allyanonimiser import AnonymizationConfig
+    anon_config = AnonymizationConfig(operators=operators)
+    
+    # Process with custom operators through config
     result = allyanonimiser_instance.process(
         text=example_texts["claim_note"],
-        anonymize=True,
-        operators=operators
+        anonymization_config=anon_config
     )
     
     # Check that custom operators were applied
