@@ -153,6 +153,9 @@ class EnhancedAnonymizer:
                 "replacement": replacement
             })
         
+        # Remove overlapping entities, keeping the most specific ones
+        anonymization_entities = self._remove_overlapping_entities(anonymization_entities)
+        
         # Sort entities by start position in reverse order to process from end to start
         anonymization_entities.sort(key=lambda x: x["start"], reverse=True)
         
@@ -172,6 +175,82 @@ class EnhancedAnonymizer:
             "text": anonymized_text,
             "items": replacements
         }
+    
+    def _remove_overlapping_entities(self, entities):
+        """
+        Remove overlapping entities, keeping the most specific/important ones.
+        
+        Args:
+            entities: List of entity dictionaries with start, end, entity_type
+            
+        Returns:
+            List of non-overlapping entities
+        """
+        if not entities:
+            return entities
+        
+        # Sort by start position, then by length (longer first)
+        sorted_entities = sorted(entities, key=lambda x: (x["start"], -(x["end"] - x["start"])))
+        
+        # Priority order for entity types (higher priority wins in overlaps)
+        priority_order = {
+            # Specific identifiers have highest priority
+            "AU_MEDICARE": 100,
+            "AU_TFN": 100,
+            "AU_ABN": 100,
+            "AU_ACN": 100,
+            "INSURANCE_POLICY_NUMBER": 95,
+            "INSURANCE_CLAIM_NUMBER": 95,
+            "EMAIL_ADDRESS": 90,
+            "AU_PHONE": 85,
+            "CREDIT_CARD": 85,
+            "AU_DRIVERS_LICENSE": 80,
+            "AU_PASSPORT": 80,
+            "AU_CENTRELINK_CRN": 80,
+            "PERSON": 70,
+            "AU_ADDRESS": 60,
+            "ADDRESS": 60,
+            "LOCATION": 50,
+            "DATE": 40,
+            "AU_POSTCODE": 30,
+            "NUMBER": 20,
+            # Generic types have lowest priority
+            "VEHICLE_REGISTRATION": 15,
+            "FACILITY": 10,
+            "PRODUCT": 10,
+            "INCIDENT_DATE": 10
+        }
+        
+        result = []
+        for entity in sorted_entities:
+            # Check if this entity overlaps with any already selected entity
+            overlaps = False
+            for selected in result:
+                if (entity["start"] < selected["end"] and 
+                    entity["end"] > selected["start"]):
+                    # There's an overlap
+                    entity_priority = priority_order.get(entity["entity_type"], 0)
+                    selected_priority = priority_order.get(selected["entity_type"], 0)
+                    
+                    # If current entity has higher priority and is not contained within selected
+                    if (entity_priority > selected_priority and 
+                        not (entity["start"] >= selected["start"] and entity["end"] <= selected["end"])):
+                        # Remove the lower priority entity and add this one
+                        result.remove(selected)
+                        result.append(entity)
+                    # If priorities are equal, prefer the longer match
+                    elif (entity_priority == selected_priority and 
+                          (entity["end"] - entity["start"]) > (selected["end"] - selected["start"])):
+                        result.remove(selected)
+                        result.append(entity)
+                    
+                    overlaps = True
+                    break
+            
+            if not overlaps:
+                result.append(entity)
+        
+        return result
     
     def _extract_age_from_date(self, date_string):
         """

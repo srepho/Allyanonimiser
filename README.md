@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.1.0-blue)](https://pypi.org/project/allyanonimiser/2.1.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v2.2.0-blue)](https://pypi.org/project/allyanonimiser/2.2.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,20 +12,32 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
+## Version 2.2.0 - Enhanced Detection & Overlapping Entity Support
+
+### What's New in v2.2.0
+- **Improved Detection Accuracy**: Enhanced validation and context-aware detection significantly reduces false positives
+- **Overlapping Entity Resolution**: Smart handling of overlapping entities prevents text corruption during anonymization
+- **Automatic Pattern Loading**: All default patterns (Australian, Insurance, General) now load automatically
+- **Better Medicare Support**: Fixed Medicare number detection and validation
+- **Enhanced Date Handling**: Improved date validation to avoid false positives (e.g., "NSW 2000" no longer detected as DATE)
+- **Service Number Detection**: Added support for Australian service numbers (1300, 1800, 13xx)
+- **Context-Aware Detection**: New context analyzer improves entity detection accuracy
+- **Multiple Entity Masking**: Robust support for masking multiple entity types simultaneously
+
 ## Installation
 
 ```bash
 # Basic installation
-pip install allyanonimiser==2.1.0
+pip install allyanonimiser==2.2.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==2.1.0"
+pip install "allyanonimiser[stream]==2.2.0"
 
 # With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==2.1.0"
+pip install "allyanonimiser[llm]==2.2.0"
 
 # Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==2.1.0"
+pip install "allyanonimiser[stream,llm]==2.2.0"
 ```
 
 **Prerequisites:**
@@ -149,6 +161,11 @@ for result in results:
 - **Reporting System**: Comprehensive tracking and visualization of anonymization activities
 - **Jupyter Integration**: Rich visualization capabilities in notebook environments
 - **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
+- **Robust Detection**: Enhanced validation and context-aware detection to reduce false positives
+- **Overlapping Entity Handling**: Smart resolution of overlapping entities for clean anonymization
+- **Pattern Loading**: Automatic loading of all default patterns (Australian, Insurance, General)
+- **Improved Medicare Detection**: Fixed detection and validation for Australian Medicare numbers
+- **Multiple Entity Masking**: Simultaneous masking of multiple entity types with different operators
 
 ## Usage Examples
 

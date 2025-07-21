@@ -274,6 +274,23 @@ class EnhancedAnalyzer:
         # De-duplicate results and resolve entity conflicts
         deduplicated_results = self._deduplicate_and_resolve_conflicts(combined_results)
         
+        # Apply context-aware filtering
+        from .context_analyzer import ContextAnalyzer
+        context_analyzer = ContextAnalyzer()
+        
+        filtered_results = []
+        for result in deduplicated_results:
+            # Check if likely false positive based on context
+            if not context_analyzer.is_likely_false_positive(text, result.entity_type, result.start, result.end):
+                # Analyze context for confidence boost
+                context_analysis = context_analyzer.analyze_context(text, result.entity_type, result.start, result.end)
+                
+                # Apply confidence boost if context matches
+                if context_analysis['confidence_boost'] > 0:
+                    result.score = min(1.0, result.score + context_analysis['confidence_boost'])
+                
+                filtered_results.append(result)
+        
         # Cache the final result if caching is enabled
         if self.enable_caching:
             # Manage cache size
@@ -282,9 +299,9 @@ class EnhancedAnalyzer:
                 self._result_cache = {}
                 
             # Store a copy of the results
-            self._result_cache[cache_key] = deduplicated_results.copy()
+            self._result_cache[cache_key] = filtered_results.copy()
             
-        return deduplicated_results
+        return filtered_results
         
     def _create_cache_key(self, text, score_adjustment=None):
         """
@@ -508,10 +525,25 @@ class EnhancedAnalyzer:
             # Skip common false positives
             if entity_type == "PERSON":
                 lc_text = ent.text.lower()
+                # Check for policy/claim patterns
                 if (lc_text.startswith("policy") or 
                     lc_text.startswith("ref") or 
                     lc_text.startswith("claim") or
                     "number" in lc_text):
+                    continue
+                    
+                # Check for street/place suffixes
+                if any(ent.text.lower().endswith(suffix) for suffix in [" st", " street", " rd", " road", 
+                                                                        " ave", " avenue", " dr", " drive", 
+                                                                        " ln", " lane", " pl", " place",
+                                                                        " ct", " court", " cr", " crescent"]):
+                    continue
+                    
+            # Skip ORGANIZATION false positives
+            if entity_type == "ORGANIZATION":
+                lc_text = ent.text.lower()
+                # Common abbreviations that shouldn't be organizations
+                if lc_text in ["dob", "doi", "medicare", "abn", "tfn", "acn"]:
                     continue
             
             # Create result
@@ -544,12 +576,15 @@ class EnhancedAnalyzer:
             'EMAIL_ADDRESS': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         }
         
-        # Phone number patterns
+        # Phone number patterns - improved for Australian numbers
         phone_patterns = {
-            'PHONE_NUMBER': [
-                r'\b(?:\+?61|0)[2378]\s*\d{4}\s*\d{4}\b',  # Australian format
-                r'\b\+\d{1,3}\s*\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',  # International
-                r'\b\(\d{2,3}\)\s*\d{3}[-.\s]?\d{4}\b'  # (02) 1234 5678 format
+            'AU_PHONE': [
+                r'\b(?:\+61|0)4\d{2}[\s-]?\d{3}[\s-]?\d{3}\b',  # Mobile
+                r'\b(?:\+61|0)[2378][\s-]?\d{4}[\s-]?\d{4}\b',  # Landline
+                r'\(\d{2}\)\s*\d{4}[\s-]?\d{4}\b',              # (02) 1234 5678
+                r'\b13\d{2}\s*\d{2}\b',                          # 13xx xx
+                r'\b1300\s+\d{3}\s+\d{3}\b',                     # 1300 xxx xxx
+                r'\b1800\s*\d{3}\s*\d{3}\b'                      # 1800 xxx xxx
             ]
         }
         
@@ -572,22 +607,29 @@ class EnhancedAnalyzer:
             ]
         }
         
-        # AU-specific patterns
+        # AU-specific patterns with improved detection
         au_patterns = {
             'AU_TFN': [
-                r'\b\d{3}\s*\d{3}\s*\d{3}\b',  # 123 456 789
-                r'(?:TFN|Tax\s+File\s+Number)[#:\-\s]+(\d{3}\s*\d{3}\s*\d{3})'
+                r'(?:TFN|Tax\s+File\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b'
             ],
             'AU_MEDICARE': [
-                r'\b\d{4}\s*\d{5}\s*\d{1}\b',  # 2123 45678 1
-                r'(?:Medicare|Medicare\s+Number)[#:\-\s]+(\d{4}\s*\d{5}\s*\d{1})'
+                r'(?:Medicare|Medicare\s+Number)[:\s]*([2-6]\d{3}\s*\d{5}\s*\d{1})\b'
             ],
             'AU_ABN': [
-                r'\b\d{2}\s*\d{3}\s*\d{3}\s*\d{3}\b',  # 51 824 753 556
-                r'(?:ABN|Australian\s+Business\s+Number)[#:\-\s]+(\d{2}\s*\d{3}\s*\d{3}\s*\d{3})'
+                r'(?:ABN|Australian\s+Business\s+Number)[:\s]*(\d{2}\s*\d{3}\s*\d{3}\s*\d{3})\b'
+            ],
+            'AU_ACN': [
+                r'(?:ACN|Australian\s+Company\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b'
             ],
             'AU_DRIVERS_LICENSE': [
-                r'(?:Driver\'?s?\s+License|DL|License\s+Number)[#:\-\s]+([A-Z0-9]{6,10})'
+                r'(?:Driver\'?s?\s+License|Licence|DL)[:\s#]*([A-Z0-9]{6,10})\b',
+                r'(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+License[:\s]*(\d{6,10})\b'
+            ],
+            'AU_PASSPORT': [
+                r'(?:Passport|Passport\s+Number)[:\s]*([A-Z][0-9]{7})\b'
+            ],
+            'AU_CENTRELINK_CRN': [
+                r'(?:CRN|Centrelink\s+Reference\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3}[A-Z]?)\b'
             ]
         }
         
@@ -758,6 +800,9 @@ class EnhancedAnalyzer:
         Returns:
             Deduplicated list of RecognizerResult objects
         """
+        # Import validator here to avoid circular imports
+        from .validators import EntityValidator
+        
         deduplicated_results = []
         seen_spans = {}  # Maps (start, end, text) to list of results
         
@@ -771,8 +816,47 @@ class EnhancedAnalyzer:
         # Post-processing to resolve entity conflicts
         for span_key, span_results in seen_spans.items():
             if len(span_results) == 1:
-                # Only one entity type for this span, add it directly
-                deduplicated_results.append(span_results[0])
+                # Only one entity type for this span, validate it
+                result = span_results[0]
+                
+                # Apply validation based on entity type
+                if result.entity_type == 'DATE':
+                    is_valid, date_type = EntityValidator.validate_date(result.text)
+                    if not is_valid and date_type in ['state_postcode', 'phone_prefix', 'phone_suffix', 'medicare_number', 'service_number']:
+                        continue  # Skip false positive dates
+                        
+                elif result.entity_type == 'NUMBER':
+                    is_valid, num_type = EntityValidator.validate_number(result.text)
+                    if not is_valid:
+                        continue  # Skip invalid numbers
+                        
+                elif result.entity_type == 'AU_PHONE':
+                    is_valid, phone_type = EntityValidator.validate_phone_number(result.text)
+                    if not is_valid:
+                        continue  # Skip invalid phone numbers
+                        
+                elif result.entity_type == 'AU_MEDICARE':
+                    # Remove spaces before validation
+                    medicare_text = result.text.replace(' ', '')
+                    is_valid, error = EntityValidator.validate_medicare_number(medicare_text)
+                    if not is_valid:
+                        continue  # Skip invalid Medicare numbers
+                        
+                elif result.entity_type == 'AU_TFN':
+                    # Remove spaces before validation
+                    tfn_text = result.text.replace(' ', '')
+                    is_valid, error = EntityValidator.validate_tfn(tfn_text)
+                    if not is_valid:
+                        continue  # Skip invalid TFNs
+                        
+                elif result.entity_type == 'AU_ABN':
+                    # Remove spaces before validation
+                    abn_text = result.text.replace(' ', '')
+                    is_valid, error = EntityValidator.validate_abn(abn_text)
+                    if not is_valid:
+                        continue  # Skip invalid ABNs
+                
+                deduplicated_results.append(result)
             else:
                 # Multiple entity types for the same span, resolve the conflict
                 resolved_result = self._resolve_entity_conflicts(span_results, span_key[2])
@@ -800,10 +884,28 @@ class EnhancedAnalyzer:
         # Skip false positives for common phrases incorrectly identified as PERSON
         if any(r.entity_type == "PERSON" for r in results):
             lower_text = text.lower()
-            if (lower_text.startswith("policy") or 
-                lower_text.startswith("ref") or 
-                lower_text.startswith("claim") or
-                "number" in lower_text):
+            upper_text = text.upper()
+            
+            # Check for common false positive patterns
+            false_positive_patterns = [
+                lower_text.startswith("policy"),
+                lower_text.startswith("ref"),
+                lower_text.startswith("claim"),
+                upper_text.startswith("POL-"),  # Policy numbers
+                upper_text.startswith("CL-"),   # Claim numbers
+                upper_text.startswith("CLM-"),  # Claim numbers
+                "number" in lower_text,
+                # Common street/place suffixes that might be misidentified as person names
+                any(text.lower().endswith(suffix) for suffix in [" st", " street", " rd", " road", " ave", " avenue", 
+                                                                " dr", " drive", " ln", " lane", " pl", " place",
+                                                                " ct", " court", " cr", " crescent"]),
+                # Medicare/insurance terms
+                lower_text == "medicare",
+                lower_text == "dob",  # Date of birth abbreviation
+                lower_text == "doi"   # Date of incident abbreviation
+            ]
+            
+            if any(false_positive_patterns):
                 # Filter out results that are PERSON entity types for these patterns
                 filtered_results = [r for r in results if r.entity_type != "PERSON"]
                 if filtered_results:
@@ -816,6 +918,15 @@ class EnhancedAnalyzer:
             for r in results:
                 if r.entity_type == "PERSON" and r.score >= 0.9:
                     return r
+        
+        # Special handling for service numbers that might be detected as DATE
+        if any(r.entity_type == 'AU_PHONE' for r in results) and any(r.entity_type == 'DATE' for r in results):
+            # Check if it's a service number pattern
+            if re.match(r'^(1300|1800|13\d{2})\s+', text):
+                # Prefer AU_PHONE over DATE for service numbers
+                for r in results:
+                    if r.entity_type == 'AU_PHONE':
+                        return r
         
         # Priority by score (higher score wins)
         max_score_result = max(results, key=lambda r: r.score)

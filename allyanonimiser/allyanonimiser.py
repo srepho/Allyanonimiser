@@ -180,6 +180,9 @@ class Allyanonimiser:
             
         # Configure from settings
         self._configure_from_settings()
+        
+        # Load default patterns
+        self._load_default_patterns()
     
     def _configure_from_settings(self):
         """Configure the analyzer, anonymizer, and other components from settings."""
@@ -200,6 +203,24 @@ class Allyanonimiser:
         
         # Get PyArrow setting if available
         self.use_pyarrow = self.settings_manager.get_value('processing.use_pyarrow', True)
+    
+    def _load_default_patterns(self):
+        """Load default patterns from pattern modules."""
+        from .patterns.au_patterns import get_au_pattern_definitions
+        from .patterns.insurance_patterns import get_insurance_pattern_definitions
+        from .patterns.general_patterns import get_general_pattern_definitions
+        
+        # Load Australian patterns
+        for pattern_def in get_au_pattern_definitions():
+            self.analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
+        
+        # Load insurance patterns
+        for pattern_def in get_insurance_pattern_definitions():
+            self.analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
+        
+        # Load general patterns
+        for pattern_def in get_general_pattern_definitions():
+            self.analyzer.add_pattern(CustomPatternDefinition(**pattern_def))
     
     def save_settings(self, settings_path):
         """

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.2.0 (2025-07-21)
+
+### Added
+- **Robust Detection System**: Enhanced validation and context-aware detection to reduce false positives
+- **Overlapping Entity Resolution**: Smart handling of overlapping entities prevents text corruption during anonymization
+- **Automatic Pattern Loading**: All default patterns (Australian, Insurance, General) now load automatically on initialization
+- **Context Analyzer**: New `context_analyzer.py` module for context-aware entity detection
+- **Entity Validators**: New `validators.py` module with validation functions for various entity types
+- **Comprehensive Test Suite**: Added test files for robust detection, overlapping entities, and multiple entity masking
+
+### Fixed
+- **Medicare Number Detection**: Fixed Medicare number detection and validation for numbers starting with 2-6
+- **Date False Positives**: "NSW 2000" and similar state+postcode combinations no longer detected as dates
+- **Phone Number Detection**: Improved detection of Australian service numbers (1300, 1800, 13xx)
+- **Overlapping Entity Handling**: Fixed text corruption when entities overlap (e.g., Medicare number containing postcode)
+- **Pattern Conflicts**: Resolved conflicts between TFN, ABN, and ACN patterns by making them context-specific
+
+### Enhanced
+- **False Positive Filtering**: Added filtering for common false positives (street names as PERSON, abbreviations as ORGANIZATION)
+- **Entity Priority System**: Implemented priority-based resolution for overlapping entities
+- **Date Validation**: Enhanced date validation to avoid phone number prefixes and Medicare numbers
+- **Multiple Entity Masking**: Improved support for simultaneous masking of multiple entity types with different operators
+
 ## 2.1.0 (2025-03-03)
 
 ### Added
