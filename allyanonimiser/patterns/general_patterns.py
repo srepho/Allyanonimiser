@@ -62,9 +62,14 @@ def get_general_pattern_definitions():
             "entity_type": "ORGANIZATION",
             "patterns": [
                 r"\b(?:Insurance|Insurances|Bank|Financial|Services|Motors|Mechanics)\b",
-                r"\b[A-Z][a-z]+\s+(?:Insurance|Bank|Financial|Services|Motors|Mechanics)\b"
+                r"\b[A-Z][a-z]+\s+(?:Insurance|Bank|Financial|Services|Motors|Mechanics)\b",
+                r"\b[A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*\s+(?:Pty|Proprietary)\s+Ltd\b",
+                r"\b[A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*\s+Limited\b",
+                r"\b[A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*\s+(?:Inc|LLC|LLP|Corp|Corporation)\b",
+                r"Payee\s*(?:Name)?\s*:\s*([A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*(?:\s+(?:Pty\s+Ltd|Limited|Inc|LLC))?)\b",
+                r"(?:Company|Business|Firm)\s*(?:Name)?\s*:\s*([A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*)\b"
             ],
-            "context": ["company", "organization", "business", "firm"],
+            "context": ["company", "organization", "business", "firm", "payee", "vendor", "supplier"],
             "name": "Organization"
         }
     ]

@@ -3,7 +3,7 @@ Tests for the pattern generation functionality.
 """
 import re
 import pytest
-from utils.spacy_helpers import (
+from allyanonimiser.utils.spacy_helpers import (
     create_regex_from_examples,
     create_simple_generalized_regex,
     create_generalized_regex,

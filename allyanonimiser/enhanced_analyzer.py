@@ -538,12 +538,138 @@ class EnhancedAnalyzer:
                                                                         " ln", " lane", " pl", " place",
                                                                         " ct", " court", " cr", " crescent"]):
                     continue
+                
+                # Check for common false positive words
+                false_positive_words = [
+                    # Status and state words
+                    "balance", "outstanding", "await", "awaiting", "pending", "completed", 
+                    "processed", "received", "submitted", "approved", "declined", "rejected", 
+                    "cancelled", "closed", "open", "active", "inactive", "suspended", 
+                    "terminated", "expired", "current", "previous", "ongoing", "finished",
+                    
+                    # Action words often misdetected
+                    "review", "update", "check", "verify", "confirm", "validate", "process",
+                    "submit", "approve", "decline", "reject", "cancel", "close", "complete",
+                    "advised", "notify", "inform", "contact", "follow", "proceed", "continue",
+                    
+                    # Business/Insurance specific terms
+                    "excess", "premium", "deductible", "coverage", "liability", "claim",
+                    "policy", "payment", "invoice", "receipt", "refund", "credit", "debit",
+                    "assessment", "evaluation", "inspection", "investigation", "settlement",
+                    
+                    # Service/Repair terms
+                    "repairer", "repairs", "service", "maintenance", "workshop", "garage",
+                    "parts", "replacement", "installation", "removal", "diagnostic", "estimate",
+                    
+                    # Communication status
+                    "unreachable", "unavailable", "contactable", "available", "busy", "engaged",
+                    
+                    # Common single words that aren't names
+                    "drop", "pickup", "delivery", "collection", "dispatch", "arrival",
+                    "departure", "transfer", "forward", "return", "exchange", "replace",
+                    
+                    # Document/Form related
+                    "form", "document", "report", "statement", "declaration", "certificate",
+                    "authorization", "approval", "confirmation", "acknowledgment", "notice",
+                    
+                    # Time-related terms
+                    "today", "tomorrow", "yesterday", "daily", "weekly", "monthly", "yearly",
+                    "immediate", "urgent", "routine", "scheduled", "overdue", "expired",
+                    
+                    # Quality/Condition terms
+                    "new", "used", "damaged", "repaired", "replaced", "original", "genuine",
+                    "aftermarket", "compatible", "suitable", "adequate", "insufficient"
+                ]
+                
+                # Check if entire text is a false positive
+                if lc_text in false_positive_words:
+                    continue
+                
+                # Check if text contains multiple false positive words
+                words = lc_text.split()
+                if any(word in false_positive_words for word in words):
+                    continue
+                
+                # Check for boundary issues - words that shouldn't be part of names
+                stop_words = ["subject", "matter", "issue", "claim", "policy", "number", 
+                              "date", "time", "amount", "status", "type", "category"]
+                
+                # If person name ends with a stop word, trim it
+                text_parts = ent.text.split()
+                if len(text_parts) > 1 and text_parts[-1].lower() in stop_words:
+                    # Recalculate the text without the stop word
+                    trimmed_text = " ".join(text_parts[:-1])
+                    # Calculate new end position based on original start
+                    new_end = ent.start_char + len(trimmed_text)
+                    # Create a new result with corrected boundaries
+                    result = RecognizerResult(
+                        entity_type=entity_type,
+                        start=ent.start_char,
+                        end=new_end,
+                        score=0.9,
+                        text=trimmed_text
+                    )
+                    results.append(result)
+                    continue
                     
             # Skip ORGANIZATION false positives
             if entity_type == "ORGANIZATION":
                 lc_text = ent.text.lower()
                 # Common abbreviations that shouldn't be organizations
                 if lc_text in ["dob", "doi", "medicare", "abn", "tfn", "acn"]:
+                    continue
+            
+            # Skip LOCATION false positives
+            if entity_type == "LOCATION":
+                lc_text = ent.text.lower()
+                
+                # Common words that are NOT locations
+                location_false_positives = [
+                    # Action words
+                    "await", "awaiting", "awaits", "awaited",
+                    "repair", "repairs", "repairing", "repaired",
+                    "service", "services", "servicing", "serviced",
+                    "process", "processing", "processed",
+                    "update", "updates", "updating", "updated",
+                    "review", "reviews", "reviewing", "reviewed",
+                    "submit", "submits", "submitting", "submitted",
+                    "pending", "complete", "completed", "completing",
+                    
+                    # Status words
+                    "open", "closed", "active", "inactive",
+                    "approved", "declined", "rejected", "cancelled",
+                    "available", "unavailable", "occupied", "vacant",
+                    
+                    # Business/Insurance terms
+                    "claim", "claims", "policy", "policies",
+                    "coverage", "liability", "excess", "premium",
+                    "payment", "balance", "outstanding", "overdue",
+                    
+                    # Department/Service terms
+                    "workshop", "workshops", "garage", "garages",
+                    "parts", "spares", "supplies", "inventory",
+                    "storage", "warehouse", "facility", "facilities",
+                    
+                    # Common misdetections
+                    "drop", "drops", "pickup", "delivery",
+                    "arrival", "departure", "transit", "shipping"
+                ]
+                
+                # Check if the entire text is a false positive
+                if lc_text in location_false_positives:
+                    continue
+                
+                # Check if it's a single word that's clearly not a location
+                if len(lc_text.split()) == 1:
+                    # Single words that start with these are usually not locations
+                    non_location_prefixes = ["await", "repair", "serv", "proc", "updat", "review", 
+                                           "submit", "pend", "complet", "approv", "declin", "reject"]
+                    if any(lc_text.startswith(prefix) for prefix in non_location_prefixes):
+                        continue
+                
+                # Check for patterns that indicate it's not a location
+                # e.g., "Repairs in progress" - "Repairs" is not a location
+                if lc_text.endswith("s") and lc_text[:-1] in location_false_positives:
                     continue
             
             # Create result

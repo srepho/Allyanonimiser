@@ -67,14 +67,25 @@ def get_au_pattern_definitions():
             "name": "Australian Postcode"
         },
         {
-            "entity_type": "AU_BSB_ACCOUNT",
+            "entity_type": "AU_BSB",
             "patterns": [
-                r"\b\d{3}-\d{3}\s*\d{6,10}\b",
-                r"\bBSB:\s*\d{3}-\d{3}\b",
-                r"\bAccount:\s*\d{6,10}\b"
+                r"\b\d{3}-\d{3}\b",
+                r"BSB\s*:\s*(\d{3}-\d{3})\b",
+                r"BSB\s*(?:Number|#)?\s*:\s*(\d{3}-\d{3})\b",
+                r"(?:Bank\s+State\s+Branch|BSB)\s*(?:Code|Number)?[:\s]*(\d{3}-\d{3})\b"
             ],
-            "context": ["bsb", "account", "bank", "payment", "deposit"],
-            "name": "Australian BSB and Account Number"
+            "context": ["bsb", "bank", "branch", "payment", "transfer"],
+            "name": "Australian BSB"
+        },
+        {
+            "entity_type": "AU_ACCOUNT_NUMBER", 
+            "patterns": [
+                r"Account\s*(?:Number|#)?\s*:\s*(\d{4,10})\b",
+                r"(?:Bank\s+)?Account\s*(?:Number|No\.?|#)?\s*:\s*(\d{4}\s+\d{4})\b",
+                r"(?:account|acct)\s*(?:number|#)?[:\s]*(\d{4,10})\b"
+            ],
+            "context": ["account", "bank", "payment", "deposit", "transfer"],
+            "name": "Australian Bank Account Number"
         },
         {
             "entity_type": "AU_ABN",
@@ -114,11 +125,13 @@ def get_au_pattern_definitions():
         {
             "entity_type": "VEHICLE_REGISTRATION",
             "patterns": [
-                r"\b(?!AU-\d+\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must start with at least one letter, and exclude policy numbers like AU-12345678
+                r"\b(?!AU-\d+\b)(?!NSW|VIC|QLD|WA|SA|TAS|NT|ACT\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{2,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must have at least 2 parts with numbers, exclude states
                 r"\b(?:Registration|Rego)(?:\.|\:|\s)+\s*([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",  # Match after the word Registration/Rego with capturing group
-                r"\brego\s+([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b"   # Match after lowercase "rego" with capturing group
+                r"\brego\s+([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",   # Match after lowercase "rego" with capturing group
+                r"\b[A-Z]{2,3}\d{2,3}[A-Z]?\b",  # Common format like ABC123 or AB123C
+                r"\b\d{1,3}[A-Z]{2,3}\b"  # Common format like 123ABC
             ],
-            "context": ["registration", "rego", "vehicle", "car", "plate"],
+            "context": ["registration", "rego", "vehicle", "car", "plate", "number plate"],
             "name": "Vehicle Registration"
         }
     ]

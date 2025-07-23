@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.3.0 (2025-07-23)
+
+### Added
+- **Comprehensive False Positive Filtering**: Added extensive filtering for PERSON and LOCATION entities with 100+ false positive words
+- **NAME_CONSULTANT Pattern**: New entity type for detecting consultant/agent names with proper boundary detection
+- **Enhanced BSB/Account Detection**: Split AU_BSB_ACCOUNT into separate AU_BSB and AU_ACCOUNT_NUMBER entities for better detection
+- **Improved Organization Patterns**: Added support for alphanumeric company names and Australian business suffixes (Pty Ltd, Limited)
+
+### Fixed
+- **PERSON False Positives**: Words like "await", "repairs", "balance", "outstanding" are no longer detected as PERSON entities
+- **LOCATION False Positives**: Common action words and business terms no longer incorrectly detected as locations
+- **PERSON Boundary Issues**: Names no longer capture trailing words like "Subject", "Status", "Regarding"
+- **BSB Pattern Detection**: Fixed detection of formats like "BSB : 062-000"
+- **Account Number Detection**: Fixed detection of formats like "Account Number : 1617 8029"
+- **Organization Detection**: "Pty Ltd" companies now properly detected (e.g., "Right2Drive Pty Ltd")
+- **Vehicle Registration**: Refined patterns to reduce false positives from all-caps text
+
+### Enhanced
+- **Pattern Matching**: Better handling of labeled formats (e.g., "Payee Name : Company Pty Ltd")
+- **Context Awareness**: Improved boundary detection for all entity types
+- **Detection Accuracy**: Significantly reduced false positives while maintaining high recall
+
 ## 2.2.0 (2025-07-21)
 
 ### Added

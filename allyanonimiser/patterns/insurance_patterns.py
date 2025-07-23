@@ -74,5 +74,18 @@ def get_insurance_pattern_definitions():
             ],
             "context": ["date", "occurred", "happened", "incident", "accident"],
             "name": "Incident Date"
+        },
+        {
+            "entity_type": "NAME_CONSULTANT",
+            "patterns": [
+                r"(?:Diary\s+)?Assigned\s+To\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)(?=\s+(?:Subject|Re|Regarding|For|About|Status|Case|Date|Time|Matter|Issue|Type|Category)(?:\s|:|$))",
+                r"(?:Consultant|Agent|Handler|Officer)\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)(?=\s+(?:Subject|Re|Regarding|For|About|Status|Case|Date|Time|Matter|Issue|Type|Category)(?:\s|:|$))",
+                r"(?:Representative|Rep|Contact)\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)(?=\s+(?:Subject|Re|Regarding|For|About|Status|Case|Date|Time|Matter|Issue|Type|Category)(?:\s|:|$))",
+                r"(?:Diary\s+)?Assigned\s+To\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)$",
+                r"(?:Consultant|Agent|Handler|Officer)\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)$",
+                r"(?:Representative|Rep|Contact)\s*:\s*([A-Z][a-z]+\s+[A-Z][a-z]+)$"
+            ],
+            "context": ["assigned", "consultant", "agent", "handler", "officer", "representative"],
+            "name": "Consultant/Agent Name"
         }
     ]
