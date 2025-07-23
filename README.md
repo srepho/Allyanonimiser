@@ -168,6 +168,109 @@ for result in results:
 - **Improved Medicare Detection**: Fixed detection and validation for Australian Medicare numbers
 - **Multiple Entity Masking**: Simultaneous masking of multiple entity types with different operators
 
+## Supported Entity Types
+
+Allyanonimiser supports **38 different entity types** across four categories:
+
+### Complete Entity Type Reference
+
+<details>
+<summary><b>🇦🇺 Australian-Specific Entities (13 types)</b></summary>
+
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| AU_TFN | Tax File Number | 123 456 789 |
+| AU_PHONE | Phone Number | 0412 345 678, (02) 9876 5432 |
+| AU_MEDICARE | Medicare Number | 2123 45678 1 |
+| AU_DRIVERS_LICENSE | Driver's License | VIC1234567, NSW98765 |
+| AU_ADDRESS | Street Address | 123 Collins St, Melbourne VIC 3000 |
+| AU_POSTCODE | Postcode | 2000, 3000, 4000 |
+| AU_BSB | Bank State Branch | 062-000, 123-456 |
+| AU_ACCOUNT_NUMBER | Bank Account | 1234567890 |
+| AU_ABN | Business Number | 11 222 333 444 |
+| AU_ACN | Company Number | 123 456 789 |
+| AU_PASSPORT | Passport Number | PA1234567, AB9876543 |
+| AU_CENTRELINK_CRN | Centrelink Reference | 123 456 789A |
+| VEHICLE_REGISTRATION | Vehicle Rego | ABC123, 1ABC23 |
+
+</details>
+
+<details>
+<summary><b>🏢 Insurance-Specific Entities (8 types)</b></summary>
+
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| INSURANCE_POLICY_NUMBER | Policy Number | POL-12345678, AU-98765432 |
+| INSURANCE_CLAIM_NUMBER | Claim Number | CL-23456789, C-987654 |
+| VEHICLE_VIN | Vehicle ID Number | 1HGCM82633A123456 |
+| INVOICE_NUMBER | Invoice/Quote | INV-2024001, Q-5678 |
+| BROKER_CODE | Broker Code | BRK-1234 |
+| VEHICLE_DETAILS | Vehicle Description | 2022 Toyota Camry |
+| INCIDENT_DATE | Date of Incident | on 15/03/2024 |
+| NAME_CONSULTANT | Consultant Name | Assigned To: Sarah Johnson |
+
+</details>
+
+<details>
+<summary><b>👤 General PII Entities (8 types)</b></summary>
+
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| CREDIT_CARD | Credit Card | 4111 1111 1111 1111 |
+| PERSON | Person Name | John Smith, Dr. Sarah O'Connor |
+| EMAIL_ADDRESS | Email | john@example.com |
+| DATE_OF_BIRTH | Date of Birth | DOB: 01/01/1990 |
+| LOCATION | Location | Sydney, New South Wales |
+| DATE | General Date | 15/03/2024, March 15, 2024 |
+| MONEY_AMOUNT | Money Amount | $1,234.56 |
+| ORGANIZATION | Organization | ABC Pty Ltd, XYZ Limited |
+
+</details>
+
+<details>
+<summary><b>🤖 Additional spaCy NER Entities (9 types)</b></summary>
+
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| NUMBER | Numeric Value | 42, 1234 |
+| TIME | Time Expression | 3:30 PM, 14:45 |
+| PERCENT | Percentage | 25%, 99.9% |
+| PRODUCT | Product Name | iPhone 15, Windows 11 |
+| EVENT | Event Name | Olympic Games |
+| WORK_OF_ART | Title | "The Great Gatsby" |
+| LAW | Legal Document | Privacy Act 1988 |
+| LANGUAGE | Language | English, Spanish |
+| FACILITY | Building/Airport | Sydney Opera House |
+
+</details>
+
+### Quick Entity Detection Test
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+ally = create_allyanonimiser()
+
+# Test text with multiple entity types
+test_text = """
+Customer: John Smith (TFN: 123 456 789)
+Phone: 0412 345 678
+Email: john.smith@example.com
+Policy: POL-12345678
+Address: 123 Collins St, Melbourne VIC 3000
+Payment: $1,234.56 via Credit Card 4111 1111 1111 1111
+"""
+
+results = ally.analyze(test_text)
+
+# Display detected entities by type
+from collections import Counter
+entity_types = Counter(r.entity_type for r in results)
+print(f"Found {len(results)} entities across {len(entity_types)} types:")
+for entity_type, count in entity_types.most_common():
+    print(f"  {entity_type}: {count}")
+```
+
 ## Usage Examples
 
 ### Analyze Text for PII Entities
