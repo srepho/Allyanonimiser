@@ -1124,6 +1124,79 @@ class Allyanonimiser:
         
         return self.settings_manager.export_config(config_path, include_metadata)
     
+    def check_spacy_status(self):
+        """
+        Check the status of spaCy model loading and provide guidance.
+        
+        Returns:
+            dict: Status information including:
+                - is_loaded: Whether spaCy is loaded and available
+                - model_name: Name of the loaded model (if any)
+                - has_ner: Whether the model supports named entity recognition
+                - entity_types: List of entity types that require spaCy
+                - recommendation: Guidance on installation if needed
+                
+        Example:
+            ```python
+            from allyanonimiser import create_allyanonimiser
+            
+            ally = create_allyanonimiser()
+            status = ally.check_spacy_status()
+            
+            if not status['is_loaded']:
+                print(status['recommendation'])
+            else:
+                print(f"✓ spaCy model loaded: {status['model_name']}")
+                if status['has_ner']:
+                    print("✓ Named Entity Recognition available")
+                    print(f"  Entities: {', '.join(status['entity_types'])}")
+                else:
+                    print("⚠️  Limited entity detection (no NER model)")
+            ```
+        """
+        status = {
+            'is_loaded': False,
+            'model_name': None,
+            'has_ner': False,
+            'entity_types': ['PERSON', 'ORGANIZATION', 'LOCATION', 'DATE', 'TIME', 'MONEY', 'PERCENT'],
+            'recommendation': None
+        }
+        
+        if hasattr(self.analyzer, 'use_spacy') and self.analyzer.use_spacy:
+            status['is_loaded'] = True
+            
+            if hasattr(self.analyzer, 'spacy_model_loaded'):
+                status['model_name'] = self.analyzer.spacy_model_loaded
+                
+                # Check if it's a blank model
+                if status['model_name'] == 'blank_en':
+                    status['has_ner'] = False
+                    status['recommendation'] = (
+                        "Basic spaCy model loaded. For full Named Entity Recognition:\n"
+                        "  python -m spacy download en_core_web_lg  # Recommended (788 MB)\n"
+                        "  OR\n"
+                        "  python -m spacy download en_core_web_sm  # Smaller alternative (44 MB)"
+                    )
+                else:
+                    status['has_ner'] = True
+                    status['recommendation'] = f"✓ Full functionality available with {status['model_name']}"
+            else:
+                # Old version without model tracking
+                status['model_name'] = 'unknown'
+                status['has_ner'] = True
+                status['recommendation'] = "✓ spaCy model loaded (version unknown)"
+        else:
+            status['recommendation'] = (
+                "spaCy not loaded. The following entity types will not be detected:\n"
+                f"  {', '.join(status['entity_types'])}\n\n"
+                "To enable these features:\n"
+                "  pip install spacy\n"
+                "  python -m spacy download en_core_web_lg  # Recommended\n\n"
+                "Pattern-based detection (emails, phones, IDs, etc.) will still work."
+            )
+            
+        return status
+    
     def process_dataframe(self, df, text_columns=None, column=None, operation='process', 
                           n_workers=None, use_pyarrow=None, analysis_config=None, 
                           anonymization_config=None, **kwargs):

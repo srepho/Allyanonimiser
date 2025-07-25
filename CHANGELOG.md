@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.4.0 (2025-07-25)
+
+### Added
+- **Enhanced spaCy Status Reporting**: Clear visual feedback when loading spaCy models with helpful installation guidance
+- **New `check_spacy_status()` Method**: Programmatically check spaCy configuration and get specific recommendations
+- **Setup Verification Script**: New `verify_setup.py` script to check all dependencies and configurations
+- **spaCy Status Example**: New `example_spacy_status.py` demonstrating spaCy integration checking
+
+### Enhanced
+- **Improved Documentation**: Clearer guidance on spaCy requirements and their impact on functionality
+- **Better Error Messages**: More helpful feedback when spaCy models are missing or misconfigured
+- **Model Detection**: Automatically detects which spaCy model is loaded (large, small, or blank)
+- **Visual Indicators**: Uses ✓ and ⚠️ symbols for clear status indication
+
+### Developer Experience
+- **Setup Verification**: Easy way to verify installation is complete and working properly
+- **Clearer Prerequisites**: README now clearly explains what works with/without spaCy models
+- **Programmatic Checks**: Applications can now check spaCy status and adapt behavior accordingly
+
 ## 2.3.0 (2025-07-23)
 
 ### Added

@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.3.0-blue)](https://pypi.org/project/allyanonimiser/2.3.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v2.4.0-blue)](https://pypi.org/project/allyanonimiser/2.4.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,9 +12,16 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 2.3.0 - Comprehensive False Positive Filtering & Enhanced Pattern Detection
+## Version 2.4.0 - Enhanced spaCy Integration & Setup Verification
 
-### What's New in v2.3.0
+### What's New in v2.4.0
+- **Enhanced spaCy Status Reporting**: Clear visual feedback when loading spaCy models with installation guidance
+- **New `check_spacy_status()` Method**: Programmatically check spaCy configuration and get recommendations
+- **Setup Verification Script**: New `verify_setup.py` script to check all dependencies and configurations
+- **Improved Documentation**: Clearer guidance on spaCy requirements and their impact on functionality
+- **Better Error Messages**: More helpful feedback when spaCy models are missing or misconfigured
+
+### Previous Version (v2.3.0)
 - **Enhanced False Positive Filtering**: Comprehensive filtering for PERSON and LOCATION entities eliminates common misdetections
 - **Improved Pattern Detection**: Fixed BSB/Account Number detection, enhanced Organization detection for Pty Ltd companies
 - **NAME_CONSULTANT Pattern**: New pattern for detecting consultant/agent names with proper boundary detection
@@ -29,26 +36,54 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==2.3.0
+pip install allyanonimiser==2.4.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==2.3.0"
+pip install "allyanonimiser[stream]==2.4.0"
 
 # With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==2.3.0"
+pip install "allyanonimiser[llm]==2.4.0"
 
 # Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==2.3.0"
+pip install "allyanonimiser[stream,llm]==2.4.0"
 ```
 
 **Prerequisites:**
 - Python 3.10 or higher
-- A spaCy language model (recommended):
+- A spaCy language model for Named Entity Recognition (NER):
+  
   ```bash
-  python -m spacy download en_core_web_lg  # Recommended
-  # OR for limited resources:
-  python -m spacy download en_core_web_sm  # Smaller model
+  # Recommended - Best accuracy (788 MB)
+  python -m spacy download en_core_web_lg
+  
+  # Alternative - Smaller size (44 MB)
+  python -m spacy download en_core_web_sm
   ```
+  
+  > **Note**: spaCy models enable detection of PERSON, ORGANIZATION, LOCATION, and DATE entities. 
+  > Without a spaCy model, pattern-based detection (emails, phones, IDs, etc.) will still work.
+
+### Verify Your Setup
+
+After installation, verify that everything is properly configured:
+
+```bash
+python verify_setup.py
+```
+
+Or check spaCy status programmatically:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+ally = create_allyanonimiser()
+status = ally.check_spacy_status()
+
+if not status['is_loaded']:
+    print(status['recommendation'])
+else:
+    print(f"✓ spaCy model loaded: {status['model_name']}")
+```
 
 ## Quick Start
 

@@ -53,12 +53,29 @@ class EnhancedAnalyzer:
         self.min_score_threshold = min_score_threshold
         
         # Initialize spaCy model for NER
+        self.spacy_model_loaded = None  # Track which model was loaded
         try:
             self.nlp = load_spacy_model()
             self.use_spacy = True
+            # Determine which model was actually loaded
+            if hasattr(self.nlp, 'meta') and 'name' in self.nlp.meta:
+                self.spacy_model_loaded = self.nlp.meta['name']
+                print(f"✓ spaCy model loaded successfully: {self.spacy_model_loaded}")
+            else:
+                self.spacy_model_loaded = "blank_en"
+                print("⚠️  Using basic spaCy model (blank). Entity detection will be limited.")
+                print("   To enable full functionality, please install a spaCy model:")
+                print("     python -m spacy download en_core_web_lg  # Recommended (788 MB)")
+                print("     OR")
+                print("     python -m spacy download en_core_web_sm  # Smaller alternative (44 MB)")
         except Exception as e:
-            print(f"Warning: Could not load spaCy model: {e}")
+            print(f"⚠️  Warning: Could not load spaCy model: {e}")
+            print("   Some entity detection features (PERSON, ORGANIZATION, LOCATION) will be unavailable.")
+            print("   To enable these features, please install spaCy and a language model:")
+            print("     pip install spacy")
+            print("     python -m spacy download en_core_web_lg")
             self.use_spacy = False
+            self.spacy_model_loaded = None
             
         # Result caching system
         self.enable_caching = enable_caching
