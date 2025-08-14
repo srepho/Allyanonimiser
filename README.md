@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.4.0-blue)](https://pypi.org/project/allyanonimiser/2.4.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v2.5.0-blue)](https://pypi.org/project/allyanonimiser/2.5.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,9 +12,17 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 2.4.0 - Enhanced spaCy Integration & Setup Verification
+## Version 2.5.0 - CSV Processing & Enhanced Workflows
 
-### What's New in v2.4.0
+### What's New in v2.5.0
+- **Direct CSV Processing**: Process CSV files directly without manual DataFrame operations
+- **PII Column Auto-Detection**: Automatically identify columns containing PII
+- **Preview Mode**: Preview anonymization changes before processing entire files
+- **Streaming Support**: Handle multi-GB CSV files that don't fit in memory
+- **Directory Processing**: Batch process all CSV files in a directory
+- **Processing Reports**: Generate detailed reports with entity statistics
+
+### Previous Version (v2.4.0)
 - **Enhanced spaCy Status Reporting**: Clear visual feedback when loading spaCy models with installation guidance
 - **New `check_spacy_status()` Method**: Programmatically check spaCy configuration and get recommendations
 - **Setup Verification Script**: New `verify_setup.py` script to check all dependencies and configurations
@@ -36,16 +44,16 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==2.4.0
+pip install allyanonimiser==2.5.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==2.4.0"
+pip install "allyanonimiser[stream]==2.5.0"
 
 # With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==2.4.0"
+pip install "allyanonimiser[llm]==2.5.0"
 
 # Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==2.4.0"
+pip install "allyanonimiser[stream,llm]==2.5.0"
 ```
 
 **Prerequisites:**
@@ -431,6 +439,75 @@ anonymized_df = ally.process_dataframe(
 
 # Display result
 print(anonymized_df[["id", "notes", "anonymized_notes"]])
+```
+
+### CSV File Processing
+
+Process CSV files directly without manual DataFrame operations:
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+ally = create_allyanonimiser()
+
+# Auto-detect and process PII columns
+result = ally.process_csv_file(
+    input_file="customer_data.csv",
+    output_file="customer_data_clean.csv"  # Auto-generated if not specified
+)
+
+print(f"Processed {result['rows_processed']} rows")
+print(f"PII columns found: {result.get('auto_detected_columns', [])}")
+print(f"Entities anonymized: {result['entities_found']}")
+```
+
+#### Auto-Detect PII Columns
+
+```python
+# Identify which columns contain PII
+pii_columns = ally.detect_pii_columns("data.csv")
+print(f"Columns with PII: {pii_columns}")
+# Output: ['name', 'email', 'phone', 'notes']
+```
+
+#### Preview Changes Before Processing
+
+```python
+# Preview what will be changed
+preview = ally.preview_csv_changes(
+    "customer_data.csv",
+    sample_rows=5
+)
+
+for _, row in preview.iterrows():
+    print(f"{row['column']}: {row['original'][:30]}... → {row['anonymized'][:30]}...")
+```
+
+#### Stream Large CSV Files
+
+```python
+# Process multi-GB files in chunks
+result = ally.stream_process_csv(
+    input_file="huge_dataset.csv",  # 10GB file
+    output_file="huge_dataset_clean.csv",
+    columns=["customer_notes", "comments"],
+    chunk_size=10000  # Process 10k rows at a time
+)
+```
+
+#### Process All CSV Files in Directory
+
+```python
+# Batch process multiple CSV files
+results = ally.process_csv_directory(
+    input_dir="./raw_data/",
+    output_dir="./anonymized_data/",
+    columns_to_anonymize=["notes", "description"],  # Or None for auto-detect
+    recursive=True  # Include subdirectories
+)
+
+print(f"Processed {len(results['files_processed'])} files")
+print(f"Total entities found: {results['total_entities_found']}")
 ```
 
 ## Pattern Generalization Levels

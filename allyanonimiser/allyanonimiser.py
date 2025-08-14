@@ -5,6 +5,7 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union, Any, Tuple
+import pandas as pd
 
 from .enhanced_analyzer import EnhancedAnalyzer, RecognizerResult
 from .enhanced_anonymizer import EnhancedAnonymizer
@@ -17,6 +18,7 @@ from .pattern_registry import PatternRegistry
 from .utils.text_preprocessor import TextPreprocessor, create_text_preprocessor
 from .utils.settings_manager import SettingsManager, create_default_settings
 from .reporting import report_manager, AnonymizationReport
+from .csv_processor import CSVProcessor
 
 @dataclass
 class AnonymizationConfig:
@@ -1701,3 +1703,229 @@ class Allyanonimiser:
         
         # Display the report in the notebook
         report.display_in_notebook()
+    
+    # CSV Processing Methods
+    def process_csv_file(
+        self,
+        input_file: str,
+        output_file: str = None,
+        columns_to_anonymize: List[str] = None,
+        operators: Dict[str, str] = None,
+        operation: str = "anonymize",
+        encoding: str = "utf-8",
+        delimiter: str = ",",
+        generate_report: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Process a CSV file directly for PII detection and anonymization.
+        
+        Args:
+            input_file: Path to input CSV file
+            output_file: Path to output CSV file (if None, creates _anonymized version)
+            columns_to_anonymize: List of column names to process (if None, auto-detects)
+            operators: Dictionary mapping entity types to operators
+            operation: "anonymize" or "analyze"
+            encoding: File encoding (default: utf-8)
+            delimiter: CSV delimiter (default: comma)
+            generate_report: Whether to generate processing report
+            
+        Returns:
+            Dictionary with processing results and statistics
+            
+        Example:
+            ```python
+            # Process CSV with auto-detection
+            result = ally.process_csv_file(
+                input_file="customer_data.csv",
+                output_file="customer_data_clean.csv"
+            )
+            
+            # Process specific columns
+            result = ally.process_csv_file(
+                input_file="claims.csv",
+                columns_to_anonymize=["notes", "description"],
+                operators={"PERSON": "replace", "EMAIL_ADDRESS": "mask"}
+            )
+            ```
+        """
+        csv_processor = CSVProcessor(self)
+        return csv_processor.process_csv_file(
+            input_file=input_file,
+            output_file=output_file,
+            columns_to_anonymize=columns_to_anonymize,
+            operators=operators,
+            operation=operation,
+            encoding=encoding,
+            delimiter=delimiter,
+            generate_report=generate_report
+        )
+    
+    def detect_pii_columns(
+        self,
+        data: Union[str, pd.DataFrame],
+        sample_size: int = 100,
+        confidence_threshold: float = 0.7,
+        min_detection_rate: float = 0.1
+    ) -> List[str]:
+        """
+        Auto-detect columns in CSV/DataFrame that likely contain PII.
+        
+        Args:
+            data: CSV file path or pandas DataFrame
+            sample_size: Number of rows to sample for detection
+            confidence_threshold: Minimum confidence score for entity detection
+            min_detection_rate: Minimum percentage of rows with PII to consider column
+            
+        Returns:
+            List of column names likely containing PII
+            
+        Example:
+            ```python
+            # Detect PII columns in CSV file
+            pii_columns = ally.detect_pii_columns("customer_data.csv")
+            print(f"PII columns found: {pii_columns}")
+            
+            # Detect PII columns in DataFrame
+            df = pd.read_csv("data.csv")
+            pii_columns = ally.detect_pii_columns(df)
+            ```
+        """
+        csv_processor = CSVProcessor(self)
+        return csv_processor.detect_pii_columns(
+            data=data,
+            sample_size=sample_size,
+            confidence_threshold=confidence_threshold,
+            min_detection_rate=min_detection_rate
+        )
+    
+    def preview_csv_changes(
+        self,
+        input_file: str,
+        columns: List[str] = None,
+        operators: Dict[str, str] = None,
+        sample_rows: int = 10,
+        encoding: str = "utf-8"
+    ) -> pd.DataFrame:
+        """
+        Preview anonymization changes before processing entire CSV file.
+        
+        Args:
+            input_file: Path to CSV file
+            columns: Columns to preview (if None, auto-detects)
+            operators: Operators to use for anonymization
+            sample_rows: Number of rows to preview
+            encoding: File encoding
+            
+        Returns:
+            DataFrame showing before/after comparison
+            
+        Example:
+            ```python
+            # Preview changes
+            preview = ally.preview_csv_changes(
+                "customer_data.csv",
+                sample_rows=5
+            )
+            print(preview)
+            ```
+        """
+        csv_processor = CSVProcessor(self)
+        return csv_processor.preview_csv_changes(
+            input_file=input_file,
+            columns=columns,
+            operators=operators,
+            sample_rows=sample_rows,
+            encoding=encoding
+        )
+    
+    def stream_process_csv(
+        self,
+        input_file: str,
+        output_file: str,
+        columns: List[str],
+        operators: Dict[str, str] = None,
+        chunk_size: int = 10000,
+        encoding: str = "utf-8",
+        delimiter: str = ","
+    ) -> Dict[str, Any]:
+        """
+        Process large CSV files in chunks (streaming mode).
+        
+        Handles files that don't fit in memory by processing in chunks.
+        
+        Args:
+            input_file: Path to input CSV file
+            output_file: Path to output CSV file
+            columns: Columns to process
+            operators: Operators for anonymization
+            chunk_size: Number of rows to process at once
+            encoding: File encoding
+            delimiter: CSV delimiter
+            
+        Returns:
+            Processing statistics
+            
+        Example:
+            ```python
+            # Process large file
+            result = ally.stream_process_csv(
+                input_file="huge_dataset.csv",  # 10GB file
+                output_file="huge_dataset_clean.csv",
+                columns=["notes", "comments"],
+                chunk_size=5000
+            )
+            ```
+        """
+        csv_processor = CSVProcessor(self)
+        return csv_processor.stream_process_csv(
+            input_file=input_file,
+            output_file=output_file,
+            columns=columns,
+            operators=operators,
+            chunk_size=chunk_size,
+            encoding=encoding,
+            delimiter=delimiter
+        )
+    
+    def process_csv_directory(
+        self,
+        input_dir: str,
+        output_dir: str = None,
+        columns_to_anonymize: List[str] = None,
+        operators: Dict[str, str] = None,
+        file_pattern: str = "*.csv",
+        recursive: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Process all CSV files in a directory.
+        
+        Args:
+            input_dir: Input directory path
+            output_dir: Output directory path (if None, creates anonymized subdirectory)
+            columns_to_anonymize: Columns to process
+            operators: Operators for anonymization
+            file_pattern: File pattern to match (default: *.csv)
+            recursive: Whether to process subdirectories
+            
+        Returns:
+            Processing statistics for all files
+            
+        Example:
+            ```python
+            # Process all CSV files in directory
+            results = ally.process_csv_directory(
+                input_dir="./raw_data/",
+                output_dir="./clean_data/",
+                columns_to_anonymize=["notes", "comments"]
+            )
+            ```
+        """
+        csv_processor = CSVProcessor(self)
+        return csv_processor.process_csv_directory(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            columns_to_anonymize=columns_to_anonymize,
+            operators=operators,
+            file_pattern=file_pattern,
+            recursive=recursive
+        )

@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.5.0 (2025-08-14)
+
+### Added
+- **CSV Processing Module**: New `csv_processor.py` module with comprehensive CSV file handling capabilities
+- **Direct CSV File Processing**: Process CSV files directly without manual DataFrame operations via `process_csv_file()`
+- **PII Column Auto-Detection**: Automatically identify columns containing PII with `detect_pii_columns()`
+- **Preview Mode**: Preview anonymization changes before processing with `preview_csv_changes()`
+- **Streaming for Large Files**: Process multi-GB CSV files that don't fit in memory with `stream_process_csv()`
+- **Directory Batch Processing**: Process all CSV files in a directory with `process_csv_directory()`
+- **Processing Reports**: Generate detailed reports after CSV processing including entity counts and statistics
+
+### Enhanced
+- **Simplified CSV Workflow**: Eliminated need for manual DataFrame loading and processing
+- **Intelligent Detection**: Auto-detect PII columns with configurable confidence thresholds
+- **Memory Efficiency**: Stream processing for large files with configurable chunk sizes
+- **Batch Operations**: Process entire directories of CSV files with aggregated statistics
+- **Better User Experience**: Preview changes before committing to full processing
+
+### Developer Experience
+- **New Examples**: Added `example_csv_processing.py` demonstrating all CSV features
+- **Comprehensive Tests**: New test suite for CSV processing functionality
+- **Direct API Access**: All CSV methods available directly on main Allyanonimiser instance
+- **Report Generation**: Automatic processing reports with entity statistics
+
 ## 2.4.0 (2025-07-25)
 
 ### Added
