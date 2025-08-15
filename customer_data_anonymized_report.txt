@@ -1,0 +1,23 @@
+CSV Processing Report
+==================================================
+
+Input File: sample_customer_data.csv
+Output File: customer_data_anonymized.csv
+Processing Time: 0.17 seconds
+
+Rows Processed: 5
+Columns Processed: full_name, email, phone, notes
+
+Entities Found:
+  - AU_BSB: 2
+  - AU_MEDICARE: 1
+  - AU_PHONE: 4
+  - AU_POSTCODE: 9
+  - DATE: 3
+  - DATE_OF_BIRTH: 1
+  - EMAIL_ADDRESS: 6
+  - INSURANCE_CLAIM_NUMBER: 1
+  - INSURANCE_POLICY_NUMBER: 1
+  - LOCATION: 1
+  - NUMBER: 3
+  - PERSON: 10
