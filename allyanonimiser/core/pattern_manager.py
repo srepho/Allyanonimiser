@@ -3,7 +3,7 @@ Pattern manager for handling custom PII detection patterns.
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
 class CustomPatternDefinition:
@@ -28,7 +28,7 @@ class CustomPatternDefinition:
         self.language = kwargs.get('language', 'en')
         self.description = kwargs.get('description', f"Custom pattern for {self.entity_type}")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the pattern definition to a dictionary.
 
@@ -46,7 +46,7 @@ class CustomPatternDefinition:
         }
 
     @classmethod
-    def from_dict(cls, pattern_dict: Dict[str, Any]) -> 'CustomPatternDefinition':
+    def from_dict(cls, pattern_dict: dict[str, Any]) -> 'CustomPatternDefinition':
         """
         Create a CustomPatternDefinition from a dictionary.
 
@@ -77,7 +77,7 @@ class PatternManager:
         """
         self.patterns.append(pattern)
 
-    def get_patterns_by_entity_type(self, entity_type: str) -> List[CustomPatternDefinition]:
+    def get_patterns_by_entity_type(self, entity_type: str) -> list[CustomPatternDefinition]:
         """
         Get all patterns for a specific entity type.
 
@@ -89,7 +89,7 @@ class PatternManager:
         """
         return [p for p in self.patterns if p.entity_type == entity_type]
 
-    def apply_patterns(self, text: str, entity_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def apply_patterns(self, text: str, entity_types: Optional[list[str]] = None) -> list[dict[str, Any]]:
         """
         Apply patterns to text and return matches.
 
@@ -145,7 +145,7 @@ class PatternManager:
 
         return results
 
-    def to_dict_list(self) -> List[Dict[str, Any]]:
+    def to_dict_list(self) -> list[dict[str, Any]]:
         """
         Convert all patterns to a list of dictionaries.
 
@@ -155,7 +155,7 @@ class PatternManager:
         return [pattern.to_dict() for pattern in self.patterns]
 
     @classmethod
-    def from_dict_list(cls, pattern_dicts: List[Dict[str, Any]]) -> 'PatternManager':
+    def from_dict_list(cls, pattern_dicts: list[dict[str, Any]]) -> 'PatternManager':
         """
         Create a PatternManager from a list of pattern dictionaries.
 

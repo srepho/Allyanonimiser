@@ -5,7 +5,7 @@ Main interface for the Allyanonimiser package.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -36,9 +36,9 @@ class AnonymizationConfig:
         keep_postcode: Preserve postcodes within addresses.
     """
 
-    operators: Optional[Dict[str, str]] = None
+    operators: Optional[dict[str, str]] = None
     language: str = "en"
-    active_entity_types: Optional[List[str]] = None
+    active_entity_types: Optional[list[str]] = None
     expand_acronyms: bool = False
     age_bracket_size: int = 5
     keep_postcode: bool = True
@@ -57,8 +57,8 @@ class AnalysisConfig:
     """
 
     language: str = "en"
-    active_entity_types: Optional[List[str]] = None
-    score_adjustment: Optional[Dict[str, float]] = None
+    active_entity_types: Optional[list[str]] = None
+    score_adjustment: Optional[dict[str, float]] = None
     min_score_threshold: Optional[float] = None
     expand_acronyms: bool = False
 
@@ -68,10 +68,11 @@ class AnalysisConfig:
 # ---------------------------------------------------------------------------
 
 def create_allyanonimiser(
-    pattern_filepath: Optional[str] = None,
-    settings_path: Optional[str] = None,
+    pattern_filepath: str | None = None,
+    settings_path: str | None = None,
     enable_caching: bool = True,
     max_cache_size: int = 10_000,
+    spacy_model: str | None = "en_core_web_lg",
 ) -> "Allyanonimiser":
     """Create a pre-configured Allyanonimiser instance.
 
@@ -80,13 +81,21 @@ def create_allyanonimiser(
         settings_path: Path to a settings file (JSON / YAML).
         enable_caching: Enable result caching in the analyzer.
         max_cache_size: Maximum cached entries.
+        spacy_model: spaCy model name. Use ``"en_core_web_sm"`` for speed,
+            or ``None`` to disable spaCy (pattern-only mode).
     """
     if settings_path:
         settings_manager = SettingsManager(settings_path=settings_path)
     else:
         settings_manager = SettingsManager(settings=create_default_settings())
 
+    analyzer = EnhancedAnalyzer(
+        enable_caching=enable_caching,
+        spacy_model=spacy_model,
+    )
+
     ally = Allyanonimiser(
+        analyzer=analyzer,
         settings_manager=settings_manager,
         enable_caching=enable_caching,
     )
@@ -209,7 +218,7 @@ class Allyanonimiser:
     # ------------------------------------------------------------------
 
     def set_acronyms(
-        self, acronym_dict: Dict[str, str], case_sensitive: bool = False
+        self, acronym_dict: dict[str, str], case_sensitive: bool = False
     ) -> None:
         """Replace the entire acronym dictionary."""
         self.text_preprocessor = TextPreprocessor(
@@ -217,17 +226,17 @@ class Allyanonimiser:
         )
         self.settings_manager.set_acronyms(acronym_dict, case_sensitive)
 
-    def add_acronyms(self, acronym_dict: Dict[str, str]) -> None:
+    def add_acronyms(self, acronym_dict: dict[str, str]) -> None:
         """Merge *acronym_dict* into the existing dictionary."""
         self.text_preprocessor.add_acronyms(acronym_dict)
         self.settings_manager.add_acronyms(acronym_dict)
 
-    def remove_acronyms(self, acronyms: List[str]) -> None:
+    def remove_acronyms(self, acronyms: list[str]) -> None:
         """Remove acronyms by key."""
         self.text_preprocessor.remove_acronyms(acronyms)
         self.settings_manager.remove_acronyms(acronyms)
 
-    def get_acronyms(self) -> Dict[str, str]:
+    def get_acronyms(self) -> dict[str, str]:
         """Return a copy of the current acronym dictionary."""
         return self.text_preprocessor.acronym_dict.copy()
 
@@ -256,7 +265,7 @@ class Allyanonimiser:
 
     # Keep old name as alias for backward compatibility with tests
     def set_acronym_dictionary(
-        self, acronym_dict: Dict[str, str], case_sensitive: bool = False
+        self, acronym_dict: dict[str, str], case_sensitive: bool = False
     ) -> None:
         """Alias for :meth:`set_acronyms`."""
         self.set_acronyms(acronym_dict, case_sensitive)
@@ -269,12 +278,12 @@ class Allyanonimiser:
         self,
         text: str,
         language: str = "en",
-        active_entity_types: Optional[List[str]] = None,
-        score_adjustment: Optional[Dict[str, float]] = None,
+        active_entity_types: Optional[list[str]] = None,
+        score_adjustment: Optional[dict[str, float]] = None,
         min_score_threshold: Optional[float] = None,
         expand_acronyms: bool = False,
         config: Optional[AnalysisConfig] = None,
-    ) -> List[RecognizerResult]:
+    ) -> list[RecognizerResult]:
         """Detect PII entities in *text*.
 
         Returns a list of ``RecognizerResult`` objects.
@@ -294,11 +303,11 @@ class Allyanonimiser:
         processed_text, _ = self._preprocess(text, expand_acronyms)
         return self.analyzer.analyze(processed_text, language, score_adjustment)
 
-    def get_available_entity_types(self) -> Dict[str, Any]:
+    def get_available_entity_types(self) -> dict[str, Any]:
         """Return metadata about all registered entity types."""
         return self.analyzer.get_available_entity_types()
 
-    def explain_entity(self, text: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    def explain_entity(self, text: str, entity: dict[str, Any]) -> dict[str, Any]:
         """Explain why *entity* was detected in *text*."""
         result = RecognizerResult(
             entity_type=entity["entity_type"],
@@ -316,16 +325,16 @@ class Allyanonimiser:
     def anonymize(
         self,
         text: str,
-        operators: Optional[Dict[str, str]] = None,
+        operators: Optional[dict[str, str]] = None,
         language: str = "en",
-        active_entity_types: Optional[List[str]] = None,
+        active_entity_types: Optional[list[str]] = None,
         expand_acronyms: bool = False,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
         config: Optional[AnonymizationConfig] = None,
         document_id: Optional[str] = None,
         report: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Anonymize PII entities in *text*.
 
         Returns a dict with keys ``text``, ``items``, ``processing_time``,
@@ -379,18 +388,18 @@ class Allyanonimiser:
         self,
         text: str,
         language: str = "en",
-        active_entity_types: Optional[List[str]] = None,
-        score_adjustment: Optional[Dict[str, float]] = None,
+        active_entity_types: Optional[list[str]] = None,
+        score_adjustment: Optional[dict[str, float]] = None,
         min_score_threshold: Optional[float] = None,
         expand_acronyms: bool = False,
-        operators: Optional[Dict[str, str]] = None,
+        operators: Optional[dict[str, str]] = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
         analysis_config: Optional[AnalysisConfig] = None,
         anonymization_config: Optional[AnonymizationConfig] = None,
         document_id: Optional[str] = None,
         report: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze and anonymize *text* in one call.
 
         Returns a dict with ``analysis``, ``anonymized``, ``segments``,
@@ -453,7 +462,7 @@ class Allyanonimiser:
         structured_data = self._extract_structured_data(analysis_results)
         processing_time = time.time() - start_time
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "analysis": {
                 "entities": [
                     {
@@ -514,8 +523,8 @@ class Allyanonimiser:
     def create_pattern_from_examples(
         self,
         entity_type: str,
-        examples: List[str],
-        context: Optional[List[str]] = None,
+        examples: list[str],
+        context: Optional[list[str]] = None,
         name: Optional[str] = None,
         generalization_level: str = "medium",
     ) -> CustomPatternDefinition:
@@ -579,9 +588,9 @@ class Allyanonimiser:
     # spaCy status
     # ------------------------------------------------------------------
 
-    def check_spacy_status(self) -> Dict[str, Any]:
+    def check_spacy_status(self) -> dict[str, Any]:
         """Check spaCy model loading status and return guidance."""
-        status: Dict[str, Any] = {
+        status: dict[str, Any] = {
             "is_loaded": False,
             "model_name": None,
             "has_ner": False,
@@ -656,20 +665,21 @@ class Allyanonimiser:
             if "keep_postcode" not in kwargs:
                 kwargs["keep_postcode"] = anonymization_config.keep_postcode
 
-        if operation == "process":
-            if text_columns is None:
-                raise ValueError("text_columns required for 'process'")
-            return processor.process_dataframe(df, text_columns, **kwargs)
-        elif operation == "detect":
-            if column is None:
-                raise ValueError("column required for 'detect'")
-            return processor.detect_pii(df, column, **kwargs)
-        elif operation == "anonymize":
-            if column is None:
-                raise ValueError("column required for 'anonymize'")
-            return processor.anonymize_column(df, column, **kwargs)
-        else:
-            raise ValueError(f"Unknown operation: {operation}")
+        match operation:
+            case "process":
+                if text_columns is None:
+                    raise ValueError("text_columns required for 'process'")
+                return processor.process_dataframe(df, text_columns, **kwargs)
+            case "detect":
+                if column is None:
+                    raise ValueError("column required for 'detect'")
+                return processor.detect_pii(df, column, **kwargs)
+            case "anonymize":
+                if column is None:
+                    raise ValueError("column required for 'anonymize'")
+                return processor.anonymize_column(df, column, **kwargs)
+            case _:
+                raise ValueError(f"Unknown operation: {operation}")
 
     def detect_pii_in_dataframe(self, df: pd.DataFrame, column: str, **kwargs):
         """Detect PII in a single DataFrame column."""
@@ -685,12 +695,12 @@ class Allyanonimiser:
 
     def batch_process(
         self,
-        texts: List[str],
-        content_types: Optional[List[str]] = None,
+        texts: list[str],
+        content_types: Optional[list[str]] = None,
         analysis_config: Optional[AnalysisConfig] = None,
         anonymization_config: Optional[AnonymizationConfig] = None,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Process multiple texts. Returns a list of result dicts."""
         if analysis_config is None:
             analysis_config = AnalysisConfig(**{
@@ -717,7 +727,7 @@ class Allyanonimiser:
 
     def process_files(
         self,
-        file_paths: List[str],
+        file_paths: list[str],
         output_dir: Optional[str] = None,
         save_results: bool = False,
         analysis_config: Optional[AnalysisConfig] = None,
@@ -726,7 +736,7 @@ class Allyanonimiser:
         report_output: Optional[str] = None,
         report_format: str = "html",
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process multiple text files.
 
         Returns a dict with ``results``, ``success``, ``total_files``,
@@ -796,7 +806,7 @@ class Allyanonimiser:
                     "success": False,
                 })
 
-        response: Dict[str, Any] = {
+        response: dict[str, Any] = {
             "results": results,
             "success": True,
             "total_files": len(file_paths),
@@ -833,7 +843,7 @@ class Allyanonimiser:
 
     def finalize_report(
         self, output_path: Optional[str] = None, format: str = "html"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Finalize the current report and optionally export it."""
         rpt = report_manager.get_current_report()
         if not rpt:
@@ -862,13 +872,13 @@ class Allyanonimiser:
         self,
         input_file: str,
         output_file: Optional[str] = None,
-        columns_to_anonymize: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        columns_to_anonymize: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         operation: str = "anonymize",
         encoding: str = "utf-8",
         delimiter: str = ",",
         generate_report: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process a CSV file for PII detection / anonymization."""
         return CSVProcessor(self).process_csv_file(
             input_file=input_file,
@@ -883,11 +893,11 @@ class Allyanonimiser:
 
     def detect_pii_columns(
         self,
-        data: Union[str, pd.DataFrame],
+        data: str | pd.DataFrame,
         sample_size: int = 100,
         confidence_threshold: float = 0.7,
         min_detection_rate: float = 0.1,
-    ) -> List[str]:
+    ) -> list[str]:
         """Auto-detect columns likely containing PII."""
         return CSVProcessor(self).detect_pii_columns(
             data=data,
@@ -899,8 +909,8 @@ class Allyanonimiser:
     def preview_csv_changes(
         self,
         input_file: str,
-        columns: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        columns: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         sample_rows: int = 10,
         encoding: str = "utf-8",
     ) -> pd.DataFrame:
@@ -917,12 +927,12 @@ class Allyanonimiser:
         self,
         input_file: str,
         output_file: str,
-        columns: List[str],
-        operators: Optional[Dict[str, str]] = None,
+        columns: list[str],
+        operators: Optional[dict[str, str]] = None,
         chunk_size: int = 10_000,
         encoding: str = "utf-8",
         delimiter: str = ",",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process a large CSV in streaming chunks."""
         return CSVProcessor(self).stream_process_csv(
             input_file=input_file,
@@ -938,11 +948,11 @@ class Allyanonimiser:
         self,
         input_dir: str,
         output_dir: Optional[str] = None,
-        columns_to_anonymize: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        columns_to_anonymize: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         file_pattern: str = "*.csv",
         recursive: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process all CSV files in a directory."""
         return CSVProcessor(self).process_csv_directory(
             input_dir=input_dir,
@@ -959,14 +969,14 @@ class Allyanonimiser:
 
     @staticmethod
     def _extract_structured_data(
-        analysis_results: List[RecognizerResult],
-    ) -> Dict[str, Any]:
+        analysis_results: list[RecognizerResult],
+    ) -> dict[str, Any]:
         """Group detected entities into a simple structured dict."""
-        groups: Dict[str, list] = {}
+        groups: dict[str, list] = {}
         for r in analysis_results:
             groups.setdefault(r.entity_type, []).append(r.text)
 
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         for etype, texts in groups.items():
             key = etype.lower()
             out[key] = texts[0] if len(texts) == 1 else texts

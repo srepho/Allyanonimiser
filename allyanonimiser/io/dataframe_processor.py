@@ -3,7 +3,7 @@ DataFrame processing utilities for Allyanonimiser.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 import pandas as pd
 from tqdm import tqdm
@@ -81,7 +81,7 @@ class DataFrameProcessor(BaseProcessor):
         self,
         df: pd.DataFrame,
         column: str,
-        active_entity_types: Optional[List[str]] = None,
+        active_entity_types: Optional[list[str]] = None,
         min_score_threshold: float = 0.7,
         batch_size: int = 1000,
     ) -> pd.DataFrame:
@@ -94,25 +94,25 @@ class DataFrameProcessor(BaseProcessor):
         self.ally.analyzer.set_min_score_threshold(min_score_threshold)
 
         records: list = []
+        series = df[column].fillna("")
+        texts = [str(t) for t in series]
+        indices = series.index.tolist()
 
-        def _detect(text, idx):
-            if pd.isna(text):
-                return
-            for e in self.ally.analyze(str(text)):
-                records.append(
-                    {
-                        "row_index": idx,
-                        "entity_type": e.entity_type,
-                        "start": e.start,
-                        "end": e.end,
-                        "text": e.text or str(text)[e.start : e.end],
-                        "score": e.score,
-                    }
-                )
+        # Batch analysis: pre-warms spaCy cache via nlp.pipe()
+        batch_results = self.ally.analyzer.analyze_batch(texts)
 
-        series = df[column]
-        for text, idx in zip(series, series.index):
-            _detect(text, idx)
+        for idx, text_str, entities in zip(indices, texts, batch_results):
+            if not text_str:
+                continue
+            for e in entities:
+                records.append({
+                    "row_index": idx,
+                    "entity_type": e.entity_type,
+                    "start": e.start,
+                    "end": e.end,
+                    "text": e.text or text_str[e.start : e.end],
+                    "score": e.score,
+                })
 
         if not records:
             return pd.DataFrame(
@@ -124,8 +124,8 @@ class DataFrameProcessor(BaseProcessor):
         self,
         df: pd.DataFrame,
         column: str,
-        operators: Optional[Dict[str, str]] = None,
-        active_entity_types: Optional[List[str]] = None,
+        operators: Optional[dict[str, str]] = None,
+        active_entity_types: Optional[list[str]] = None,
         inplace: bool = False,
         output_column: Optional[str] = None,
         batch_size: int = 1000,
@@ -159,9 +159,9 @@ class DataFrameProcessor(BaseProcessor):
     def process_dataframe(
         self,
         df: pd.DataFrame,
-        text_columns: Union[str, List[str]],
-        active_entity_types: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        text_columns: str | list[str],
+        active_entity_types: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         min_score_threshold: float = 0.7,
         batch_size: int = 1000,
         anonymize: bool = True,
@@ -173,7 +173,7 @@ class DataFrameProcessor(BaseProcessor):
         keep_postcode: bool = True,
         adaptive_batch_size: bool = True,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Full processing: detect + anonymize across one or more columns.
 
         Returns a dict with ``dataframe`` (processed DataFrame) and

@@ -8,7 +8,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import pandas as pd
 
@@ -28,13 +28,13 @@ class CSVProcessor(BaseProcessor):
         self,
         input_file: str,
         output_file: str = None,
-        columns_to_anonymize: List[str] = None,
-        operators: Dict[str, str] = None,
+        columns_to_anonymize: list[str] = None,
+        operators: dict[str, str] = None,
         operation: str = "anonymize",
         encoding: str = "utf-8",
         delimiter: str = ",",
         generate_report: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process a CSV file directly without loading entire file into memory.
 
@@ -162,11 +162,11 @@ class CSVProcessor(BaseProcessor):
 
     def detect_pii_columns(
         self,
-        data: Union[str, pd.DataFrame],
+        data: str | pd.DataFrame,
         sample_size: int = 100,
         confidence_threshold: float = 0.7,
         min_detection_rate: float = 0.1
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Auto-detect columns that likely contain PII.
 
@@ -233,8 +233,8 @@ class CSVProcessor(BaseProcessor):
     def preview_csv_changes(
         self,
         input_file: str,
-        columns: List[str] = None,
-        operators: Dict[str, str] = None,
+        columns: list[str] = None,
+        operators: dict[str, str] = None,
         sample_rows: int = 10,
         encoding: str = "utf-8"
     ) -> pd.DataFrame:
@@ -300,12 +300,12 @@ class CSVProcessor(BaseProcessor):
         self,
         input_file: str,
         output_file: str,
-        columns: List[str],
-        operators: Dict[str, str] = None,
+        columns: list[str],
+        operators: dict[str, str] = None,
         chunk_size: int = 10000,
         encoding: str = "utf-8",
         delimiter: str = ","
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process large CSV files in chunks to handle files that don't fit in memory.
 
@@ -398,11 +398,11 @@ class CSVProcessor(BaseProcessor):
         self,
         input_dir: str,
         output_dir: str = None,
-        columns_to_anonymize: List[str] = None,
-        operators: Dict[str, str] = None,
+        columns_to_anonymize: list[str] = None,
+        operators: dict[str, str] = None,
         file_pattern: str = "*.csv",
         recursive: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process all CSV files in a directory.
 
@@ -489,7 +489,7 @@ class CSVProcessor(BaseProcessor):
     def save_csv_config(
         self,
         config_file: str,
-        config: Dict[str, Any]
+        config: dict[str, Any]
     ) -> bool:
         """
         Save CSV processing configuration to file.
@@ -513,7 +513,7 @@ class CSVProcessor(BaseProcessor):
     def load_csv_config(
         self,
         config_file: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Load CSV processing configuration from file.
 
@@ -537,7 +537,7 @@ class CSVProcessor(BaseProcessor):
         input_file: str,
         config_file: str,
         output_file: str = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process CSV file using saved configuration.
 
@@ -570,7 +570,7 @@ class CSVProcessor(BaseProcessor):
 
     def _generate_report(
         self,
-        stats: Dict[str, Any],
+        stats: dict[str, Any],
         output_file: str
     ) -> str:
         """

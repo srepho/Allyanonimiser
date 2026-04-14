@@ -8,7 +8,7 @@ import csv
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class SettingsManager:
     and provides access to different configuration sections.
     """
 
-    def __init__(self, settings: Optional[Dict[str, Any]] = None, settings_path: Optional[str] = None):
+    def __init__(self, settings: Optional[dict[str, Any]] = None, settings_path: Optional[str] = None):
         """
         Initialize the settings manager.
 
@@ -75,7 +75,7 @@ class SettingsManager:
             logger.error(f"Error loading settings from {settings_path}: {str(e)}")
             return False
 
-    def save_settings(self, settings_path: str, sections: Optional[List[str]] = None) -> bool:
+    def save_settings(self, settings_path: str, sections: Optional[list[str]] = None) -> bool:
         """
         Save settings to a file.
 
@@ -127,7 +127,7 @@ class SettingsManager:
 
     def import_acronyms_from_csv(self, csv_path: str, acronym_col: str = 'acronym',
                                 expansion_col: str = 'expansion',
-                                case_sensitive: bool = False) -> Tuple[bool, int]:
+                                case_sensitive: bool = False) -> tuple[bool, int]:
         """
         Import acronyms from a CSV file.
 
@@ -183,7 +183,7 @@ class SettingsManager:
 
     def import_patterns_from_csv(self, csv_path: str, entity_type_col: str = 'entity_type',
                                 pattern_col: str = 'pattern', context_col: str = 'context',
-                                name_col: str = 'name', score_col: str = 'score') -> Tuple[bool, int, List[Dict[str, Any]]]:
+                                name_col: str = 'name', score_col: str = 'score') -> tuple[bool, int, list[dict[str, Any]]]:
         """
         Import pattern definitions from a CSV file.
 
@@ -261,7 +261,7 @@ class SettingsManager:
             logger.error(f"Error importing patterns from {csv_path}: {str(e)}")
             return False, 0, []
 
-    def get_section(self, section: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def get_section(self, section: str, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Get a section of settings.
 
@@ -320,7 +320,7 @@ class SettingsManager:
         # Set the value
         setting[keys[-1]] = value
 
-    def set_section(self, section: str, values: Dict[str, Any]) -> None:
+    def set_section(self, section: str, values: dict[str, Any]) -> None:
         """
         Set an entire section of settings.
 
@@ -330,7 +330,7 @@ class SettingsManager:
         """
         self.settings[section] = values
 
-    def get_acronyms(self) -> Dict[str, str]:
+    def get_acronyms(self) -> dict[str, str]:
         """
         Get the acronym dictionary from settings.
 
@@ -348,7 +348,7 @@ class SettingsManager:
         """
         return self.get_section('acronyms', {}).get('case_sensitive', False)
 
-    def set_acronyms(self, acronyms: Dict[str, str], case_sensitive: bool = False) -> None:
+    def set_acronyms(self, acronyms: dict[str, str], case_sensitive: bool = False) -> None:
         """
         Set the acronym dictionary in settings.
 
@@ -360,7 +360,7 @@ class SettingsManager:
         self.settings['acronyms']['dictionary'] = acronyms
         self.settings['acronyms']['case_sensitive'] = case_sensitive
 
-    def add_acronyms(self, acronyms: Dict[str, str]) -> None:
+    def add_acronyms(self, acronyms: dict[str, str]) -> None:
         """
         Add acronyms to the existing dictionary in settings.
 
@@ -371,7 +371,7 @@ class SettingsManager:
         current.update(acronyms)
         self.set_value('acronyms.dictionary', current)
 
-    def remove_acronyms(self, acronyms: List[str]) -> None:
+    def remove_acronyms(self, acronyms: list[str]) -> None:
         """
         Remove acronyms from the dictionary in settings.
 
@@ -384,7 +384,7 @@ class SettingsManager:
                 del current[acronym]
         self.set_value('acronyms.dictionary', current)
 
-    def get_entity_types(self) -> List[str]:
+    def get_entity_types(self) -> list[str]:
         """
         Get the list of active entity types from settings.
 
@@ -393,7 +393,7 @@ class SettingsManager:
         """
         return self.get_section('entity_types', {}).get('active', [])
 
-    def set_entity_types(self, entity_types: List[str]) -> None:
+    def set_entity_types(self, entity_types: list[str]) -> None:
         """
         Set the list of active entity types in settings.
 
@@ -403,7 +403,7 @@ class SettingsManager:
         self.settings.setdefault('entity_types', {})
         self.settings['entity_types']['active'] = entity_types
 
-    def get_anonymization_operators(self) -> Dict[str, str]:
+    def get_anonymization_operators(self) -> dict[str, str]:
         """
         Get the anonymization operators from settings.
 
@@ -412,7 +412,7 @@ class SettingsManager:
         """
         return self.get_section('anonymization', {}).get('operators', {})
 
-    def set_anonymization_operators(self, operators: Dict[str, str]) -> None:
+    def set_anonymization_operators(self, operators: dict[str, str]) -> None:
         """
         Set the anonymization operators in settings.
 
@@ -556,7 +556,7 @@ class SettingsManager:
             return False
 
 
-def load_settings(settings_path: str) -> Dict[str, Any]:
+def load_settings(settings_path: str) -> dict[str, Any]:
     """
     Load settings from a file.
 
@@ -572,7 +572,7 @@ def load_settings(settings_path: str) -> Dict[str, Any]:
     return {}
 
 
-def save_settings(settings_path: str, settings: Dict[str, Any]) -> bool:
+def save_settings(settings_path: str, settings: dict[str, Any]) -> bool:
     """
     Save settings to a file.
 
@@ -589,7 +589,7 @@ def save_settings(settings_path: str, settings: Dict[str, Any]) -> bool:
 
 def import_acronyms_from_csv(csv_path: str, settings_path: str = None,
                             acronym_col: str = 'acronym', expansion_col: str = 'expansion',
-                            case_sensitive: bool = False) -> Tuple[bool, int, Dict[str, Any]]:
+                            case_sensitive: bool = False) -> tuple[bool, int, dict[str, Any]]:
     """
     Import acronyms from a CSV file and save to settings.
 
@@ -619,7 +619,7 @@ def import_patterns_from_csv(csv_path: str, settings_path: str = None,
                             pattern_col: str = 'pattern',
                             context_col: str = 'context',
                             name_col: str = 'name',
-                            score_col: str = 'score') -> Tuple[bool, int, Dict[str, Any]]:
+                            score_col: str = 'score') -> tuple[bool, int, dict[str, Any]]:
     """
     Import pattern definitions from a CSV file and save to settings.
 
@@ -646,7 +646,7 @@ def import_patterns_from_csv(csv_path: str, settings_path: str = None,
     return success, count, manager.settings
 
 
-def export_config(settings: Dict[str, Any], config_path: str, include_metadata: bool = True) -> bool:
+def export_config(settings: dict[str, Any], config_path: str, include_metadata: bool = True) -> bool:
     """
     Export a shareable configuration file based on provided settings.
 
@@ -662,7 +662,7 @@ def export_config(settings: Dict[str, Any], config_path: str, include_metadata: 
     return manager.export_config(config_path, include_metadata)
 
 
-def create_default_settings() -> Dict[str, Any]:
+def create_default_settings() -> dict[str, Any]:
     """
     Create default settings.
 

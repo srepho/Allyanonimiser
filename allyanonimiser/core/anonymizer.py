@@ -5,12 +5,12 @@ Enhanced anonymizer for PII data anonymization.
 import datetime
 import hashlib
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 # Default entity priority for overlap resolution.
 # Higher numbers win when two entities overlap the same text span.
 # Users can override via EnhancedAnonymizer(entity_priority={...}).
-DEFAULT_ENTITY_PRIORITY: Dict[str, int] = {
+DEFAULT_ENTITY_PRIORITY: dict[str, int] = {
     # Australian government identifiers
     "AU_MEDICARE": 100,
     "AU_TFN": 100,
@@ -52,7 +52,7 @@ class EnhancedAnonymizer:
             priorities.  Merged on top of ``DEFAULT_ENTITY_PRIORITY``.
     """
 
-    def __init__(self, analyzer=None, entity_priority: Optional[Dict[str, int]] = None):
+    def __init__(self, analyzer=None, entity_priority: Optional[dict[str, int]] = None):
         self.analyzer = analyzer
         self.entity_priority = {**DEFAULT_ENTITY_PRIORITY}
         if entity_priority:
@@ -61,11 +61,11 @@ class EnhancedAnonymizer:
     def anonymize(
         self,
         text: str,
-        operators: Optional[Dict[str, str]] = None,
+        operators: Optional[dict[str, str]] = None,
         language: str = "en",
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Anonymize PII entities in *text*.
 
         Returns a dict with ``text`` (anonymized) and ``items`` (replacements).
@@ -85,8 +85,8 @@ class EnhancedAnonymizer:
         operators = operators or {}
 
         # Collect postcode / address info for postcode preservation
-        postcode_entities: List[tuple] = []
-        address_entities: List[tuple] = []
+        postcode_entities: list[tuple] = []
+        address_entities: list[tuple] = []
         if keep_postcode:
             for r in results:
                 if r.entity_type == "AU_POSTCODE":
@@ -95,7 +95,7 @@ class EnhancedAnonymizer:
                     address_entities.append((r.start, r.end))
 
         # Build replacement entities
-        anonymization_entities: List[Dict[str, Any]] = []
+        anonymization_entities: list[dict[str, Any]] = []
         for r in results:
             entity_type = r.entity_type
             start, end = r.start, r.end
@@ -129,7 +129,7 @@ class EnhancedAnonymizer:
         anonymization_entities.sort(key=lambda e: e["start"], reverse=True)
 
         anonymized_text = text
-        replacements: List[Dict[str, Any]] = []
+        replacements: list[dict[str, Any]] = []
         for entity in anonymization_entities:
             anonymized_text = (
                 anonymized_text[: entity["start"]]
@@ -148,26 +148,27 @@ class EnhancedAnonymizer:
         self,
         entity_type: str,
         original: str,
-        operators: Dict[str, str],
+        operators: dict[str, str],
         age_bracket_size: int,
     ) -> str:
-        operator = operators.get(entity_type, "replace")
-
-        if operator == "replace":
-            return f"<{entity_type}>"
-        if operator == "mask":
-            return "*" * len(original)
-        if operator == "redact":
-            return "[REDACTED]"
-        if operator == "hash":
-            digest = hashlib.sha256(original.encode()).hexdigest()[:10]
-            return f"HASH-{digest}"
-        if operator == "age_bracket" and entity_type == "DATE_OF_BIRTH":
-            age = self._extract_age_from_date(original)
-            if age is not None:
-                lo = (age // age_bracket_size) * age_bracket_size
-                return f"{lo}-{lo + age_bracket_size - 1}"
-        return f"<{entity_type}>"
+        match operators.get(entity_type, "replace"):
+            case "replace":
+                return f"<{entity_type}>"
+            case "mask":
+                return "*" * len(original)
+            case "redact":
+                return "[REDACTED]"
+            case "hash":
+                digest = hashlib.sha256(original.encode()).hexdigest()[:10]
+                return f"HASH-{digest}"
+            case "age_bracket" if entity_type == "DATE_OF_BIRTH":
+                age = self._extract_age_from_date(original)
+                if age is not None:
+                    lo = (age // age_bracket_size) * age_bracket_size
+                    return f"{lo}-{lo + age_bracket_size - 1}"
+                return f"<{entity_type}>"
+            case _:
+                return f"<{entity_type}>"
 
     # ------------------------------------------------------------------
     # Postcode preservation
@@ -175,7 +176,7 @@ class EnhancedAnonymizer:
 
     @staticmethod
     def _preserve_postcode_in_address(
-        replacement: str, addr_start: int, postcode_entities: List[tuple]
+        replacement: str, addr_start: int, postcode_entities: list[tuple]
     ) -> str:
         postcodes = [
             (s, e, t) for s, e, t in postcode_entities if s >= addr_start
@@ -196,8 +197,8 @@ class EnhancedAnonymizer:
     # ------------------------------------------------------------------
 
     def _remove_overlapping_entities(
-        self, entities: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, entities: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Keep the highest-priority entity when spans overlap."""
         if not entities:
             return entities
@@ -206,7 +207,7 @@ class EnhancedAnonymizer:
             entities, key=lambda e: (e["start"], -(e["end"] - e["start"]))
         )
 
-        result: List[Dict[str, Any]] = []
+        result: list[dict[str, Any]] = []
         for entity in sorted_entities:
             overlaps = False
             for selected in result:

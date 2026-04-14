@@ -7,7 +7,7 @@ loaded, and shared between analyzer instances.
 
 import json
 import os
-from typing import List, Optional
+from typing import Optional
 
 from .pattern_manager import CustomPatternDefinition, PatternManager
 
@@ -44,7 +44,7 @@ class PatternRegistry:
         if pattern not in self.patterns[entity_type]:
             self.patterns[entity_type].append(pattern)
 
-    def get_patterns(self, entity_type: Optional[str] = None) -> List[CustomPatternDefinition]:
+    def get_patterns(self, entity_type: Optional[str] = None) -> list[CustomPatternDefinition]:
         """
         Get patterns from the registry.
 

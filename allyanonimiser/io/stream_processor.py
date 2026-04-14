@@ -7,7 +7,7 @@ using Polars for maximum efficiency and minimal memory usage.
 
 import logging
 import os
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Generator, Optional
 
 import pandas as pd
 
@@ -75,18 +75,18 @@ class StreamProcessor(BaseProcessor):
     def stream_from_file(
         self,
         file_path: str,
-        text_columns: Union[str, List[str]],
-        active_entity_types: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        text_columns: str | list[str],
+        active_entity_types: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
         chunk_size: Optional[int] = None,
         output_path: Optional[str] = None,
         progress_bar: bool = True,
-        csv_options: Optional[Dict[str, Any]] = None,
+        csv_options: Optional[dict[str, Any]] = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True
-    ) -> Generator[Dict[str, Union[pd.DataFrame, List]], None, None]:
+    ) -> Generator[dict[str, pd.DataFrame | list], None, None]:
         """
         Stream process a large CSV file with minimal memory usage.
 
@@ -209,9 +209,6 @@ class StreamProcessor(BaseProcessor):
 
             # Write to output file if path provided (streaming mode)
             if output_path:
-                mode = "w" if chunk_counter == 0 else "a"
-                header = chunk_counter == 0
-
                 # Write Polars DataFrame directly to CSV
                 if chunk_counter == 0:
                     processed_chunk.write_csv(output_path)
@@ -254,14 +251,14 @@ class StreamProcessor(BaseProcessor):
     def _process_chunk(
         self,
         chunk,
-        text_columns: List[str],
-        active_entity_types: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        text_columns: list[str],
+        active_entity_types: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Process a single chunk using Polars-native operations where possible."""
         import polars as pl
 
@@ -330,20 +327,20 @@ class StreamProcessor(BaseProcessor):
     def process_large_file(
         self,
         file_path: str,
-        text_columns: Union[str, List[str]],
+        text_columns: str | list[str],
         output_path: str,
-        active_entity_types: Optional[List[str]] = None,
-        operators: Optional[Dict[str, str]] = None,
+        active_entity_types: Optional[list[str]] = None,
+        operators: Optional[dict[str, str]] = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
         chunk_size: Optional[int] = None,
         save_entities: bool = True,
         entities_output_path: Optional[str] = None,
-        csv_options: Optional[Dict[str, Any]] = None,
+        csv_options: Optional[dict[str, Any]] = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
         progress_bar: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process a very large file with minimal memory impact, writing results directly to disk.
 

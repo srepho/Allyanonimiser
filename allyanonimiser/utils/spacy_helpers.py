@@ -4,7 +4,7 @@ Utility functions for working with spaCy.
 
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from spacy.language import Language
 from spacy.matcher import Matcher, PhraseMatcher
@@ -18,9 +18,9 @@ def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm
 
 def create_spacy_pattern_from_examples(
     nlp: Language,
-    examples: List[str],
+    examples: list[str],
     pattern_type: str = "token"
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Create a spaCy pattern from example texts.
 
@@ -63,7 +63,7 @@ def create_spacy_pattern_from_examples(
 
 def create_spacy_matcher(
     nlp: Language,
-    patterns: List[Dict[str, Any]],
+    patterns: list[dict[str, Any]],
     matcher_name: str = "custom_matcher"
 ) -> Matcher:
     """
@@ -83,7 +83,7 @@ def create_spacy_matcher(
 
 def create_spacy_phrase_matcher(
     nlp: Language,
-    phrases: List[str],
+    phrases: list[str],
     matcher_name: str = "custom_phrase_matcher"
 ) -> PhraseMatcher:
     """
@@ -105,9 +105,9 @@ def create_spacy_phrase_matcher(
 def find_context_matches(
     doc: Doc,
     entity_span: Span,
-    context_terms: List[str],
+    context_terms: list[str],
     window_size: int = 5
-) -> List[Tuple[str, int]]:
+) -> list[tuple[str, int]]:
     """
     Find context terms near an entity in a document.
 
@@ -151,9 +151,9 @@ def find_context_matches(
 
 def extract_patterns_from_spans(
     doc: Doc,
-    spans: List[Span],
+    spans: list[Span],
     generalize: bool = True
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Extract patterns from entity spans that can be used for matching similar entities.
 
@@ -203,7 +203,7 @@ def extract_patterns_from_spans(
 
     return patterns
 
-def create_regex_from_examples(examples: List[str], generalization_level: str = "none") -> str:
+def create_regex_from_examples(examples: list[str], generalization_level: str = "none") -> str:
     """
     Create a regex pattern from example strings with optional generalization.
 
@@ -267,7 +267,7 @@ def create_regex_from_examples(examples: List[str], generalization_level: str = 
     else:
         raise ValueError(f"Unsupported generalization level: {generalization_level}")
 
-def create_simple_generalized_regex(examples: List[str]) -> str:
+def create_simple_generalized_regex(examples: list[str]) -> str:
     r"""
     Create a simple generalized regex by detecting common character classes.
 
@@ -346,7 +346,7 @@ def create_simple_generalized_regex(examples: List[str]) -> str:
 
     return pattern
 
-def create_generalized_regex(examples: List[str]) -> str:
+def create_generalized_regex(examples: list[str]) -> str:
     """
     Create a medium-level generalized regex by analyzing patterns in the examples.
 
@@ -371,7 +371,7 @@ def create_generalized_regex(examples: List[str]) -> str:
     # Try structure-based generalization for multiple examples
     return analyze_structure_for_regex(examples)
 
-def create_advanced_generalized_regex(examples: List[str]) -> str:
+def create_advanced_generalized_regex(examples: list[str]) -> str:
     """
     Create a highly-generalized regex by combining multiple techniques.
 
@@ -486,7 +486,7 @@ def generalize_single_example(example: str) -> str:
 
     return pattern
 
-def detect_common_format(examples: List[str]) -> Optional[str]:
+def detect_common_format(examples: list[str]) -> Optional[str]:
     """
     Detect if examples match common formats and return appropriate regex.
 
@@ -531,7 +531,7 @@ def detect_common_format(examples: List[str]) -> Optional[str]:
 
     return None
 
-def analyze_structure_for_regex(examples: List[str]) -> str:
+def analyze_structure_for_regex(examples: list[str]) -> str:
     """Analyze examples structurally to produce a flexible regex.
 
     Extracts a common prefix and suffix, then generalises the variable
@@ -563,7 +563,7 @@ def analyze_structure_for_regex(examples: List[str]) -> str:
         middles.append(ex[start:end])
 
     # Build the pattern
-    parts: List[str] = []
+    parts: list[str] = []
     if prefix:
         parts.append(re.escape(prefix))
 
@@ -575,7 +575,7 @@ def analyze_structure_for_regex(examples: List[str]) -> str:
     return "".join(parts)
 
 
-def _generalise_parts(parts: List[str]) -> str:
+def _generalise_parts(parts: list[str]) -> str:
     """Turn a list of variable-part strings into a single regex fragment."""
     non_empty = [p for p in parts if p]
     if not non_empty:
@@ -610,7 +610,7 @@ def _generalise_parts(parts: List[str]) -> str:
         return "(?:" + "|".join(re.escape(p) for p in sorted(set(non_empty))) + ")"
     return r".+?"
 
-def create_tokenized_pattern(examples: List[str]) -> str:
+def create_tokenized_pattern(examples: list[str]) -> str:
     """
     Create a pattern by tokenizing examples and analyzing token patterns.
 
@@ -685,7 +685,7 @@ def create_tokenized_pattern(examples: List[str]) -> str:
 
     return ''.join(pattern_parts)
 
-def is_fixed_segment(segment: str, examples: List[str]) -> bool:
+def is_fixed_segment(segment: str, examples: list[str]) -> bool:
     """
     Check if a segment appears consistently in examples.
 
@@ -698,7 +698,7 @@ def is_fixed_segment(segment: str, examples: List[str]) -> bool:
     """
     return all(segment in example for example in examples)
 
-def generalize_variable_segment(segment: str, examples: List[str]) -> str:
+def generalize_variable_segment(segment: str, examples: list[str]) -> str:
     """
     Create a pattern for a variable segment across examples.
 
@@ -741,7 +741,7 @@ def generalize_variable_segment(segment: str, examples: List[str]) -> str:
     else:
         return r'\S+'
 
-def segment_examples(examples: List[str]) -> List[str]:
+def segment_examples(examples: list[str]) -> list[str]:
     """
     Segment examples into common parts for analysis.
 
@@ -778,9 +778,9 @@ def segment_examples(examples: List[str]) -> List[str]:
 
 def get_entity_context(
     doc: Doc,
-    entity_spans: List[Span],
+    entity_spans: list[Span],
     window_size: int = 5
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     """
     Extract context words around entities.
 
@@ -827,10 +827,10 @@ def get_entity_context(
     return context_dict
 
 def auto_generate_context_terms(
-    docs: List[Doc],
+    docs: list[Doc],
     entity_type: str,
     top_n: int = 20
-) -> List[str]:
+) -> list[str]:
     """
     Automatically generate context terms for an entity type from a corpus.
 

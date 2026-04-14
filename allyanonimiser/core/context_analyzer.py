@@ -3,7 +3,7 @@ Context-aware analysis for improving entity detection accuracy.
 """
 
 import re
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 
 class ContextAnalyzer:
@@ -68,7 +68,7 @@ class ContextAnalyzer:
             'AU_BSB_ACCOUNT': ['bsb', 'account', 'bank']
         }
 
-    def get_context_window(self, text: str, start: int, end: int, window_size: int = 50) -> Tuple[str, str]:
+    def get_context_window(self, text: str, start: int, end: int, window_size: int = 50) -> tuple[str, str]:
         """
         Get context before and after an entity.
 
@@ -91,7 +91,7 @@ class ContextAnalyzer:
 
         return context_before, context_after
 
-    def analyze_context(self, text: str, entity_type: str, start: int, end: int) -> Dict[str, any]:
+    def analyze_context(self, text: str, entity_type: str, start: int, end: int) -> dict[str, any]:
         """
         Analyze the context around an entity to determine if it's correctly identified.
 

@@ -9,8 +9,9 @@ import datetime
 import json
 import logging
 import os
+import threading
 from collections import Counter, defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -68,7 +69,7 @@ class AnonymizationReport:
         self.document_reports = []
 
     def record_anonymization(self, document_id: str, original_text: str,
-                           anonymization_result: Dict[str, Any],
+                           anonymization_result: dict[str, Any],
                            processing_time: float) -> None:
         """
         Record the results of an anonymization operation.
@@ -133,7 +134,7 @@ class AnonymizationReport:
         })
 
     def record_batch_processing(self, batch_id: str, batch_size: int,
-                              batch_result: Dict[str, Any],
+                              batch_result: dict[str, Any],
                               processing_time: float) -> None:
         """
         Record the results of processing a batch of documents.
@@ -172,7 +173,7 @@ class AnonymizationReport:
         """Finalize the report by setting the end time."""
         self.end_time = datetime.datetime.now()
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get a summary of anonymization statistics.
 
@@ -214,7 +215,7 @@ class AnonymizationReport:
             "entity_distribution": entity_distribution
         }
 
-    def get_detailed_report(self) -> Dict[str, Any]:
+    def get_detailed_report(self) -> dict[str, Any]:
         """
         Get a detailed report including document-level statistics.
 
@@ -523,19 +524,17 @@ class AnonymizationReport:
 
 
 class ReportingManager:
-    """
-    Manager for creating and handling anonymization reports.
+    """Manager for creating and handling anonymization reports.
 
-    This class provides a facade for the reporting functionality and integrates
-    with the main Allyanonimiser classes.
+    Thread-safe: all mutations are protected by a lock for free-threaded Python.
     """
 
     def __init__(self):
-        """Initialize the reporting manager."""
+        self._lock = threading.Lock()
         self.current_report = None
-        self.reports = {}
+        self.reports: dict[str, AnonymizationReport] = {}
 
-    def start_new_report(self, session_id: Optional[str] = None) -> AnonymizationReport:
+    def start_new_report(self, session_id: str | None = None) -> AnonymizationReport:
         """
         Start a new anonymization report.
 
@@ -545,9 +544,10 @@ class ReportingManager:
         Returns:
             The new AnonymizationReport instance
         """
-        self.current_report = AnonymizationReport(session_id)
-        self.reports[self.current_report.session_id] = self.current_report
-        return self.current_report
+        with self._lock:
+            self.current_report = AnonymizationReport(session_id)
+            self.reports[self.current_report.session_id] = self.current_report
+            return self.current_report
 
     def get_current_report(self) -> Optional[AnonymizationReport]:
         """
@@ -570,7 +570,7 @@ class ReportingManager:
         """
         return self.reports.get(session_id)
 
-    def finalize_current_report(self) -> Dict[str, Any]:
+    def finalize_current_report(self) -> dict[str, Any]:
         """
         Finalize the current report and return its summary.
 
@@ -582,7 +582,7 @@ class ReportingManager:
             return self.current_report.get_summary()
         return {}
 
-    def generate_report_from_results(self, results: List[Dict[str, Any]],
+    def generate_report_from_results(self, results: list[dict[str, Any]],
                                    session_id: Optional[str] = None) -> AnonymizationReport:
         """
         Generate a report from a list of anonymization results.

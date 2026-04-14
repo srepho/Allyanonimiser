@@ -3,33 +3,43 @@ Unified analyzer for PII detection across all document types.
 """
 import logging
 import re
+import threading
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 import spacy
 
 logger = logging.getLogger(__name__)
 
 # Module-level cache so the model is loaded at most once per process.
+# Protected by a lock for free-threaded Python (3.13t / 3.14t).
 _spacy_model_cache: dict = {}
+_spacy_model_lock = threading.Lock()
 
 
 def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
-    """Load a spaCy model with fallback, cached at module level."""
+    """Load a spaCy model with fallback, cached at module level (thread-safe)."""
     cache_key = (model_name, fallback_model)
+
+    # Fast path: already cached (no lock needed for dict reads in CPython,
+    # but explicit lock is correct for free-threaded builds).
     if cache_key in _spacy_model_cache:
         return _spacy_model_cache[cache_key]
 
-    try:
-        nlp = spacy.load(model_name)
-    except OSError:
-        try:
-            nlp = spacy.load(fallback_model)
-        except OSError:
-            nlp = spacy.blank("en")
+    with _spacy_model_lock:
+        # Double-check after acquiring the lock
+        if cache_key in _spacy_model_cache:
+            return _spacy_model_cache[cache_key]
 
-    _spacy_model_cache[cache_key] = nlp
-    return nlp
+        try:
+            nlp = spacy.load(model_name)
+        except OSError:
+            try:
+                nlp = spacy.load(fallback_model)
+            except OSError:
+                nlp = spacy.blank("en")
+
+        _spacy_model_cache[cache_key] = nlp
+        return nlp
 
 @dataclass
 class RecognizerResult:
@@ -45,35 +55,51 @@ class RecognizerResult:
         # We don't need to do anything here as text can be populated externally
 
 class EnhancedAnalyzer:
+    """Unified analyzer for PII detection.
+
+    Combines pattern-based and NER-based entity detection with configurable
+    active entities.  Includes result caching for improved performance with
+    repetitive content.
+
+    .. note:: Instances are **not thread-safe**.  In multi-threaded code,
+       create one ``EnhancedAnalyzer`` per thread.  The underlying spaCy
+       model is shared safely via the module-level cache.
     """
-    Unified analyzer for PII detection.
-    Combines pattern-based and NER-based entity detection with configurable active entities.
-    Includes result caching for improved performance with repetitive content.
-    """
-    def __init__(self, min_score_threshold=0.7, enable_caching=True, max_cache_size=10000):
-        self.patterns = []
-        self.active_entity_types = set()  # Empty set means all types are active
+    def __init__(
+        self,
+        min_score_threshold: float = 0.7,
+        enable_caching: bool = True,
+        max_cache_size: int = 10_000,
+        spacy_model: str | None = "en_core_web_lg",
+    ):
+        self.patterns: list = []
+        self.active_entity_types: set = set()
         self.min_score_threshold = min_score_threshold
 
-        # Initialize spaCy model for NER
-        self.spacy_model_loaded = None  # Track which model was loaded
-        try:
-            self.nlp = load_spacy_model()
-            self.use_spacy = True
-            # Determine which model was actually loaded
-            if hasattr(self.nlp, 'meta') and 'name' in self.nlp.meta:
-                self.spacy_model_loaded = self.nlp.meta['name']
-                logger.info("spaCy model loaded: %s", self.spacy_model_loaded)
-            else:
-                self.spacy_model_loaded = "blank_en"
-                logger.warning(
-                    "Using blank spaCy model. Entity detection will be limited. "
-                    "Install a model: python -m spacy download en_core_web_lg"
-                )
-        except Exception as e:
-            logger.warning("Could not load spaCy model: %s", e)
+        # Initialize spaCy model for NER.
+        # Pass spacy_model=None to disable spaCy entirely (pattern-only mode).
+        self.spacy_model_loaded: str | None = None
+        if spacy_model is None:
             self.use_spacy = False
-            self.spacy_model_loaded = None
+            self.nlp = None
+        else:
+            try:
+                self.nlp = load_spacy_model(spacy_model)
+                self.use_spacy = True
+                if hasattr(self.nlp, "meta") and "name" in self.nlp.meta:
+                    self.spacy_model_loaded = self.nlp.meta["name"]
+                    logger.info("spaCy model loaded: %s", self.spacy_model_loaded)
+                else:
+                    self.spacy_model_loaded = "blank_en"
+                    logger.warning(
+                        "Using blank spaCy model. Entity detection will be limited. "
+                        "Install a model: python -m spacy download %s",
+                        spacy_model,
+                    )
+            except Exception as e:
+                logger.warning("Could not load spaCy model: %s", e)
+                self.use_spacy = False
+                self.nlp = None
 
         # Result caching system
         self.enable_caching = enable_caching
@@ -320,10 +346,10 @@ class EnhancedAnalyzer:
 
     def analyze_batch(
         self,
-        texts: List[str],
+        texts: list[str],
         language: str = "en",
         score_adjustment=None,
-    ) -> List[List["RecognizerResult"]]:
+    ) -> list[list["RecognizerResult"]]:
         """Analyze a batch of texts. Returns a list of result lists.
 
         Uses spaCy's ``nlp.pipe()`` for efficient batch NER when available,
@@ -344,7 +370,7 @@ class EnhancedAnalyzer:
 
         return [self.analyze(t, language, score_adjustment) for t in texts]
 
-    def _doc_to_results(self, doc) -> List["RecognizerResult"]:
+    def _doc_to_results(self, doc) -> list["RecognizerResult"]:
         """Convert a spaCy Doc to RecognizerResult list (same logic as _analyze_with_spacy)."""
         results = []
         for ent in doc.ents:

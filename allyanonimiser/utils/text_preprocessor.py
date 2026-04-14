@@ -3,7 +3,7 @@ Utility functions for text preprocessing before PII detection.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional
 
 
 class TextPreprocessor:
@@ -11,7 +11,7 @@ class TextPreprocessor:
     Provides text preprocessing functionality for improving PII detection.
     """
 
-    def __init__(self, acronym_dict: Optional[Dict[str, str]] = None, case_sensitive: bool = False):
+    def __init__(self, acronym_dict: Optional[dict[str, str]] = None, case_sensitive: bool = False):
         """
         Initialize the text preprocessor.
 
@@ -23,7 +23,7 @@ class TextPreprocessor:
         self.case_sensitive = case_sensitive
         self._compiled_patterns = self._compile_patterns()
 
-    def _compile_patterns(self) -> Dict[str, re.Pattern]:
+    def _compile_patterns(self) -> dict[str, re.Pattern]:
         """Compile regex patterns for efficient text processing."""
         compiled = {}
 
@@ -41,7 +41,7 @@ class TextPreprocessor:
 
         return compiled
 
-    def add_acronyms(self, acronym_dict: Dict[str, str]) -> None:
+    def add_acronyms(self, acronym_dict: dict[str, str]) -> None:
         """
         Add acronyms to the existing dictionary.
 
@@ -51,7 +51,7 @@ class TextPreprocessor:
         self.acronym_dict.update(acronym_dict)
         self._compiled_patterns = self._compile_patterns()
 
-    def remove_acronyms(self, acronyms: List[str]) -> None:
+    def remove_acronyms(self, acronyms: list[str]) -> None:
         """
         Remove acronyms from the dictionary.
 
@@ -63,7 +63,7 @@ class TextPreprocessor:
                 del self.acronym_dict[acronym]
         self._compiled_patterns = self._compile_patterns()
 
-    def expand_acronyms(self, text: str) -> Tuple[str, List[Dict[str, Union[str, int]]]]:
+    def expand_acronyms(self, text: str) -> tuple[str, list[dict[str, str | int]]]:
         """
         Expand acronyms in text based on the configured dictionary.
 
@@ -116,7 +116,7 @@ class TextPreprocessor:
 
         return processed_text, expansions
 
-    def preprocess_text(self, text: str) -> Tuple[str, Dict[str, List]]:
+    def preprocess_text(self, text: str) -> tuple[str, dict[str, list]]:
         """
         Apply all preprocessing steps to the text.
 
@@ -139,7 +139,7 @@ class TextPreprocessor:
         return processed_text, metadata
 
 
-def create_text_preprocessor(acronym_dict: Optional[Dict[str, str]] = None,
+def create_text_preprocessor(acronym_dict: Optional[dict[str, str]] = None,
                             case_sensitive: bool = False) -> TextPreprocessor:
     """
     Create a text preprocessor with the given configuration.
@@ -155,7 +155,7 @@ def create_text_preprocessor(acronym_dict: Optional[Dict[str, str]] = None,
 
 
 def preprocess_with_acronym_expansion(text: str,
-                                     acronym_dict: Dict[str, str],
+                                     acronym_dict: dict[str, str],
                                      case_sensitive: bool = False) -> str:
     """
     Convenience function to preprocess text with acronym expansion.

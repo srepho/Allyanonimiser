@@ -4,10 +4,10 @@ Entity validators for improving detection accuracy.
 
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 
-def validate_regex(pattern: str) -> Tuple[bool, Optional[str]]:
+def validate_regex(pattern: str) -> tuple[bool, Optional[str]]:
     """Validate that a string is a valid regex pattern."""
     try:
         re.compile(pattern)
@@ -16,7 +16,7 @@ def validate_regex(pattern: str) -> Tuple[bool, Optional[str]]:
         return False, str(e)
 
 
-def validate_spacy_pattern(pattern: List[Dict[str, Any]]) -> Tuple[bool, Optional[str]]:
+def validate_spacy_pattern(pattern: list[dict[str, Any]]) -> tuple[bool, Optional[str]]:
     """Validate a spaCy token pattern."""
     if not isinstance(pattern, list):
         return False, "Pattern must be a list of token dictionaries"
@@ -26,7 +26,7 @@ def validate_spacy_pattern(pattern: List[Dict[str, Any]]) -> Tuple[bool, Optiona
     return True, None
 
 
-def validate_context_list(context: List[str]) -> Tuple[bool, Optional[str]]:
+def validate_context_list(context: list[str]) -> tuple[bool, Optional[str]]:
     """Validate a list of context words."""
     if not isinstance(context, list):
         return False, "Context must be a list of strings"
@@ -36,7 +36,7 @@ def validate_context_list(context: List[str]) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def validate_entity_type(entity_type: str) -> Tuple[bool, Optional[str]]:
+def validate_entity_type(entity_type: str) -> tuple[bool, Optional[str]]:
     """Validate an entity type string."""
     if not isinstance(entity_type, str):
         return False, "Entity type must be a string"
@@ -45,7 +45,7 @@ def validate_entity_type(entity_type: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def validate_pattern_definition(pattern_def: Dict[str, Any]) -> Dict[str, Any]:
+def validate_pattern_definition(pattern_def: dict[str, Any]) -> dict[str, Any]:
     """Validate a pattern definition dictionary."""
     errors = {}
     entity_type = pattern_def.get("entity_type")
@@ -60,9 +60,9 @@ def validate_pattern_definition(pattern_def: Dict[str, Any]) -> Dict[str, Any]:
 
 def check_pattern_against_examples(
     pattern: str,
-    positive_examples: List[str],
-    negative_examples: List[str],
-) -> Dict[str, Any]:
+    positive_examples: list[str],
+    negative_examples: list[str],
+) -> dict[str, Any]:
     """Test a regex pattern against positive and negative examples.
 
     Returns a dict with match results and metrics.
@@ -111,7 +111,7 @@ class EntityValidator:
     """Validates detected entities to reduce false positives."""
 
     @staticmethod
-    def validate_date(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_date(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate if a detected date is actually a date.
 
@@ -175,7 +175,7 @@ class EntityValidator:
         return False, 'unknown'
 
     @staticmethod
-    def validate_phone_number(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_phone_number(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate if a detected phone number is valid.
 
@@ -212,7 +212,7 @@ class EntityValidator:
         return False, 'invalid'
 
     @staticmethod
-    def validate_medicare_number(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_medicare_number(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate Australian Medicare number format.
 
@@ -237,7 +237,7 @@ class EntityValidator:
         return True, None
 
     @staticmethod
-    def validate_tfn(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_tfn(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate Australian Tax File Number format.
 
@@ -261,7 +261,7 @@ class EntityValidator:
         return True, None
 
     @staticmethod
-    def validate_abn(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_abn(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate Australian Business Number format.
 
@@ -289,7 +289,7 @@ class EntityValidator:
         return True, None
 
     @staticmethod
-    def validate_australian_postcode(text: str) -> Tuple[bool, Optional[str]]:
+    def validate_australian_postcode(text: str) -> tuple[bool, Optional[str]]:
         """
         Validate Australian postcode.
 
@@ -321,7 +321,7 @@ class EntityValidator:
         return False, None
 
     @staticmethod
-    def validate_number(text: str, context: str = "") -> Tuple[bool, Optional[str]]:
+    def validate_number(text: str, context: str = "") -> tuple[bool, Optional[str]]:
         """
         Validate if a detected number is meaningful or a false positive.
 

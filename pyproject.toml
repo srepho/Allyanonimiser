@@ -7,7 +7,7 @@ name = "allyanonimiser"
 version = "3.0.0"
 description = "Australian-focused PII detection and anonymization for the insurance industry"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "MIT"
 authors = [
     {name = "Stephen Oates", email = "stephen.j.a.oates@gmail.com"}
@@ -15,9 +15,9 @@ authors = [
 keywords = ["pii", "anonymization", "privacy", "insurance", "australia"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Security",
     "Topic :: Text Processing",
@@ -69,13 +69,13 @@ markers = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "UP"]
 
 [tool.pyright]
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingImports = true
 reportMissingTypeStubs = false
