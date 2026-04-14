@@ -89,8 +89,9 @@ class CSVProcessor(BaseProcessor):
             # Read CSV — use PyArrow string dtype for lower memory if available
             read_kwargs: dict = {"encoding": encoding, "delimiter": delimiter}
             try:
+                import pyarrow  # noqa: F401
                 read_kwargs["dtype_backend"] = "pyarrow"
-            except Exception:
+            except ImportError:
                 pass
             df = pd.read_csv(input_file, **read_kwargs)
             stats["total_rows"] = len(df)
