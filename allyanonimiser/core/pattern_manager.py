@@ -2,13 +2,14 @@
 Pattern manager for handling custom PII detection patterns.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
 import re
+from typing import Any, Dict, List, Optional
+
 
 class CustomPatternDefinition:
     """
     Class for defining custom PII detection patterns.
-    
+
     Attributes:
         entity_type: The type of entity this pattern detects (e.g., "POLICY_NUMBER")
         patterns: List of regex strings or spaCy pattern dictionaries
@@ -26,11 +27,11 @@ class CustomPatternDefinition:
         self.score = kwargs.get('score', 0.85)
         self.language = kwargs.get('language', 'en')
         self.description = kwargs.get('description', f"Custom pattern for {self.entity_type}")
-        
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the pattern definition to a dictionary.
-        
+
         Returns:
             Dictionary representation of the pattern definition
         """
@@ -43,15 +44,15 @@ class CustomPatternDefinition:
             'language': self.language,
             'description': self.description
         }
-    
+
     @classmethod
     def from_dict(cls, pattern_dict: Dict[str, Any]) -> 'CustomPatternDefinition':
         """
         Create a CustomPatternDefinition from a dictionary.
-        
+
         Args:
             pattern_dict: Dictionary with pattern definition fields
-            
+
         Returns:
             New CustomPatternDefinition instance
         """
@@ -60,57 +61,57 @@ class CustomPatternDefinition:
 class PatternManager:
     """
     Manager for handling collections of patterns.
-    
+
     This class provides methods for managing, applying, and converting between
     different pattern formats.
     """
     def __init__(self):
         self.patterns = []
-        
+
     def add_pattern(self, pattern: CustomPatternDefinition) -> None:
         """
         Add a pattern to the manager.
-        
+
         Args:
             pattern: The pattern definition to add
         """
         self.patterns.append(pattern)
-        
+
     def get_patterns_by_entity_type(self, entity_type: str) -> List[CustomPatternDefinition]:
         """
         Get all patterns for a specific entity type.
-        
+
         Args:
             entity_type: The entity type to get patterns for
-            
+
         Returns:
             List of pattern definitions for the entity type
         """
         return [p for p in self.patterns if p.entity_type == entity_type]
-    
+
     def apply_patterns(self, text: str, entity_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Apply patterns to text and return matches.
-        
+
         Args:
             text: The text to analyze
             entity_types: Optional list of entity types to restrict to
-            
+
         Returns:
             List of match dictionaries with entity_type, start, end, text, and score
         """
         results = []
-        
+
         # Filter patterns by entity type if specified
         patterns_to_apply = self.patterns
         if entity_types:
             patterns_to_apply = [p for p in self.patterns if p.entity_type in entity_types]
-        
+
         # Apply each pattern
         for pattern_def in patterns_to_apply:
             entity_type = pattern_def.entity_type
             score = pattern_def.score
-            
+
             for pattern in pattern_def.patterns:
                 if isinstance(pattern, str):
                     # It's a regex pattern
@@ -127,7 +128,7 @@ class PatternManager:
                                 start = match.start()
                                 end = match.end()
                                 matched_text = match.group()
-                                
+
                             results.append({
                                 'entity_type': entity_type,
                                 'start': start,
@@ -141,26 +142,26 @@ class PatternManager:
                 else:
                     # Skip non-regex patterns for now (spaCy patterns need spaCy model)
                     continue
-                    
+
         return results
-            
+
     def to_dict_list(self) -> List[Dict[str, Any]]:
         """
         Convert all patterns to a list of dictionaries.
-        
+
         Returns:
             List of dictionaries representing all patterns
         """
         return [pattern.to_dict() for pattern in self.patterns]
-    
+
     @classmethod
     def from_dict_list(cls, pattern_dicts: List[Dict[str, Any]]) -> 'PatternManager':
         """
         Create a PatternManager from a list of pattern dictionaries.
-        
+
         Args:
             pattern_dicts: List of pattern definition dictionaries
-            
+
         Returns:
             New PatternManager instance with loaded patterns
         """

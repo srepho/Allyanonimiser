@@ -28,6 +28,13 @@ jobs:
         pip install -e ".[dev]"
         python -m spacy download en_core_web_lg
 
+    - name: Lint with ruff
+      run: ruff check allyanonimiser/
+
+    - name: Type check with pyright
+      run: pyright allyanonimiser/ --level basic
+      continue-on-error: true  # advisory until types are fully annotated
+
     - name: Run tests
       run: |
         pytest tests/ --cov=allyanonimiser --cov-report=term-missing

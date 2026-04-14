@@ -78,7 +78,7 @@ def get_au_pattern_definitions():
             "name": "Australian BSB"
         },
         {
-            "entity_type": "AU_ACCOUNT_NUMBER", 
+            "entity_type": "AU_ACCOUNT_NUMBER",
             "patterns": [
                 r"Account\s*(?:Number|#)?\s*:\s*(\d{4,10})\b",
                 r"(?:Bank\s+)?Account\s*(?:Number|No\.?|#)?\s*:\s*(\d{4}\s+\d{4})\b",

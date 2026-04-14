@@ -7,7 +7,7 @@ from .dataframe_processor import DataFrameProcessor
 
 # StreamProcessor requires polars (optional)
 try:
-    from .stream_processor import StreamProcessor, POLARS_AVAILABLE
+    from .stream_processor import POLARS_AVAILABLE, StreamProcessor
 except ImportError:
     POLARS_AVAILABLE = False
     StreamProcessor = None

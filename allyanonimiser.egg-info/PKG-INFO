@@ -1,32 +1,9 @@
 Metadata-Version: 2.4
 Name: allyanonimiser
-Version: 2.5.0
+Version: 3.0.0
 Summary: Australian-focused PII detection and anonymization for the insurance industry
-Home-page: https://github.com/srepho/Allyanonimiser
-Author: Stephen Oates
 Author-email: Stephen Oates <stephen.j.a.oates@gmail.com>
-License: MIT License
-        
-        Copyright (c) 2025 Stephen Oates
-        
-        Permission is hereby granted, free of charge, to any person obtaining a copy
-        of this software and associated documentation files (the "Software"), to deal
-        in the Software without restriction, including without limitation the rights
-        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-        copies of the Software, and to permit persons to whom the Software is
-        furnished to do so, subject to the following conditions:
-        
-        The above copyright notice and this permission notice shall be included in all
-        copies or substantial portions of the Software.
-        
-        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-        SOFTWARE.
-        
+License-Expression: MIT
 Project-URL: Homepage, https://github.com/srepho/Allyanonimiser
 Project-URL: Bug Tracker, https://github.com/srepho/Allyanonimiser/issues
 Project-URL: Documentation, https://github.com/srepho/Allyanonimiser#readme
@@ -35,7 +12,6 @@ Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
 Classifier: Programming Language :: Python :: 3.12
-Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Classifier: Topic :: Security
 Classifier: Topic :: Text Processing
@@ -50,20 +26,17 @@ Requires-Dist: tqdm>=4.64.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
-Requires-Dist: black>=23.0.0; extra == "dev"
-Requires-Dist: isort>=5.0.0; extra == "dev"
-Requires-Dist: flake8>=6.0.0; extra == "dev"
-Requires-Dist: mypy>=1.0.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.0.0; extra == "dev"
+Requires-Dist: hypothesis>=6.0.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Requires-Dist: pyright>=1.1.0; extra == "dev"
 Provides-Extra: llm
 Requires-Dist: openai>=0.27.0; extra == "llm"
 Requires-Dist: anthropic>=0.3.0; extra == "llm"
 Provides-Extra: stream
 Requires-Dist: polars>=0.20.0; extra == "stream"
 Requires-Dist: pyarrow>=14.0.0; extra == "stream"
-Dynamic: author
-Dynamic: home-page
 Dynamic: license-file
-Dynamic: requires-python
 
 # Allyanonimiser
 
@@ -510,6 +483,10 @@ print(anonymized_df[["id", "notes", "anonymized_notes"]])
 
 ### CSV File Processing
 
+Allyanonimiser provides comprehensive CSV processing capabilities with automatic PII detection, preview modes, and streaming support for large files.
+
+#### Basic CSV Processing
+
 Process CSV files directly without manual DataFrame operations:
 
 ```python
@@ -530,39 +507,67 @@ print(f"Entities anonymized: {result['entities_found']}")
 
 #### Auto-Detect PII Columns
 
+Automatically identify which columns contain PII before processing:
+
 ```python
 # Identify which columns contain PII
 pii_columns = ally.detect_pii_columns("data.csv")
 print(f"Columns with PII: {pii_columns}")
 # Output: ['name', 'email', 'phone', 'notes']
+
+# Process only the detected PII columns
+result = ally.process_csv_file(
+    input_file="data.csv",
+    columns=pii_columns,  # Use detected columns
+    output_file="data_anonymized.csv"
+)
 ```
 
 #### Preview Changes Before Processing
+
+Preview what will be changed before processing the entire file:
 
 ```python
 # Preview what will be changed
 preview = ally.preview_csv_changes(
     "customer_data.csv",
-    sample_rows=5
+    sample_rows=5  # Number of rows to preview
 )
 
+# Display preview
 for _, row in preview.iterrows():
     print(f"{row['column']}: {row['original'][:30]}... → {row['anonymized'][:30]}...")
+
+# If satisfied with preview, process the full file
+if input("Proceed with anonymization? (y/n): ").lower() == 'y':
+    ally.process_csv_file("customer_data.csv")
 ```
 
 #### Stream Large CSV Files
+
+Process multi-GB files efficiently using streaming:
 
 ```python
 # Process multi-GB files in chunks
 result = ally.stream_process_csv(
     input_file="huge_dataset.csv",  # 10GB file
     output_file="huge_dataset_clean.csv",
-    columns=["customer_notes", "comments"],
-    chunk_size=10000  # Process 10k rows at a time
+    columns=["customer_notes", "comments"],  # Specific columns to process
+    chunk_size=10000,  # Process 10k rows at a time
+    operators={
+        "PERSON": "replace",
+        "EMAIL_ADDRESS": "mask",
+        "AU_TFN": "hash"
+    }
 )
+
+print(f"Processed {result['total_rows']} rows in {result['chunks_processed']} chunks")
+print(f"Processing time: {result['processing_time']:.2f} seconds")
 ```
 
 #### Process All CSV Files in Directory
+
+Batch process multiple CSV files with a single command:
 
 ```python
 # Batch process multiple CSV files
@@ -570,11 +575,333 @@ results = ally.process_csv_directory(
     input_dir="./raw_data/",
     output_dir="./anonymized_data/",
     columns_to_anonymize=["notes", "description"],  # Or None for auto-detect
-    recursive=True  # Include subdirectories
+    recursive=True,  # Include subdirectories
+    generate_report=True  # Create processing report
 )
 
 print(f"Processed {len(results['files_processed'])} files")
 print(f"Total entities found: {results['total_entities_found']}")
+print(f"Report saved to: {results['report_file']}")
+```
+
+#### Advanced CSV Processing with Custom Configuration
+
+```python
+from allyanonimiser import create_allyanonimiser, AnonymizationConfig
+
+ally = create_allyanonimiser()
+
+# Configure anonymization for different entity types
+config = AnonymizationConfig(
+    operators={
+        "PERSON": "replace",
+        "EMAIL_ADDRESS": "mask",
+        "AU_TFN": "hash",
+        "AU_MEDICARE": "redact",
+        "CREDIT_CARD": "mask",
+        "DATE_OF_BIRTH": "age_bracket"
+    },
+    age_bracket_size=5
+)
+
+# Process with custom configuration
+result = ally.process_csv_file(
+    input_file="sensitive_data.csv",
+    output_file="processed_data.csv",
+    config=config,
+    columns=None,  # Auto-detect all PII columns
+    sample_before_processing=True,  # Show preview first
+    generate_stats=True  # Generate statistics report
+)
+
+# Access detailed statistics
+if result.get('statistics'):
+    stats = result['statistics']
+    print(f"Entity type distribution:")
+    for entity_type, count in stats['entity_counts'].items():
+        print(f"  {entity_type}: {count}")
+```
+
+### CSV Processing Tutorial
+
+This comprehensive tutorial demonstrates how to use Allyanonimiser's CSV processing features for various scenarios.
+
+#### Tutorial 1: Basic CSV Anonymization
+
+```python
+from allyanonimiser import create_allyanonimiser
+import pandas as pd
+
+# Create sample CSV data
+data = pd.DataFrame({
+    'customer_id': [1001, 1002, 1003],
+    'name': ['John Smith', 'Jane Doe', 'Robert Johnson'],
+    'email': ['john.smith@example.com', 'jane.doe@test.com', 'r.johnson@company.org'],
+    'phone': ['0412 345 678', '(02) 9876 5432', '0499 123 456'],
+    'notes': [
+        'TFN: 123 456 789, Lives at 123 Collins St Melbourne',
+        'Medicare: 2123 45678 1, DOB: 15/06/1980',
+        'Policy POL-12345678, Claim CL-987654'
+    ]
+})
+
+# Save to CSV
+data.to_csv('sample_customers.csv', index=False)
+
+# Create Allyanonimiser instance
+ally = create_allyanonimiser()
+
+# Process the CSV file
+result = ally.process_csv_file(
+    input_file='sample_customers.csv',
+    output_file='customers_anonymized.csv'
+)
+
+# Display results
+print(f"Processing complete!")
+print(f"Rows processed: {result['rows_processed']}")
+print(f"Columns with PII: {result.get('pii_columns', [])}")
+print(f"Total entities anonymized: {result['entities_found']}")
+
+# Read and display anonymized data
+anonymized_df = pd.read_csv('customers_anonymized.csv')
+print("\nAnonymized data:")
+print(anonymized_df.to_string())
+```
+
+#### Tutorial 2: Selective Column Processing
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+ally = create_allyanonimiser()
+
+# First, detect which columns contain PII
+pii_columns = ally.detect_pii_columns('sample_customers.csv')
+print(f"Detected PII columns: {pii_columns}")
+
+# Let user select which columns to anonymize
+print("\nSelect columns to anonymize:")
+selected_columns = []
+for col in pii_columns:
+    if input(f"Anonymize '{col}'? (y/n): ").lower() == 'y':
+        selected_columns.append(col)
+
+# Process only selected columns
+if selected_columns:
+    result = ally.process_csv_file(
+        input_file='sample_customers.csv',
+        output_file='selective_anonymized.csv',
+        columns=selected_columns,
+        operators={
+            "PERSON": "replace",
+            "EMAIL_ADDRESS": "mask",
+            "AU_TFN": "hash"
+        }
+    )
+    print(f"\nAnonymized {len(selected_columns)} columns")
+else:
+    print("No columns selected for anonymization")
+```
+
+#### Tutorial 3: Handling Large Files with Streaming
+
+```python
+from allyanonimiser import create_allyanonimiser
+import time
+
+ally = create_allyanonimiser()
+
+# For large files, use streaming to process in chunks
+print("Processing large CSV file...")
+start_time = time.time()
+
+result = ally.stream_process_csv(
+    input_file='large_dataset.csv',  # Assume this is a multi-GB file
+    output_file='large_dataset_clean.csv',
+    chunk_size=5000,  # Process 5000 rows at a time
+    columns=['customer_notes', 'description', 'comments'],  # Focus on text columns
+    operators={
+        "PERSON": "replace",
+        "EMAIL_ADDRESS": "mask",
+        "AU_TFN": "hash",
+        "AU_MEDICARE": "redact"
+    },
+    progress_callback=lambda chunk_num, total_chunks: 
+        print(f"Processing chunk {chunk_num}/{total_chunks}...")
+)
+
+elapsed_time = time.time() - start_time
+print(f"\nProcessing complete!")
+print(f"Total rows: {result['total_rows']}")
+print(f"Processing time: {elapsed_time:.2f} seconds")
+print(f"Rows per second: {result['total_rows']/elapsed_time:.0f}")
+```
+
+#### Tutorial 4: Batch Processing Directory
+
+```python
+from allyanonimiser import create_allyanonimiser
+import os
+from pathlib import Path
+
+ally = create_allyanonimiser()
+
+# Setup directories
+input_dir = Path('./customer_data')
+output_dir = Path('./anonymized_data')
+output_dir.mkdir(exist_ok=True)
+
+# Process all CSV files in directory
+print(f"Processing all CSV files in {input_dir}...")
+
+results = ally.process_csv_directory(
+    input_dir=str(input_dir),
+    output_dir=str(output_dir),
+    columns_to_anonymize=None,  # Auto-detect for each file
+    recursive=True,  # Include subdirectories
+    file_pattern='*.csv',  # Process only CSV files
+    generate_report=True,
+    operators={
+        "PERSON": "replace",
+        "EMAIL_ADDRESS": "mask",
+        "AU_TFN": "hash",
+        "AU_MEDICARE": "redact",
+        "CREDIT_CARD": "mask"
+    }
+)
+
+# Display summary
+print(f"\nBatch processing complete!")
+print(f"Files processed: {len(results['files_processed'])}")
+print(f"Files skipped: {len(results.get('files_skipped', []))}")
+print(f"Total entities found: {results['total_entities_found']}")
+
+# Display per-file statistics
+print("\nPer-file statistics:")
+for file_info in results['file_statistics']:
+    print(f"  {file_info['filename']}: {file_info['entities_found']} entities")
+
+# Report location
+if results.get('report_file'):
+    print(f"\nDetailed report saved to: {results['report_file']}")
+```
+
+#### Tutorial 5: Custom Processing with Validation
+
+```python
+from allyanonimiser import create_allyanonimiser
+import pandas as pd
+
+ally = create_allyanonimiser()
+
+# Define custom validation function
+def validate_anonymization(original_df, anonymized_df):
+    """Validate that anonymization was successful"""
+    issues = []
+    
+    # Check that no original PII remains
+    pii_patterns = {
+        'email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        'tfn': r'\b\d{3}\s*\d{3}\s*\d{3}\b',
+        'medicare': r'\b\d{4}\s*\d{5}\s*\d{1}\b'
+    }
+    
+    for col in anonymized_df.columns:
+        for row_idx, value in enumerate(anonymized_df[col]):
+            if pd.notna(value):
+                value_str = str(value)
+                for pii_type, pattern in pii_patterns.items():
+                    import re
+                    if re.search(pattern, value_str):
+                        issues.append(f"Found {pii_type} in row {row_idx}, column '{col}'")
+    
+    return issues
+
+# Load original data
+original_df = pd.read_csv('sample_customers.csv')
+
+# Process with preview first
+print("Previewing changes...")
+preview = ally.preview_csv_changes('sample_customers.csv', sample_rows=3)
+print(preview)
+
+# Get user confirmation
+if input("\nProceed with full anonymization? (y/n): ").lower() == 'y':
+    # Process the file
+    result = ally.process_csv_file(
+        input_file='sample_customers.csv',
+        output_file='validated_output.csv',
+        operators={
+            "DEFAULT": "replace"  # Use replace for all entity types
+        }
+    )
+    
+    # Load and validate anonymized data
+    anonymized_df = pd.read_csv('validated_output.csv')
+    validation_issues = validate_anonymization(original_df, anonymized_df)
+    
+    if validation_issues:
+        print("\nValidation issues found:")
+        for issue in validation_issues:
+            print(f"  - {issue}")
+    else:
+        print("\n✓ Validation successful: No PII detected in output")
+        print(f"✓ {result['entities_found']} entities successfully anonymized")
+```
+
+#### Tutorial 6: Generating Processing Reports
+
+```python
+from allyanonimiser import create_allyanonimiser
+import json
+
+ally = create_allyanonimiser()
+
+# Enable detailed reporting
+ally.start_new_report("csv_processing_session")
+
+# Process multiple files with reporting
+files_to_process = [
+    'customers.csv',
+    'transactions.csv',
+    'support_tickets.csv'
+]
+
+for file_path in files_to_process:
+    print(f"\nProcessing {file_path}...")
+    result = ally.process_csv_file(
+        input_file=file_path,
+        output_file=f"anonymized_{file_path}",
+        generate_stats=True
+    )
+    
+    # Add to report
+    ally.add_to_report({
+        'file': file_path,
+        'rows': result['rows_processed'],
+        'entities': result['entities_found'],
+        'columns_processed': result.get('pii_columns', [])
+    })
+
+# Generate comprehensive report
+report = ally.get_report()
+summary = report.get_summary()
+
+print("\n" + "="*50)
+print("PROCESSING REPORT SUMMARY")
+print("="*50)
+print(f"Total files processed: {len(files_to_process)}")
+print(f"Total entities anonymized: {summary['total_entities']}")
+print(f"Average processing time: {summary['avg_processing_time']*1000:.2f} ms")
+
+# Export detailed report
+report.export_report("csv_processing_report.html", "html")
+report.export_report("csv_processing_report.json", "json")
+
+print(f"\nReports saved:")
+print(f"  - csv_processing_report.html (visual report)")
+print(f"  - csv_processing_report.json (detailed data)")
 ```
 
 ## Pattern Generalization Levels

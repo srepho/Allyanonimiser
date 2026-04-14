@@ -7,9 +7,9 @@ from .anonymizer import DEFAULT_ENTITY_PRIORITY, EnhancedAnonymizer
 from .pattern_manager import CustomPatternDefinition, PatternManager
 from .pattern_registry import PatternRegistry
 from .validators import (
-    validate_regex,
-    validate_pattern_definition,
     check_pattern_against_examples,
+    validate_pattern_definition,
+    validate_regex,
 )
 
 __all__ = [
@@ -22,4 +22,5 @@ __all__ = [
     "validate_regex",
     "validate_pattern_definition",
     "check_pattern_against_examples",
+    "DEFAULT_ENTITY_PRIORITY",
 ]

@@ -3,11 +3,12 @@ Context-aware analysis for improving entity detection accuracy.
 """
 
 import re
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
+
 
 class ContextAnalyzer:
     """Analyzes context around entities to improve detection accuracy."""
-    
+
     def __init__(self):
         # Define context patterns that help identify entity types
         self.context_patterns = {
@@ -49,7 +50,7 @@ class ContextAnalyzer:
                 'after': []
             }
         }
-        
+
         # Context words that suggest specific entity types
         self.context_keywords = {
             'AU_MEDICARE': ['medicare', 'health card', 'medical'],
@@ -66,82 +67,82 @@ class ContextAnalyzer:
             'EMAIL_ADDRESS': ['email', 'mail'],
             'AU_BSB_ACCOUNT': ['bsb', 'account', 'bank']
         }
-    
+
     def get_context_window(self, text: str, start: int, end: int, window_size: int = 50) -> Tuple[str, str]:
         """
         Get context before and after an entity.
-        
+
         Args:
             text: The full text
             start: Start position of entity
             end: End position of entity
             window_size: Number of characters to include in context
-            
+
         Returns:
             (context_before, context_after)
         """
         # Get context before
         context_start = max(0, start - window_size)
         context_before = text[context_start:start].lower().strip()
-        
+
         # Get context after
         context_end = min(len(text), end + window_size)
         context_after = text[end:context_end].lower().strip()
-        
+
         return context_before, context_after
-    
+
     def analyze_context(self, text: str, entity_type: str, start: int, end: int) -> Dict[str, any]:
         """
         Analyze the context around an entity to determine if it's correctly identified.
-        
+
         Args:
             text: The full text
             entity_type: The detected entity type
             start: Start position of entity
             end: End position of entity
-            
+
         Returns:
             Dictionary with context analysis results
         """
         entity_text = text[start:end]
         context_before, context_after = self.get_context_window(text, start, end)
-        
+
         # Check if entity type has defined context patterns
         if entity_type in self.context_patterns:
             patterns = self.context_patterns[entity_type]
-            
+
             # Check before patterns
-            before_match = any(re.search(pattern, context_before, re.IGNORECASE) 
+            before_match = any(re.search(pattern, context_before, re.IGNORECASE)
                              for pattern in patterns.get('before', []))
-            
+
             # Check after patterns
-            after_match = any(re.search(pattern, context_after, re.IGNORECASE) 
+            after_match = any(re.search(pattern, context_after, re.IGNORECASE)
                             for pattern in patterns.get('after', []))
-            
+
             # Check within patterns (full entity with context)
             full_context = context_before + ' ' + entity_text + ' ' + context_after
-            within_match = any(re.search(pattern, full_context, re.IGNORECASE) 
+            within_match = any(re.search(pattern, full_context, re.IGNORECASE)
                              for pattern in patterns.get('within', []))
-            
+
             pattern_match = before_match or after_match or within_match
         else:
             pattern_match = False
-        
+
         # Check for context keywords
         if entity_type in self.context_keywords:
             keywords = self.context_keywords[entity_type]
-            keyword_found = any(keyword in context_before or keyword in context_after 
+            keyword_found = any(keyword in context_before or keyword in context_after
                               for keyword in keywords)
         else:
             keyword_found = False
-        
+
         # Calculate confidence based on context
         confidence_boost = 0.0
         if pattern_match:
             confidence_boost += 0.2
         if keyword_found:
             confidence_boost += 0.1
-        
+
         return {
             'entity_text': entity_text,
             'context_before': context_before,
@@ -151,61 +152,61 @@ class ContextAnalyzer:
             'confidence_boost': confidence_boost,
             'suggested_entity_type': self.suggest_entity_type(entity_text, context_before, context_after)
         }
-    
+
     def suggest_entity_type(self, entity_text: str, context_before: str, context_after: str) -> Optional[str]:
         """
         Suggest the most likely entity type based on context.
-        
+
         Args:
             entity_text: The entity text
             context_before: Context before the entity
             context_after: Context after the entity
-            
+
         Returns:
             Suggested entity type or None
         """
         full_context = context_before + ' ' + context_after
-        
+
         # Check each entity type's patterns
         best_match = None
         best_score = 0
-        
+
         for entity_type, patterns in self.context_patterns.items():
             score = 0
-            
+
             # Check before patterns
-            if any(re.search(pattern, context_before, re.IGNORECASE) 
+            if any(re.search(pattern, context_before, re.IGNORECASE)
                   for pattern in patterns.get('before', [])):
                 score += 2
-            
+
             # Check keywords
             if entity_type in self.context_keywords:
-                keyword_count = sum(1 for keyword in self.context_keywords[entity_type] 
+                keyword_count = sum(1 for keyword in self.context_keywords[entity_type]
                                   if keyword in full_context)
                 score += keyword_count
-            
+
             if score > best_score:
                 best_score = score
                 best_match = entity_type
-        
+
         return best_match if best_score > 0 else None
-    
+
     def is_likely_false_positive(self, text: str, entity_type: str, start: int, end: int) -> bool:
         """
         Check if an entity is likely a false positive based on context.
-        
+
         Args:
             text: The full text
             entity_type: The detected entity type
             start: Start position of entity
             end: End position of entity
-            
+
         Returns:
             True if likely false positive, False otherwise
         """
         entity_text = text[start:end]
         context_before, context_after = self.get_context_window(text, start, end, window_size=30)
-        
+
         # Check for common false positive patterns
         false_positive_patterns = {
             'DATE': [
@@ -229,17 +230,17 @@ class ContextAnalyzer:
                 r'(?:policy|claim)[\s#:]*$'
             ]
         }
-        
+
         if entity_type in false_positive_patterns:
             patterns = false_positive_patterns[entity_type]
             if any(re.search(pattern, context_before, re.IGNORECASE) for pattern in patterns):
                 return True
-        
+
         # Additional checks for specific entity types
         if entity_type == 'DATE' and entity_text in ['NSW 2000', 'VIC 3000', 'QLD 4000']:
             return True
-        
+
         if entity_type == 'NUMBER' and entity_text == '#':
             return True
-        
+
         return False

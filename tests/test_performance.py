@@ -6,6 +6,7 @@ import time
 import pandas as pd
 import numpy as np
 from allyanonimiser import create_allyanonimiser
+from allyanonimiser.io.dataframe_processor import DataFrameProcessor
 
 # Skip these tests in CI or when running regular test suite
 pytestmark = pytest.mark.skip(reason="Performance tests are slow and only run manually")
@@ -54,7 +55,7 @@ def test_batch_size_performance(large_df, ally):
     times = []
     
     for batch_size in batch_sizes:
-        processor = ally.create_dataframe_processor(batch_size=batch_size)
+        processor = DataFrameProcessor(ally,batch_size=batch_size)
         
         _, duration = measure_time(
             processor.detect_pii,
@@ -79,7 +80,7 @@ def test_worker_performance(large_df, ally):
     times = []
     
     for workers in worker_counts:
-        processor = ally.create_dataframe_processor(n_workers=workers, batch_size=100)
+        processor = DataFrameProcessor(ally,n_workers=workers, batch_size=100)
         
         worker_desc = "Sequential" if workers is None else f"{workers} workers"
         
@@ -117,7 +118,7 @@ def test_acronym_expansion_overhead(large_df, ally):
     ally.set_acronym_dictionary(acronyms)
     
     # Test without acronym expansion
-    processor = ally.create_dataframe_processor(batch_size=100)
+    processor = DataFrameProcessor(ally,batch_size=100)
     _, no_expansion_time = measure_time(
         processor.process_dataframe,
         large_df,
@@ -145,7 +146,7 @@ def test_detect_vs_process_vs_anonymize(large_df, ally):
     print("\nOperation Performance Comparison")
     print("==============================")
     
-    processor = ally.create_dataframe_processor(batch_size=100)
+    processor = DataFrameProcessor(ally,batch_size=100)
     
     # Test detect_pii
     _, detect_time = measure_time(
@@ -190,7 +191,7 @@ def test_row_count_scaling(ally):
             'text': [base_text] * count
         })
         
-        processor = ally.create_dataframe_processor(batch_size=100)
+        processor = DataFrameProcessor(ally,batch_size=100)
         
         _, duration = measure_time(
             processor.detect_pii,

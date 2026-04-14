@@ -4,70 +4,95 @@ Allyanonimiser - Australian-focused PII detection and anonymization for the insu
 
 __version__ = "3.0.0"
 
+__all__ = [
+    # Core
+    "Allyanonimiser", "AnalysisConfig", "AnonymizationConfig",
+    "EnhancedAnalyzer", "EnhancedAnonymizer",
+    "CustomPatternDefinition", "PatternManager", "PatternRegistry",
+    # IO
+    "DataFrameProcessor", "StreamProcessor", "POLARS_AVAILABLE",
+    # Patterns
+    "get_au_pattern_definitions", "get_insurance_pattern_definitions",
+    "get_general_pattern_definitions",
+    # Validators
+    "validate_regex", "validate_spacy_pattern", "validate_context_list",
+    "validate_entity_type", "validate_pattern_definition",
+    "check_pattern_against_examples", "test_pattern_against_examples",
+    # Insurance
+    "ClaimNotesAnalyzer", "analyze_claim_note",
+    # Text processing
+    "LongTextProcessor", "segment_long_text", "extract_pii_rich_segments",
+    "analyze_claim_notes",
+    # Helpers
+    "create_spacy_pattern_from_examples", "create_regex_from_examples",
+    "detect_common_format", "create_pattern_from_regex",
+    "create_pattern_recognizer", "filter_results_by_score",
+    "filter_results_by_entity_type", "results_to_dict",
+    # Factories
+    "create_analyzer", "create_unified_analyzer",
+    "create_allyanonimiser", "create_pattern_from_examples",
+]
+
 # Core classes
-from .core.pattern_manager import CustomPatternDefinition, PatternManager
-from .core.analyzer import EnhancedAnalyzer
-from .core.anonymizer import EnhancedAnonymizer
-from .core.pattern_registry import PatternRegistry
-
-# Pre-defined patterns
-from .patterns.au_patterns import get_au_pattern_definitions
-from .patterns.insurance_patterns import get_insurance_pattern_definitions
-from .patterns.general_patterns import get_general_pattern_definitions
-
 # Config and main class
 from .allyanonimiser import (
     Allyanonimiser,
-    AnonymizationConfig,
     AnalysisConfig,
+    AnonymizationConfig,
 )
+from .core.analyzer import EnhancedAnalyzer
+from .core.anonymizer import EnhancedAnonymizer
+from .core.pattern_manager import CustomPatternDefinition, PatternManager
+from .core.pattern_registry import PatternRegistry
 
 # IO processors
 from .io.dataframe_processor import DataFrameProcessor
 
+# Pre-defined patterns
+from .patterns.au_patterns import get_au_pattern_definitions
+from .patterns.general_patterns import get_general_pattern_definitions
+from .patterns.insurance_patterns import get_insurance_pattern_definitions
+
 try:
-    from .io.stream_processor import StreamProcessor, POLARS_AVAILABLE
+    from .io.stream_processor import POLARS_AVAILABLE, StreamProcessor
 except ImportError:
     POLARS_AVAILABLE = False
     StreamProcessor = None
 
 # Long text processing
-from .utils.long_text_processor import (
-    LongTextProcessor,
-    segment_long_text,
-    extract_pii_rich_segments,
-    analyze_claim_notes,
-)
-
 # Validators
 from .core.validators import (
-    validate_regex,
-    validate_spacy_pattern,
+    check_pattern_against_examples,
+    test_pattern_against_examples,
     validate_context_list,
     validate_entity_type,
     validate_pattern_definition,
-    check_pattern_against_examples,
-    test_pattern_against_examples,
+    validate_regex,
+    validate_spacy_pattern,
 )
 
 # Insurance-specific
 from .insurance.claim_notes_analyzer import ClaimNotesAnalyzer, analyze_claim_note
-
-# Pattern helpers
-from .utils.spacy_helpers import (
-    create_spacy_pattern_from_examples,
-    create_regex_from_examples,
-    detect_common_format,
+from .utils.long_text_processor import (
+    LongTextProcessor,
+    analyze_claim_notes,
+    extract_pii_rich_segments,
+    segment_long_text,
 )
-
 from .utils.presidio_helpers import (
     create_pattern_from_regex,
     create_pattern_recognizer,
-    filter_results_by_score,
     filter_results_by_entity_type,
+    filter_results_by_score,
     results_to_dict,
 )
 
+# Pattern helpers
+from .utils.spacy_helpers import (
+    create_regex_from_examples,
+    create_spacy_pattern_from_examples,
+    detect_common_format,
+)
 
 # ---------------------------------------------------------------------------
 # Factory functions

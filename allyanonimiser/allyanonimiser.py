@@ -4,17 +4,17 @@ Main interface for the Allyanonimiser package.
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
 from .core.analyzer import EnhancedAnalyzer, RecognizerResult
 from .core.anonymizer import EnhancedAnonymizer
-from .core.pattern_manager import CustomPatternDefinition, PatternManager
+from .core.pattern_manager import CustomPatternDefinition
 from .core.pattern_registry import PatternRegistry
 from .io.csv_processor import CSVProcessor
-from .reporting import AnonymizationReport, report_manager
+from .reporting import report_manager
 from .utils.long_text_processor import extract_pii_rich_segments
 from .utils.settings_manager import SettingsManager, create_default_settings
 from .utils.text_preprocessor import TextPreprocessor
@@ -735,7 +735,7 @@ class Allyanonimiser:
         import json
         import os
 
-        batch_start = time.time()
+
 
         if report:
             batch_report = report_manager.start_new_report()
