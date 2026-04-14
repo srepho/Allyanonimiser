@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.5.0-blue)](https://pypi.org/project/allyanonimiser/2.5.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.0.0-blue)](https://pypi.org/project/allyanonimiser/3.0.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,48 +12,27 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 2.5.0 - CSV Processing & Enhanced Workflows
+## Version 3.0.0 — Major Restructure
 
-### What's New in v2.5.0
-- **Direct CSV Processing**: Process CSV files directly without manual DataFrame operations
-- **PII Column Auto-Detection**: Automatically identify columns containing PII
-- **Preview Mode**: Preview anonymization changes before processing entire files
-- **Streaming Support**: Handle multi-GB CSV files that don't fit in memory
-- **Directory Processing**: Batch process all CSV files in a directory
-- **Processing Reports**: Generate detailed reports with entity statistics
+**Breaking changes** — see [Migration Guide](#migrating-from-v2x) below.
 
-### Previous Version (v2.4.0)
-- **Enhanced spaCy Status Reporting**: Clear visual feedback when loading spaCy models with installation guidance
-- **New `check_spacy_status()` Method**: Programmatically check spaCy configuration and get recommendations
-- **Setup Verification Script**: New `verify_setup.py` script to check all dependencies and configurations
-- **Improved Documentation**: Clearer guidance on spaCy requirements and their impact on functionality
-- **Better Error Messages**: More helpful feedback when spaCy models are missing or misconfigured
-
-### Previous Version (v2.3.0)
-- **Enhanced False Positive Filtering**: Comprehensive filtering for PERSON and LOCATION entities eliminates common misdetections
-- **Improved Pattern Detection**: Fixed BSB/Account Number detection, enhanced Organization detection for Pty Ltd companies
-- **NAME_CONSULTANT Pattern**: New pattern for detecting consultant/agent names with proper boundary detection
-- **Refined Vehicle Registration**: More accurate detection with reduced false positives from all-caps text
-- **Better Medicare Support**: Fixed Medicare number detection and validation
-- **Enhanced Date Handling**: Improved date validation to avoid false positives (e.g., "NSW 2000" no longer detected as DATE)
-- **Service Number Detection**: Added support for Australian service numbers (1300, 1800, 13xx)
-- **Context-Aware Detection**: New context analyzer improves entity detection accuracy
-- **Multiple Entity Masking**: Robust support for masking multiple entity types simultaneously
+### What's New
+- **Layered package structure**: `core/` (detection/anonymization), `io/` (CSV/DataFrame/stream), `patterns/`, `utils/`
+- **Explicit API**: `manage_acronyms(action="add", ...)` → `add_acronyms(...)`. Same for patterns and DataFrame ops
+- **Configurable entity priority**: `DEFAULT_ENTITY_PRIORITY` dict controls overlap resolution; custom patterns beat generic NER
+- **Deterministic hashing**: `hash` operator uses SHA-256 instead of Python's non-deterministic `hash()`
+- **No print() in library code**: all output via `logging`
+- **28x faster test suite**: spaCy model cached at module level
+- **Tooling**: ruff + pyright replace black/isort/flake8/mypy; pyproject.toml is single source of truth
 
 ## Installation
 
 ```bash
 # Basic installation
-pip install allyanonimiser==2.5.0
+pip install allyanonimiser==3.0.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==2.5.0"
-
-# With LLM integration for advanced pattern generation
-pip install "allyanonimiser[llm]==2.5.0"
-
-# Complete installation with all optional dependencies
-pip install "allyanonimiser[stream,llm]==2.5.0"
+pip install "allyanonimiser[stream]==3.0.0"
 ```
 
 **Prerequisites:**
@@ -210,6 +189,86 @@ for result in results:
 - **Pattern Loading**: Automatic loading of all default patterns (Australian, Insurance, General)
 - **Improved Medicare Detection**: Fixed detection and validation for Australian Medicare numbers
 - **Multiple Entity Masking**: Simultaneous masking of multiple entity types with different operators
+
+## Package Structure (v3.0)
+
+```
+allyanonimiser/
+├── __init__.py          # Public API and factory functions
+├── allyanonimiser.py    # Allyanonimiser facade
+├── core/                # Detection and anonymization engine
+│   ├── analyzer.py      # EnhancedAnalyzer, RecognizerResult
+│   ├── anonymizer.py    # EnhancedAnonymizer, DEFAULT_ENTITY_PRIORITY
+│   ├── pattern_manager.py
+│   ├── pattern_registry.py
+│   ├── context_analyzer.py
+│   └── validators.py
+├── io/                  # File and DataFrame adapters
+│   ├── csv_processor.py
+│   ├── dataframe_processor.py
+│   └── stream_processor.py
+├── patterns/            # Built-in pattern definitions
+│   ├── au_patterns.py
+│   ├── insurance_patterns.py
+│   └── general_patterns.py
+├── utils/               # Helpers (spaCy, settings, text processing)
+├── insurance/           # Domain-specific analyzers
+└── reporting.py         # Report generation
+```
+
+## Migrating from v2.x
+
+### Import path changes
+
+```python
+# v2.x
+from allyanonimiser.enhanced_analyzer import EnhancedAnalyzer
+from allyanonimiser.dataframe_processor import DataFrameProcessor
+from allyanonimiser.validators import validate_regex
+
+# v3.0
+from allyanonimiser.core.analyzer import EnhancedAnalyzer
+from allyanonimiser.io.dataframe_processor import DataFrameProcessor
+from allyanonimiser.core.validators import validate_regex
+
+# Top-level imports still work for the main API:
+from allyanonimiser import create_allyanonimiser, EnhancedAnalyzer, DataFrameProcessor
+```
+
+### API changes
+
+```python
+# v2.x — stringly-typed
+ally.manage_acronyms(action="add", data={"TPD": "Total and Permanent Disability"})
+ally.manage_acronyms(action="get")
+ally.manage_acronyms(action="remove", data=["TPD"])
+ally.manage_patterns(action="create_from_examples", entity_type="MY_ID", examples=[...])
+ally.manage_patterns(action="load", filepath="patterns.json")
+
+# v3.0 — explicit methods
+ally.add_acronyms({"TPD": "Total and Permanent Disability"})
+ally.get_acronyms()
+ally.remove_acronyms(["TPD"])
+ally.create_pattern_from_examples(entity_type="MY_ID", examples=[...])
+ally.load_patterns("patterns.json")
+```
+
+### Removed
+
+- `setup.py` — use `pyproject.toml`
+- `generators/` module (was stubs only)
+- `InsuranceEmailAnalyzer`, `MedicalReportAnalyzer` (were stubs only)
+- All deprecated wrapper methods (`set_acronym_dictionary`, `create_dataframe_processor`, etc.)
+
+### New: Configurable entity priority
+
+```python
+from allyanonimiser.core.anonymizer import EnhancedAnonymizer, DEFAULT_ENTITY_PRIORITY
+
+# Override priorities for your use case
+custom_priority = {**DEFAULT_ENTITY_PRIORITY, "MY_CUSTOM_TYPE": 95}
+anonymizer = EnhancedAnonymizer(analyzer=analyzer, entity_priority=custom_priority)
+```
 
 ## Supported Entity Types
 

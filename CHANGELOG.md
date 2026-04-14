@@ -1,5 +1,44 @@
 # Changelog
 
+## 3.0.0 (2026-04-14)
+
+### Breaking Changes
+- **Package restructured** into `core/`, `io/`, `patterns/`, `utils/` layers
+- **Import paths changed**: e.g. `allyanonimiser.enhanced_analyzer` → `allyanonimiser.core.analyzer`
+- **Stringly-typed methods removed**: `manage_acronyms(action=...)` and `manage_patterns(action=...)` replaced with explicit methods (`add_acronyms()`, `add_pattern()`, `create_pattern_from_examples()`, etc.)
+- **13 deprecated wrapper methods removed** (`set_acronym_dictionary`, `create_dataframe_processor`, etc.)
+- **Stub modules removed**: `generators/` package, `InsuranceEmailAnalyzer`, `MedicalReportAnalyzer`
+- **`setup.py` removed** — `pyproject.toml` is the single source of truth
+- **Hash operator changed**: uses SHA-256 (`HASH-a1b2c3d4e5`) instead of Python `hash()` — existing hashed values will differ
+
+### Added
+- **`core/` subpackage**: analyzer, anonymizer, pattern_manager, pattern_registry, context_analyzer, validators
+- **`io/` subpackage**: csv_processor, dataframe_processor, stream_processor with shared `BaseProcessor`
+- **Configurable entity priority**: `DEFAULT_ENTITY_PRIORITY` dict in `core/anonymizer.py`; override via `EnhancedAnonymizer(entity_priority={...})`
+- **Custom pattern priority**: user-added patterns now beat generic NER (PERSON, LOCATION, etc.) when matching the same text span
+- **`check_pattern_against_examples()`**: real implementation with precision/recall/f1 metrics (was a stub)
+- **`validate_pattern_definition()`**: real implementation with entity_type validation (was a stub)
+- **spaCy model caching**: loaded once per process at module level
+
+### Changed
+- **`allyanonimiser.py`**: 1,931 → 973 lines (50% reduction)
+- **`__init__.py`**: 218 → 128 lines; slimmed export surface
+- **All `print()` in library code** replaced with `logging`
+- **CI workflow**: simplified, now fails hard on test failures (no more `|| echo` swallowing)
+- **Tooling**: ruff + pyright replace black/isort/flake8/mypy
+- **Processor naming**: all IO processors use `self.ally` consistently (was mixed `self.analyzer`/`self.ally`)
+
+### Fixed
+- **Test suite poisoning**: removed `test_imports.py` which injected MagicMock into `sys.modules`
+- **Duplicate test tree**: removed `allyanonimiser/tests/` (4 files that duplicated root `tests/`)
+- **Hypothesis tests**: fixed edge cases with whitespace-only expansions and duplicate keys
+- **Pattern generation tests**: fixed assertions that tested regex string representation instead of behavior
+- **SPDX license expression**: fixed `pyproject.toml` to satisfy modern setuptools
+
+### Performance
+- **Test suite**: 186s → 6.7s (28x faster) via module-level spaCy model caching
+- **Net code reduction**: ~5,000 lines deleted
+
 ## 2.5.0 (2025-08-14)
 
 ### Added
