@@ -204,18 +204,21 @@ class StreamProcessor(BaseProcessor):
 
             # Extract entities and processed data
             processed_chunk = result['dataframe']
-            if 'entities' in result:
-                entities_buffer.extend(result['entities'].to_pandas().to_dict('records'))
+            if result.get('entities'):
+                entities_buffer.extend(result['entities'])
 
             # Write to output file if path provided (streaming mode)
             if output_path:
-                # Determine write mode based on chunk number
                 mode = "w" if chunk_counter == 0 else "a"
                 header = chunk_counter == 0
 
-                # Convert to pandas for consistent CSV writing
-                pandas_chunk = processed_chunk.to_pandas()
-                pandas_chunk.to_csv(output_path, mode=mode, header=header, index=False)
+                # Write Polars DataFrame directly to CSV
+                if chunk_counter == 0:
+                    processed_chunk.write_csv(output_path)
+                else:
+                    # Append by writing without header
+                    with open(output_path, "a") as f:
+                        f.write(processed_chunk.write_csv(include_header=False))
 
                 # Only yield entities if they exist
                 if entities_buffer:
@@ -250,122 +253,78 @@ class StreamProcessor(BaseProcessor):
 
     def _process_chunk(
         self,
-        chunk: Union[pl.DataFrame, pd.DataFrame],
+        chunk,
         text_columns: List[str],
         active_entity_types: Optional[List[str]] = None,
         operators: Optional[Dict[str, str]] = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
         age_bracket_size: int = 5,
-        keep_postcode: bool = True
-    ) -> Dict[str, Union[pl.DataFrame, pd.DataFrame, List[Dict[str, Any]]]]:
-        """
-        Process a single chunk of data.
+        keep_postcode: bool = True,
+    ) -> Dict[str, Any]:
+        """Process a single chunk using Polars-native operations where possible."""
+        import polars as pl
 
-        Args:
-            chunk: Polars DataFrame or pandas DataFrame chunk to process
-            text_columns: Column name(s) containing text to process
-            active_entity_types: Optional list of entity types to activate
-            operators: Dict mapping entity_type to anonymization operator
-            min_score_threshold: Minimum confidence score threshold
-            anonymize: Whether to perform anonymization
-            age_bracket_size: Size of age brackets when using "age_bracket" operator
-            keep_postcode: Whether to keep postcodes when anonymizing addresses
+        # Ensure we have a Polars DataFrame
+        if isinstance(chunk, pd.DataFrame):
+            chunk = pl.from_pandas(chunk)
 
-        Returns:
-            Dict with processed chunk and entity list
-        """
-        import pandas as pd
+        all_entities: list = []
+        result = chunk.clone()
 
-        # Convert to pandas for processing with Allyanonimiser
-        if hasattr(chunk, 'to_pandas'):
-            try:
-                pd_chunk = chunk.to_pandas()
-            except Exception as e:
-                logger.warning(f"Failed to convert Polars DataFrame to pandas: {e}. Using direct pandas processing.")
-                # If we can't convert to pandas, use pandas directly if it's a DataFrame
-                if isinstance(chunk, pd.DataFrame):
-                    pd_chunk = chunk
-                else:
-                    # Try a different approach - convert to dict and then to pandas
-                    try:
-                        dict_data = {col: chunk[col].to_list() for col in chunk.columns}
-                        pd_chunk = pd.DataFrame(dict_data)
-                    except Exception as e2:
-                        raise ValueError(f"Could not process chunk data: {e2}")
-        else:
-            # If it's already a pandas DataFrame
-            pd_chunk = chunk
-
-        # Create a copy to avoid modifying the original
-        result_df = pd_chunk.copy()
-        all_entities = []
-
-        # Process each text column
         for column in text_columns:
-            # Skip if column doesn't exist
-            if column not in pd_chunk.columns:
+            if column not in chunk.columns:
                 continue
 
-            # Determine output column name for anonymized text
-            output_column = f"{column}_anonymized"
+            texts = chunk[column].to_list()
 
-            # Process each row in the chunk
-            for idx, row in pd_chunk.iterrows():
-                text = row[column]
+            # Analyze in batch
+            if active_entity_types is not None:
+                self.ally.analyzer.set_active_entity_types(active_entity_types)
+            self.ally.analyzer.set_min_score_threshold(min_score_threshold)
 
-                # Skip None/NaN values
-                if pd.isna(text):
+            # Use batch analysis to pre-warm spaCy cache
+            batch_results = self.ally.analyzer.analyze_batch(
+                [str(t) if t is not None else "" for t in texts]
+            )
+
+            anonymized_texts: list = []
+            for row_idx, (text, entities) in enumerate(zip(texts, batch_results)):
+                if text is None:
+                    anonymized_texts.append(None)
                     continue
 
-                # Analyze text
-                entities = self.ally.analyze(
-                    text,
-                    active_entity_types=active_entity_types,
-                    min_score_threshold=min_score_threshold
-                )
+                text_str = str(text)
+                for e in entities:
+                    all_entities.append({
+                        "row_index": row_idx,
+                        "column": column,
+                        "entity_type": e.entity_type,
+                        "start": e.start,
+                        "end": e.end,
+                        "text": e.text or text_str[e.start:e.end],
+                        "score": e.score,
+                    })
 
-                # Format entities
-                formatted_entities = [
-                    {
-                        'row_index': idx,
-                        'column': column,
-                        'entity_type': entity.entity_type,
-                        'start': entity.start,
-                        'end': entity.end,
-                        'text': entity.text or text[entity.start:entity.end],
-                        'score': entity.score
-                    }
-                    for entity in entities
-                ]
-                all_entities.extend(formatted_entities)
-
-                # Anonymize if requested
                 if anonymize:
-                    result = self.ally.anonymize(
-                        text,
+                    r = self.ally.anonymize(
+                        text_str,
                         operators=operators,
                         age_bracket_size=age_bracket_size,
-                        keep_postcode=keep_postcode
+                        keep_postcode=keep_postcode,
                     )
-                    result_df.at[idx, output_column] = result['text']
+                    anonymized_texts.append(r["text"])
+                else:
+                    anonymized_texts.append(text_str)
 
-        # Try to convert back to Polars for consistent return
-        if POLARS_AVAILABLE:
-            try:
-                import polars as pl
-                result_pl = pl.from_pandas(result_df)
-                return {
-                    'dataframe': result_pl,
-                    'entities': all_entities
-                }
-            except Exception as e:
-                logger.warning(f"Failed to convert pandas DataFrame to Polars: {e}. Returning pandas DataFrame.")
+            if anonymize:
+                result = result.with_columns(
+                    pl.Series(f"{column}_anonymized", anonymized_texts)
+                )
 
-        # Default to pandas if Polars conversion fails
         return {
-            'dataframe': result_df,
-            'entities': all_entities
+            'dataframe': result,
+            'entities': all_entities,
         }
 
     def process_large_file(

@@ -4,6 +4,7 @@ Unified analyzer for PII detection across all document types.
 import logging
 import re
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import spacy
 
@@ -316,6 +317,45 @@ class EnhancedAnalyzer:
             self._result_cache[cache_key] = filtered_results.copy()
 
         return filtered_results
+
+    def analyze_batch(
+        self,
+        texts: List[str],
+        language: str = "en",
+        score_adjustment=None,
+    ) -> List[List["RecognizerResult"]]:
+        """Analyze a batch of texts. Returns a list of result lists.
+
+        Uses spaCy's ``nlp.pipe()`` for efficient batch NER when available,
+        while still leveraging the per-text cache.
+        """
+        # Pre-warm spaCy NER cache for uncached texts in one pipe() call
+        if self.use_spacy:
+            uncached = [
+                (i, t) for i, t in enumerate(texts)
+                if t and t not in self._spacy_result_cache
+            ]
+            if uncached:
+                indices, raw_texts = zip(*uncached)
+                docs = self.nlp.pipe(raw_texts, batch_size=min(256, len(raw_texts)))
+                for idx, doc in zip(indices, docs):
+                    spacy_results = self._doc_to_results(doc)
+                    self._spacy_result_cache[raw_texts[indices.index(idx)]] = spacy_results
+
+        return [self.analyze(t, language, score_adjustment) for t in texts]
+
+    def _doc_to_results(self, doc) -> List["RecognizerResult"]:
+        """Convert a spaCy Doc to RecognizerResult list (same logic as _analyze_with_spacy)."""
+        results = []
+        for ent in doc.ents:
+            results.append(RecognizerResult(
+                entity_type=ent.label_,
+                start=ent.start_char,
+                end=ent.end_char,
+                score=0.9 if ent.label_ in ("PERSON", "ORG", "GPE", "LOC") else 0.7,
+                text=ent.text,
+            ))
+        return results
 
     def _create_cache_key(self, text, score_adjustment=None):
         """

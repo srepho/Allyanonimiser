@@ -86,8 +86,13 @@ class CSVProcessor(BaseProcessor):
         }
 
         try:
-            # Read CSV file
-            df = pd.read_csv(input_file, encoding=encoding, delimiter=delimiter)
+            # Read CSV — use PyArrow string dtype for lower memory if available
+            read_kwargs: dict = {"encoding": encoding, "delimiter": delimiter}
+            try:
+                read_kwargs["dtype_backend"] = "pyarrow"
+            except Exception:
+                pass
+            df = pd.read_csv(input_file, **read_kwargs)
             stats["total_rows"] = len(df)
             stats["total_columns"] = len(df.columns)
 
@@ -109,45 +114,24 @@ class CSVProcessor(BaseProcessor):
             for column in columns_to_anonymize:
                 logger.info(f"Processing column: {column}")
 
+                # Count entities using .apply() — one pass, no iterrows
+                def _count_entities(text):
+                    if pd.isna(text):
+                        return []
+                    return [e.entity_type for e in self.ally.analyze(str(text))]
+
+                entity_lists = df[column].apply(_count_entities)
+                for entity_types in entity_lists:
+                    for et in entity_types:
+                        stats["entities_found"][et] = stats["entities_found"].get(et, 0) + 1
+
                 if operation == "anonymize":
-                    # Create output column name
-                    output_column = f"{column}_anonymized"
+                    def _anonymize(text):
+                        if pd.isna(text):
+                            return text
+                        return self.ally.anonymize(str(text), operators=operators)["text"]
 
-                    # Process column
-                    df = self.ally.process_dataframe(
-                        df,
-                        column=column,
-                        operation="anonymize",
-                        output_column=output_column,
-                        operators=operators
-                    )
-
-                    # Track entities found
-                    for idx, row in df.iterrows():
-                        if pd.notna(row.get(output_column)):
-                            # Analyze original text to count entities
-                            original_text = row[column]
-                            if pd.notna(original_text):
-                                entities = self.ally.analyze(str(original_text))
-                                for entity in entities:
-                                    entity_type = entity.entity_type
-                                    stats["entities_found"][entity_type] = \
-                                        stats["entities_found"].get(entity_type, 0) + 1
-
-                    # Replace original column with anonymized version
-                    df[column] = df[output_column]
-                    df = df.drop(columns=[output_column])
-
-                elif operation == "analyze":
-                    # Just analyze without modifying
-                    for idx, row in df.iterrows():
-                        text = row[column]
-                        if pd.notna(text):
-                            entities = self.ally.analyze(str(text))
-                            for entity in entities:
-                                entity_type = entity.entity_type
-                                stats["entities_found"][entity_type] = \
-                                    stats["entities_found"].get(entity_type, 0) + 1
+                    df[column] = df[column].apply(_anonymize)
 
                 stats["columns_processed"].append(column)
 
@@ -218,20 +202,12 @@ class CSVProcessor(BaseProcessor):
             sample_data = df[column].dropna().head(sample_size)
 
             for text in sample_data:
-                if pd.notna(text):
-                    # Analyze text for PII
-                    entities = self.ally.analyze(str(text))
-
-                    # Filter by confidence threshold
-                    high_confidence_entities = [
-                        e for e in entities
-                        if e.score >= confidence_threshold
-                    ]
-
-                    if high_confidence_entities:
-                        detected_count += 1
-                        total_entities += len(high_confidence_entities)
-                        entity_types.update([e.entity_type for e in high_confidence_entities])
+                entities = self.ally.analyze(str(text))
+                high_conf = [e for e in entities if e.score >= confidence_threshold]
+                if high_conf:
+                    detected_count += 1
+                    total_entities += len(high_conf)
+                    entity_types.update(e.entity_type for e in high_conf)
 
             # Calculate detection rate
             detection_rate = detected_count / len(sample_data) if len(sample_data) > 0 else 0
