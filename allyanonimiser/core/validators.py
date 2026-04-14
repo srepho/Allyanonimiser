@@ -6,40 +6,105 @@ import re
 from datetime import datetime
 from typing import Tuple, Optional, List, Dict, Any
 
-# Import pattern validation functions from pattern_validators
-try:
-    from .pattern_validators import (
-        validate_regex,
-        validate_spacy_pattern,
-        validate_context_list,
-        validate_entity_type,
-        validate_pattern_definition,
-        test_pattern_against_examples
-    )
-except ImportError:
-    # Define stub functions if pattern_validators doesn't exist
-    def validate_regex(pattern: str) -> Tuple[bool, Optional[str]]:
-        try:
-            re.compile(pattern)
-            return True, None
-        except re.error as e:
-            return False, str(e)
-    
-    def validate_spacy_pattern(pattern: List[Dict[str, Any]]) -> Tuple[bool, Optional[str]]:
+def validate_regex(pattern: str) -> Tuple[bool, Optional[str]]:
+    """Validate that a string is a valid regex pattern."""
+    try:
+        re.compile(pattern)
         return True, None
-    
-    def validate_context_list(context: List[str]) -> Tuple[bool, Optional[str]]:
-        return True, None
-    
-    def validate_entity_type(entity_type: str) -> Tuple[bool, Optional[str]]:
-        return True, None
-    
-    def validate_pattern_definition(pattern_def: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
-        return True, None
-    
-    def test_pattern_against_examples(pattern: str, positive_examples: List[str], 
-                                    negative_examples: List[str]) -> Dict[str, Any]:
-        return {"pattern": pattern, "results": {}}
+    except re.error as e:
+        return False, str(e)
+
+
+def validate_spacy_pattern(pattern: List[Dict[str, Any]]) -> Tuple[bool, Optional[str]]:
+    """Validate a spaCy token pattern."""
+    if not isinstance(pattern, list):
+        return False, "Pattern must be a list of token dictionaries"
+    for token in pattern:
+        if not isinstance(token, dict):
+            return False, "Each token must be a dictionary"
+    return True, None
+
+
+def validate_context_list(context: List[str]) -> Tuple[bool, Optional[str]]:
+    """Validate a list of context words."""
+    if not isinstance(context, list):
+        return False, "Context must be a list of strings"
+    for item in context:
+        if not isinstance(item, str):
+            return False, f"Context item must be a string, got {type(item)}"
+    return True, None
+
+
+def validate_entity_type(entity_type: str) -> Tuple[bool, Optional[str]]:
+    """Validate an entity type string."""
+    if not isinstance(entity_type, str):
+        return False, "Entity type must be a string"
+    if not entity_type.strip():
+        return False, "Entity type cannot be empty"
+    return True, None
+
+
+def validate_pattern_definition(pattern_def: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate a pattern definition dictionary."""
+    errors = {}
+    entity_type = pattern_def.get("entity_type")
+    if not entity_type:
+        errors["entity_type"] = "entity_type is required"
+    elif entity_type != entity_type.upper():
+        errors["entity_type"] = "entity_type must be uppercase"
+    if "patterns" not in pattern_def or not pattern_def["patterns"]:
+        errors["patterns"] = "patterns is required"
+    return {"is_valid": len(errors) == 0, "errors": errors}
+
+
+def check_pattern_against_examples(
+    pattern: str,
+    positive_examples: List[str],
+    negative_examples: List[str],
+) -> Dict[str, Any]:
+    """Test a regex pattern against positive and negative examples.
+
+    Returns a dict with match results and metrics.
+    """
+    try:
+        compiled = re.compile(pattern)
+    except re.error as e:
+        return {"is_valid": False, "error": str(e)}
+
+    positive_matches = [ex for ex in positive_examples if compiled.search(ex)]
+    positive_non_matches = [ex for ex in positive_examples if not compiled.search(ex)]
+    negative_matches = [ex for ex in negative_examples if compiled.search(ex)]
+    negative_non_matches = [ex for ex in negative_examples if not compiled.search(ex)]
+
+    tp = len(positive_matches)
+    fn = len(positive_non_matches)
+    fp = len(negative_matches)
+    tn = len(negative_non_matches)
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    return {
+        "is_valid": fn == 0 and fp == 0,
+        "positive_matches": positive_matches,
+        "positive_non_matches": positive_non_matches,
+        "negative_matches": negative_matches,
+        "negative_non_matches": negative_non_matches,
+        "metrics": {
+            "true_positives": tp,
+            "false_negatives": fn,
+            "false_positives": fp,
+            "true_negatives": tn,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+        },
+    }
+
+
+# Keep backward-compatible alias
+test_pattern_against_examples = check_pattern_against_examples
 
 class EntityValidator:
     """Validates detected entities to reduce false positives."""

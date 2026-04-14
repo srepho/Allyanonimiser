@@ -5,12 +5,16 @@ This module provides functionality for generating reports on anonymization activ
 including statistics, visualizations, and export capabilities.
 """
 
-import os
-import json
 import datetime
-import pandas as pd
-from typing import Dict, List, Any, Optional, Union
+import json
+import logging
+import os
 from collections import Counter, defaultdict
+from typing import Any, Dict, List, Optional, Union
+
+import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 try:
     import matplotlib.pyplot as plt
@@ -401,7 +405,7 @@ class AnonymizationReport:
         This method renders a rich HTML report directly in the notebook.
         """
         if not IN_NOTEBOOK:
-            print("This method only works in Jupyter notebooks.")
+            logger.warning("display_in_notebook() requires a Jupyter environment.")
             return
         
         summary = self.get_summary()

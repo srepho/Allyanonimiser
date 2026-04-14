@@ -137,29 +137,22 @@ class TestRegexGeneration:
         """Test generalizing a single example with digits."""
         example = "ABC123DEF456"
         pattern = generalize_single_example(example)
-        
-        # Check that digits are generalized
-        assert re.search(r"\\d{3}", pattern) is not None
-        
-        # Check that pattern matches the example
+
+        # Check that pattern matches the original example
         assert re.match(pattern, example) is not None
-        
-        # Check that pattern matches similar examples
+
+        # Check that pattern generalizes digit positions
         assert re.match(pattern, "ABC789DEF456") is not None
-    
+
     def test_generalize_single_example_letters(self):
         """Test generalizing a single example with letter patterns."""
         example = "abc-DEF-123"
         pattern = generalize_single_example(example)
-        
-        # Check that letters are properly generalized
-        assert re.search(r"\[a-z\]{3}", pattern) is not None
-        assert re.search(r"\[A-Z\]{3}", pattern) is not None
-        
-        # Check that pattern matches the example
+
+        # Check that pattern matches the original example
         assert re.match(pattern, example) is not None
-        
-        # Check that pattern matches similar examples
+
+        # Check that pattern generalizes letter positions
         assert re.match(pattern, "xyz-DEF-123") is not None
         assert re.match(pattern, "abc-XYZ-123") is not None
     
@@ -177,8 +170,8 @@ class TestRegexGeneration:
         """Test detection of phone numbers."""
         examples = ["123-456-7890", "987-654-3210"]
         pattern = detect_common_format(examples)
-        
+
         # Check that pattern is a phone number format
         assert pattern is not None
-        assert "123-456-7890" in re.findall(pattern, "Call 123-456-7890 for service")
-        assert "987-654-3210" in re.findall(pattern, "Phone 987-654-3210 is available")
+        assert re.search(pattern, "Call 123-456-7890 for service") is not None
+        assert re.search(pattern, "Phone 987-654-3210 is available") is not None

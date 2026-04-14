@@ -1,32 +1,35 @@
 """
 Unified analyzer for PII detection across all document types.
 """
+import logging
 import re
 from dataclasses import dataclass
-import spacy
 from typing import List, Dict, Any, Optional, Union, Tuple
 
-# Handle spaCy loading with fallback options
+import spacy
+
+logger = logging.getLogger(__name__)
+
+# Module-level cache so the model is loaded at most once per process.
+_spacy_model_cache: dict = {}
+
+
 def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
-    """
-    Load a spaCy language model with fallback to a smaller model if needed.
-    
-    Args:
-        model_name: Primary model name to load
-        fallback_model: Fallback model if primary isn't available
-        
-    Returns:
-        Loaded spaCy Language model
-    """
+    """Load a spaCy model with fallback, cached at module level."""
+    cache_key = (model_name, fallback_model)
+    if cache_key in _spacy_model_cache:
+        return _spacy_model_cache[cache_key]
+
     try:
-        return spacy.load(model_name)
+        nlp = spacy.load(model_name)
     except OSError:
         try:
-            # Try the fallback model
-            return spacy.load(fallback_model)
+            nlp = spacy.load(fallback_model)
         except OSError:
-            # If all else fails, use the blank model
-            return spacy.blank("en")
+            nlp = spacy.blank("en")
+
+    _spacy_model_cache[cache_key] = nlp
+    return nlp
 
 @dataclass
 class RecognizerResult:
@@ -60,20 +63,15 @@ class EnhancedAnalyzer:
             # Determine which model was actually loaded
             if hasattr(self.nlp, 'meta') and 'name' in self.nlp.meta:
                 self.spacy_model_loaded = self.nlp.meta['name']
-                print(f"✓ spaCy model loaded successfully: {self.spacy_model_loaded}")
+                logger.info("spaCy model loaded: %s", self.spacy_model_loaded)
             else:
                 self.spacy_model_loaded = "blank_en"
-                print("⚠️  Using basic spaCy model (blank). Entity detection will be limited.")
-                print("   To enable full functionality, please install a spaCy model:")
-                print("     python -m spacy download en_core_web_lg  # Recommended (788 MB)")
-                print("     OR")
-                print("     python -m spacy download en_core_web_sm  # Smaller alternative (44 MB)")
+                logger.warning(
+                    "Using blank spaCy model. Entity detection will be limited. "
+                    "Install a model: python -m spacy download en_core_web_lg"
+                )
         except Exception as e:
-            print(f"⚠️  Warning: Could not load spaCy model: {e}")
-            print("   Some entity detection features (PERSON, ORGANIZATION, LOCATION) will be unavailable.")
-            print("   To enable these features, please install spaCy and a language model:")
-            print("     pip install spacy")
-            print("     python -m spacy download en_core_web_lg")
+            logger.warning("Could not load spaCy model: %s", e)
             self.use_spacy = False
             self.spacy_model_loaded = None
             
@@ -510,7 +508,7 @@ class EnhancedAnalyzer:
                     continue
                 except Exception as e:
                     # Skip any other errors
-                    print(f"Error processing pattern {regex_pattern}: {e}")
+                    logger.debug("Error processing pattern %s: %s", regex_pattern, e)
                     continue
         
         return results
@@ -1056,11 +1054,28 @@ class EnhancedAnalyzer:
                 else:
                     return None
         
-        # Prioritize spaCy PERSON entities over pattern-based ones
-        if any(r.entity_type == "PERSON" and r.score >= 0.9 for r in results):
-            for r in results:
-                if r.entity_type == "PERSON" and r.score >= 0.9:
-                    return r
+        # Use entity priority to resolve conflicts.
+        # Custom (user-added) patterns get a bonus so they can override built-in ones.
+        from .anonymizer import DEFAULT_ENTITY_PRIORITY
+
+        # Patterns registered later (user-added) get a small priority boost
+        pattern_order = {
+            p.entity_type: i
+            for i, p in enumerate(self.patterns)
+            if hasattr(p, "entity_type")
+        }
+        num_patterns = len(self.patterns)
+
+        def _priority(r):
+            base = DEFAULT_ENTITY_PRIORITY.get(r.entity_type, 75)
+            # Bonus for later-registered patterns (user custom)
+            order = pattern_order.get(r.entity_type, -1)
+            # Scale bonus: max +10 for the last-registered pattern
+            bonus = (order / max(num_patterns, 1)) * 10 if order >= 0 else 0
+            return base + bonus + r.score
+
+        best = max(results, key=_priority)
+        return best
         
         # Special handling for service numbers that might be detected as DATE
         if any(r.entity_type == 'AU_PHONE' for r in results) and any(r.entity_type == 'DATE' for r in results):

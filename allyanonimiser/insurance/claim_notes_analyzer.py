@@ -3,7 +3,7 @@ Specialized analyzer for insurance claim notes - stub for testing.
 """
 
 from ..utils.long_text_processor import LongTextProcessor
-from ..enhanced_analyzer import EnhancedAnalyzer
+from ..core.analyzer import EnhancedAnalyzer
 
 # Don't import create_au_insurance_analyzer from top-level module
 # Instead, create a local analyzer instance

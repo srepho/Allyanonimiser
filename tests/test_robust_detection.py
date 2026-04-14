@@ -5,8 +5,8 @@ Comprehensive test suite for robust entity detection.
 import pytest
 import re
 from allyanonimiser import create_allyanonimiser
-from allyanonimiser.validators import EntityValidator
-from allyanonimiser.context_analyzer import ContextAnalyzer
+from allyanonimiser.core.validators import EntityValidator
+from allyanonimiser.core.context_analyzer import ContextAnalyzer
 
 
 class TestRobustDetection:

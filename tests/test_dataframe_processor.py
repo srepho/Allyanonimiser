@@ -4,7 +4,7 @@ Tests for the DataFrame processor functionality.
 import pytest
 import pandas as pd
 from allyanonimiser import create_allyanonimiser
-from allyanonimiser.dataframe_processor import DataFrameProcessor
+from allyanonimiser.io.dataframe_processor import DataFrameProcessor
 
 @pytest.fixture
 def sample_df():
@@ -205,6 +205,6 @@ def test_main_interface_methods(allyanonimiser, sample_df):
     assert 'dataframe' in result
     assert 'entities' in result
     
-    # Test creating a processor
-    processor = allyanonimiser.create_dataframe_processor()
+    # Test creating a processor via internal helper
+    processor = allyanonimiser._make_df_processor()
     assert isinstance(processor, DataFrameProcessor)

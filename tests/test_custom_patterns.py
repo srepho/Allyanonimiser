@@ -22,8 +22,8 @@ from allyanonimiser import (
     PatternManager,
     PatternRegistry
 )
-from allyanonimiser.validators import (
-    test_pattern_against_examples,
+from allyanonimiser.core.validators import (
+    test_pattern_against_examples as check_pattern_against_examples,
     validate_pattern_definition,
     validate_regex
 )
@@ -472,13 +472,13 @@ class TestValidators:
             assert "errors" in result
             assert "entity_type" in result["errors"]
         
-    def test_test_pattern_against_examples(self):
+    def test_check_pattern_against_examples(self):
         """Test pattern testing against examples."""
         pattern = r"TEST-\d{5}"
         positive_examples = ["TEST-12345", "TEST-67890"]
         negative_examples = ["TEST-1234", "TOST-12345"]
         
-        result = test_pattern_against_examples(pattern, positive_examples, negative_examples)
+        result = check_pattern_against_examples(pattern, positive_examples, negative_examples)
         
         # Handle case where result is a tuple (is_valid, msg)
         if isinstance(result, tuple):
@@ -605,7 +605,6 @@ class TestIntegrationWithAnalyzer:
         if test_id_results:
             assert test_id_results[0].text == "UNIQUE-TEST-ID-12345"
         
-    @pytest.mark.skip(reason="Skipping pattern from examples test as implementation might vary")
     def test_create_pattern_from_examples(self):
         """Test creating and using a pattern from examples."""
         ally = create_allyanonimiser()
@@ -626,7 +625,6 @@ class TestIntegrationWithAnalyzer:
         
         # The actual matching is implementation-dependent, so we won't test it directly
         
-    @pytest.mark.skip(reason="Skipping save/load test as implementation might vary")
     def test_save_load_patterns(self, tmp_path):
         """Test saving and loading patterns via the main interface."""
         # Create a temporary file path
@@ -777,7 +775,6 @@ class TestHypothesisBased:
 class TestREADMEExamples:
     """Tests for the examples shown in the README."""
     
-    @pytest.mark.skip(reason="Skipping sample code test as implementation might vary")
     def test_basic_custom_pattern_creation(self):
         """Test creating a basic custom pattern as shown in the README."""
         # Create a pattern directly
@@ -800,7 +797,6 @@ class TestREADMEExamples:
         if project_id_results:
             assert project_id_results[0].text == "PRJ-1234"
         
-    @pytest.mark.skip(reason="Skipping sample code test as implementation might vary")
     def test_pattern_from_examples(self):
         """Test creating a pattern from examples as shown in the README."""
         # Create a pattern from examples
@@ -814,7 +810,6 @@ class TestREADMEExamples:
         
         # Implementation-dependent, so skip detailed assertions
         
-    @pytest.mark.skip(reason="Skipping sample code test as implementation might vary")
     def test_pattern_persistence(self, tmp_path):
         """Test pattern persistence as shown in the README."""
         # Create a temporary file path
@@ -853,7 +848,7 @@ class TestREADMEExamples:
         positive_examples = ["PROJ-1234-AB", "PROJ-5678-XY"]
         negative_examples = ["PROJ-123-AB", "PROJECT-1234-AB"]
         
-        results = test_pattern_against_examples(pattern, positive_examples, negative_examples)
+        results = check_pattern_against_examples(pattern, positive_examples, negative_examples)
         
         # Handle both tuple and dictionary return types
         if isinstance(results, tuple):

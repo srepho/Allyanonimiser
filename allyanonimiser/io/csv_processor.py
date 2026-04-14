@@ -12,23 +12,16 @@ from typing import Dict, List, Optional, Tuple, Union, Any, Generator
 from datetime import datetime
 import logging
 
+from .base import BaseProcessor
+
 logger = logging.getLogger(__name__)
 
 
-class CSVProcessor:
-    """
-    Handles CSV file processing with PII detection and anonymization.
-    """
-    
+class CSVProcessor(BaseProcessor):
+    """Handles CSV file processing with PII detection and anonymization."""
+
     def __init__(self, allyanonimiser=None):
-        """
-        Initialize CSV processor.
-        
-        Args:
-            allyanonimiser: An existing Allyanonimiser instance or None to create a new one
-        """
-        from .allyanonimiser import create_allyanonimiser
-        self.ally = allyanonimiser or create_allyanonimiser()
+        super().__init__(allyanonimiser)
         self.processing_stats = {}
         
     def process_csv_file(

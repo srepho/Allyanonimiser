@@ -13,7 +13,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from allyanonimiser import create_allyanonimiser
-from allyanonimiser.stream_processor import StreamProcessor, POLARS_AVAILABLE
+from allyanonimiser.io.stream_processor import StreamProcessor, POLARS_AVAILABLE
 
 # Import polars conditionally
 if POLARS_AVAILABLE:
@@ -70,7 +70,7 @@ class TestStreamProcessor:
         allyanonimiser = create_allyanonimiser()
         processor = StreamProcessor(allyanonimiser=allyanonimiser, n_workers=2, chunk_size=1000)
         
-        assert processor.analyzer == allyanonimiser
+        assert processor.ally == allyanonimiser
         assert processor.n_workers == 2
         assert processor.chunk_size == 1000
     

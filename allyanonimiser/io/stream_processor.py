@@ -45,42 +45,29 @@ except ImportError:
     pl = DummyModule()
 
 
-class StreamProcessor:
-    """
-    Provides streaming processing capabilities for very large files using Polars.
-    
-    This class enables Allyanonimiser to process extremely large datasets
-    with minimal memory impact by using Polars' lazy evaluation and streaming
-    capabilities, processing data in chunks.
-    """
-    
+from .base import BaseProcessor
+
+
+class StreamProcessor(BaseProcessor):
+    """Streaming processor for very large files using Polars."""
+
     def __init__(self, allyanonimiser=None, n_workers=None, chunk_size=None):
-        """
-        Initialize the stream processor.
-        
-        Args:
-            allyanonimiser: An existing Allyanonimiser instance or None to create a new one
-            n_workers: Number of worker processes for parallel processing (default: None = use CPU count)
-            chunk_size: Number of rows to process in each chunk (default: 10,000)
-        """
         if not POLARS_AVAILABLE:
             logger.warning(
                 "Polars is required for stream processing but is not available. "
                 "Install with: pip install polars"
             )
-            
-        from .allyanonimiser import create_allyanonimiser
-        self.analyzer = allyanonimiser or create_allyanonimiser()
+        super().__init__(allyanonimiser)
         
         # Use values from settings if not explicitly provided
-        if n_workers is None and hasattr(self.analyzer, 'worker_count'):
-            self.n_workers = self.analyzer.worker_count
+        if n_workers is None and hasattr(self.ally, 'worker_count'):
+            self.n_workers = self.ally.worker_count
         else:
             self.n_workers = n_workers or os.cpu_count()
             
         # Use chunk size from settings or default
-        if chunk_size is None and hasattr(self.analyzer, 'chunk_size'):
-            self.chunk_size = self.analyzer.chunk_size
+        if chunk_size is None and hasattr(self.ally, 'chunk_size'):
+            self.chunk_size = self.ally.chunk_size
         else:
             self.chunk_size = chunk_size or 10000
             
@@ -148,9 +135,9 @@ class StreamProcessor:
             
         # Configure analyzer settings
         if active_entity_types is not None:
-            self.analyzer.analyzer.set_active_entity_types(active_entity_types)
+            self.ally.analyzer.set_active_entity_types(active_entity_types)
             
-        self.analyzer.analyzer.set_min_score_threshold(min_score_threshold)
+        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
         
         # Handle single column case
         if isinstance(text_columns, str):
@@ -339,7 +326,7 @@ class StreamProcessor:
                     continue
                     
                 # Analyze text
-                entities = self.analyzer.analyze(
+                entities = self.ally.analyze(
                     text, 
                     active_entity_types=active_entity_types,
                     min_score_threshold=min_score_threshold
@@ -362,7 +349,7 @@ class StreamProcessor:
                 
                 # Anonymize if requested
                 if anonymize:
-                    result = self.analyzer.anonymize(
+                    result = self.ally.anonymize(
                         text, 
                         operators=operators,
                         age_bracket_size=age_bracket_size,

@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 import numpy as np
 from allyanonimiser import create_allyanonimiser
-from allyanonimiser.dataframe_processor import DataFrameProcessor, PYARROW_AVAILABLE
+from allyanonimiser.io.dataframe_processor import DataFrameProcessor, PYARROW_AVAILABLE
 
 # Skip all tests if PyArrow is not available
 pytestmark = pytest.mark.skipif(not PYARROW_AVAILABLE, reason="PyArrow not available")

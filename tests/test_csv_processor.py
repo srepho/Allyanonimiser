@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from pathlib import Path
 from allyanonimiser import create_allyanonimiser
-from allyanonimiser.csv_processor import CSVProcessor
+from allyanonimiser.io.csv_processor import CSVProcessor
 
 
 @pytest.fixture

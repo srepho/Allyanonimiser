@@ -20,33 +20,24 @@ except ImportError:
     pa = DummyModule()
 
 
-class DataFrameProcessor:
-    """
-    Provides efficient pandas DataFrame processing capabilities for Allyanonimiser.
-    """
-    
+from .base import BaseProcessor
+
+
+class DataFrameProcessor(BaseProcessor):
+    """Efficient pandas DataFrame processing for Allyanonimiser."""
+
     def __init__(self, allyanonimiser=None, n_workers=None, batch_size=None, use_pyarrow=None):
-        """
-        Initialize the DataFrame processor.
-        
-        Args:
-            allyanonimiser: An existing Allyanonimiser instance or None to create a new one
-            n_workers: Number of worker processes for parallel processing (default: None = sequential)
-            batch_size: Number of rows to process in each batch (default: None = use from settings)
-            use_pyarrow: Whether to use PyArrow for DataFrame conversions (default: None = auto-detect)
-        """
-        from .allyanonimiser import create_allyanonimiser
-        self.analyzer = allyanonimiser or create_allyanonimiser()
+        super().__init__(allyanonimiser)
         
         # Use values from settings if not explicitly provided
-        if n_workers is None and hasattr(self.analyzer, 'worker_count'):
-            self.n_workers = self.analyzer.worker_count
+        if n_workers is None and hasattr(self.ally, 'worker_count'):
+            self.n_workers = self.ally.worker_count
         else:
             self.n_workers = n_workers
             
         # Use batch size from settings if available
-        if batch_size is None and hasattr(self.analyzer, 'batch_size'):
-            self.batch_size = self.analyzer.batch_size
+        if batch_size is None and hasattr(self.ally, 'batch_size'):
+            self.batch_size = self.ally.batch_size
         else:
             self.batch_size = batch_size or 1000
             
@@ -86,9 +77,9 @@ class DataFrameProcessor:
             
         # Configure analyzer settings
         if active_entity_types is not None:
-            self.analyzer.analyzer.set_active_entity_types(active_entity_types)
+            self.ally.analyzer.set_active_entity_types(active_entity_types)
         
-        self.analyzer.analyzer.set_min_score_threshold(min_score_threshold)
+        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
         
         # Process in batches for memory efficiency
         results = []
@@ -98,7 +89,7 @@ class DataFrameProcessor:
             if pd.isna(text):
                 return []
                 
-            entities = self.analyzer.analyze(text)
+            entities = self.ally.analyze(text)
             return [
                 {
                     'row_index': idx,
@@ -184,14 +175,14 @@ class DataFrameProcessor:
         
         # Configure analyzer settings
         if active_entity_types is not None:
-            self.analyzer.analyzer.set_active_entity_types(active_entity_types)
+            self.ally.analyzer.set_active_entity_types(active_entity_types)
             
         # Define processing function for a single text
         def anonymize_text(text):
             if pd.isna(text):
                 return text
                 
-            result = self.analyzer.anonymize(
+            result = self.ally.anonymize(
                 text, 
                 operators=operators,
                 age_bracket_size=age_bracket_size,
@@ -412,9 +403,9 @@ class DataFrameProcessor:
                 
         # Configure analyzer settings
         if active_entity_types is not None:
-            self.analyzer.analyzer.set_active_entity_types(active_entity_types)
+            self.ally.analyzer.set_active_entity_types(active_entity_types)
             
-        self.analyzer.analyzer.set_min_score_threshold(min_score_threshold)
+        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
         
         # Override PyArrow setting if specified
         original_use_pyarrow = self.use_pyarrow
@@ -460,7 +451,7 @@ class DataFrameProcessor:
                     return [], text
                     
                 # Analyze text
-                entities = self.analyzer.analyze(text, 
+                entities = self.ally.analyze(text, 
                                                 active_entity_types=active_entity_types,
                                                 min_score_threshold=min_score_threshold)
                 
@@ -480,7 +471,7 @@ class DataFrameProcessor:
                 
                 # Anonymize if requested
                 if anonymize:
-                    result = self.analyzer.anonymize(
+                    result = self.ally.anonymize(
                         text, 
                         operators=operators,
                         age_bracket_size=age_bracket_size,

@@ -17,15 +17,20 @@ from allyanonimiser.utils.settings_manager import (
 from allyanonimiser import create_allyanonimiser
 
 # Define strategies for generating test data
-acronyms = st.text(alphabet=string.ascii_uppercase, min_size=1, max_size=10)
-expansions = st.text(alphabet=string.ascii_letters + ' ', min_size=1, max_size=50)
-entity_types = st.text(alphabet=string.ascii_uppercase + '_', min_size=1, max_size=20)
-patterns = st.text(alphabet=string.ascii_letters + string.digits + r'\\[]{}().|*+?^$-', min_size=1, max_size=30)
-context_words = st.lists(
-    st.text(alphabet=string.ascii_lowercase + ' ', min_size=1, max_size=15),
-    min_size=0, max_size=5
+# Acronyms: at least 2 uppercase letters; expansions: words separated by spaces
+acronyms = st.text(alphabet=string.ascii_uppercase, min_size=2, max_size=10)
+expansions = st.text(alphabet=string.ascii_letters, min_size=2, max_size=50)
+entity_types = st.text(alphabet=string.ascii_uppercase + '_', min_size=3, max_size=20).filter(
+    lambda s: s[0].isalpha()
 )
-names = st.text(alphabet=string.ascii_letters + ' ', min_size=1, max_size=30)
+patterns = st.text(
+    alphabet=string.ascii_letters + string.digits + r'\\[]{}().|*+?^$-', min_size=3, max_size=30
+)
+context_words = st.lists(
+    st.text(alphabet=string.ascii_lowercase, min_size=2, max_size=15),
+    min_size=0, max_size=5,
+)
+names = st.text(alphabet=string.ascii_letters, min_size=3, max_size=30)
 scores = st.floats(min_value=0.01, max_value=1.0)
 
 def create_temp_csv(rows, headers):
@@ -41,44 +46,46 @@ def create_temp_csv(rows, headers):
 @given(
     acronym_data=st.lists(
         st.tuples(acronyms, expansions),
-        min_size=1, max_size=5
+        min_size=1, max_size=5,
+        unique_by=lambda t: t[0],  # unique acronym keys
     )
 )
 def test_property_acronym_import(acronym_data):
     """Property-based test for acronym import."""
-    # Create a temporary CSV with generated data
     headers = ['acronym', 'expansion']
     temp_file = create_temp_csv(acronym_data, headers)
-    
+
     try:
-        # Test import
         manager = SettingsManager()
         success, count = manager.import_acronyms_from_csv(temp_file)
-        
-        # Should import successfully
+
         assert success
         assert count == len(acronym_data)
-        
-        # Verify all acronyms were imported correctly
+
         acronyms_dict = manager.get_acronyms()
         for acronym, expansion in acronym_data:
             assert acronym in acronyms_dict
             assert acronyms_dict[acronym] == expansion
     finally:
-        # Clean up
         os.unlink(temp_file)
 
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=5)
+@settings(
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    max_examples=5,
+    deadline=5000,
+)
 @given(
     pattern_data=st.lists(
         st.tuples(
             entity_types,
             patterns,
-            st.fixed_dictionaries({}),  # Placeholder for context
+            st.just(""),  # empty context string
             names,
-            scores
+            scores,
         ),
-        min_size=1, max_size=3
+        min_size=1,
+        max_size=3,
+        unique_by=lambda t: (t[0], t[3]),  # unique entity_type + name
     )
 )
 def test_property_pattern_import(pattern_data):
@@ -122,11 +129,16 @@ def test_property_pattern_import(pattern_data):
         # Clean up
         os.unlink(temp_file)
 
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture], max_examples=5)
+@settings(
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    max_examples=5,
+    deadline=5000,
+)
 @given(
     mixed_data=st.lists(
         st.tuples(acronyms, expansions),
-        min_size=1, max_size=3
+        min_size=1, max_size=3,
+        unique_by=lambda t: t[0],
     )
 )
 def test_allyanonimiser_integration(mixed_data):

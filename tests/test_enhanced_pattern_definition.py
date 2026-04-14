@@ -4,7 +4,7 @@ Integration tests for enhanced pattern definition functionality.
 import re
 import pytest
 from allyanonimiser import create_pattern_from_examples
-from allyanonimiser.pattern_manager import CustomPatternDefinition
+from allyanonimiser.core.pattern_manager import CustomPatternDefinition
 
 class TestEnhancedPatternDefinition:
     """Test the enhanced pattern definition functionality."""
