@@ -108,7 +108,7 @@ class TestMultipleEntityMasking:
     
     def test_mixed_operators(self, analyzer):
         """Test using different anonymization operators for different entity types."""
-        text = "John's phone is 0412 345 678, email: john@example.com, TFN: 123 456 789"
+        text = "John's phone is 0412 345 678, email: john@example.com, TFN: 123 456 782"
         
         config = AnonymizationConfig(
             operators={

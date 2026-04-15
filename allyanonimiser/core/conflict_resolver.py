@@ -140,11 +140,13 @@ def deduplicate_and_resolve_conflicts(
     out: list[RecognizerResult] = []
     for (_start, _end, span_text), span_results in spans.items():
         if len(span_results) == 1:
-            sole = span_results[0]
-            if _is_valid_single(sole):
-                out.append(sole)
+            winner = span_results[0]
         else:
             winner = resolve_entity_conflicts(span_results, span_text, patterns)
-            if winner is not None:
-                out.append(winner)
+        # Validate the winner regardless of how it was chosen.
+        # Without this, an invalid TFN/ABN can slip through whenever the
+        # same span is also matched by a competing entity type, because
+        # resolve_entity_conflicts picks by priority without revalidating.
+        if winner is not None and _is_valid_single(winner):
+            out.append(winner)
     return out

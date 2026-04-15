@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.1.2-blue)](https://pypi.org/project/allyanonimiser/3.1.2/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.2.0-blue)](https://pypi.org/project/allyanonimiser/3.2.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,7 +12,7 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 3.1.2 — Major Restructure
+## Version 3.2.0 — Major Restructure
 
 **Breaking changes** — see [Migration Guide](#migrating-from-v2x) below.
 
@@ -29,10 +29,10 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.1.2
+pip install allyanonimiser==3.2.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.1.2"
+pip install "allyanonimiser[stream]==3.2.0"
 ```
 
 **Prerequisites:**

@@ -72,20 +72,22 @@ class TestRobustDetection:
         for text, should_be_valid in test_cases:
             results = analyzer.analyze(text)
             medicare_entities = [r for r in results if r.entity_type == 'AU_MEDICARE']
-            
-            # Due to validation complexity, we'll just check that Medicare numbers
-            # are detected when they follow the pattern
-            if text.startswith("Medicare:"):
-                # Should detect if it matches the basic pattern
-                number_part = text.split(":")[1].strip()
-                if re.match(r'^[2-6]\d{3}\s+\d{5}\s+\d{1}$', number_part):
-                    assert len(medicare_entities) > 0, f"Failed to detect Medicare number: {text}"
+
+            if should_be_valid:
+                assert medicare_entities, f"Failed to detect valid Medicare: {text}"
+            else:
+                assert not medicare_entities, (
+                    f"Should not have detected invalid Medicare: {text} "
+                    f"(found {[r.text for r in medicare_entities]})"
+                )
     
     def test_context_aware_detection(self, analyzer):
         """Test context-aware entity detection."""
         test_cases = [
             # Context should help identify entities
-            ("TFN: 123 456 789", "AU_TFN"),
+            # Use checksum-valid examples so detection is not filtered:
+            # 123456782 is a valid TFN, 51824753556 is the ATO test ABN.
+            ("TFN: 123 456 782", "AU_TFN"),
             ("ABN: 51 824 753 556", "AU_ABN"),
             ("Policy number POL-12345678", "INSURANCE_POLICY_NUMBER"),
             ("Claim number CL-98765432", "INSURANCE_CLAIM_NUMBER"),
@@ -163,11 +165,18 @@ class TestRobustDetection:
         assert EntityValidator.validate_medicare_number("2123456781")[0] == True
         assert EntityValidator.validate_medicare_number("1123456781")[0] == False
         
-        # Test TFN validation (skip checksum test for now)
-        # assert EntityValidator.validate_tfn("123456782")[0] == True
-        
-        # Test ABN validation (skip checksum test for now)
-        # assert EntityValidator.validate_abn("51824753556")[0] == True
+        # TFN: 9-digit weighted modulus-11 checksum.
+        # 123456782 satisfies the algorithm; 123456789 does not.
+        assert EntityValidator.validate_tfn("123456782")[0] is True
+        assert EntityValidator.validate_tfn("123456789")[0] is False
+        # Whitespace variants should normalise.
+        assert EntityValidator.validate_tfn("123 456 782")[0] is True
+
+        # ABN: 11-digit modulus-89 checksum (subtract 1 from first digit).
+        # 51824753556 is the ATO's published test ABN.
+        assert EntityValidator.validate_abn("51824753556")[0] is True
+        assert EntityValidator.validate_abn("51824753557")[0] is False
+        assert EntityValidator.validate_abn("51 824 753 556")[0] is True
     
     def test_context_analyzer(self):
         """Test context analyzer functionality."""

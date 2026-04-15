@@ -42,7 +42,7 @@ def basic_anonymizer(basic_analyzer):
 def sample_claim_text():
     return """
     Claim Details:
-    Spoke with the insured John Smith (TFN: 123 456 789) regarding damage to his vehicle ABC123.
+    Spoke with the insured John Smith (TFN: 123 456 782) regarding damage to his vehicle ABC123.
     The incident occurred on 14/05/2023 when another vehicle collided with the rear of his car.
     Policy number: POL-987654321
 

@@ -74,7 +74,7 @@ class TestOverlappingEntities:
         
     def test_consistent_anonymization_with_overlaps(self, analyzer):
         """Test that overlapping entities are consistently anonymized."""
-        text = "John Smith (Medicare: 2123 45678 1) and John Smith (TFN: 123 456 789)"
+        text = "John Smith (Medicare: 2123 45678 1) and John Smith (TFN: 123 456 782)"
         
         config = AnonymizationConfig(
             operators={

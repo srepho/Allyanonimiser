@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.2.0 (2026-04-15)
+
+### Behavior change (mildly observable)
+- **Invalid TFNs and ABNs are no longer detected.** The `EntityValidator` checksum algorithms (modulus-11 weighted sum for TFN, modulus-89 weighted sum with `digit[0] -= 1` for ABN) were always implemented, but `core.conflict_resolver.deduplicate_and_resolve_conflicts` only called the validator on results that had no competition. Whenever the same span was matched by multiple sources (e.g. AU_TFN from patterns + AU_TFN from common_formats + AU_CENTRELINK_CRN), the conflict resolver picked a winner by priority and skipped validation, letting invalid checksums through. The validator now runs on the winner regardless of how it was chosen.
+- Net effect: a numerically-invalid TFN like `123 456 789` no longer gets anonymized as `<AU_TFN>` — it passes through unredacted. Anything that hit a real TFN's actual checksum is unaffected. Users with synthetic test data that happens to fail checksum should expect those values to no longer be redacted.
+
+### Added
+- **CI release-check workflow** (`.github/workflows/release-check.yml`) builds + `twine check`s + spins a fresh venv + installs the sdist + runs four smoke assertions on every push, PR, and tag. Does not publish.
+- **`scripts/smoke_release.py`** — same gate for local pre-publish use. Run it before any `twine upload`.
+- **`tests/test_conflict_resolver.py`** — direct unit tests for `deduplicate_and_resolve_conflicts` and `resolve_entity_conflicts`. Previously these were only exercised indirectly through `Allyanonimiser.analyze()`.
+
+### Tests
+- TFN/ABN checksum assertions in `test_robust_detection.py` re-enabled (were commented out with "skip checksum test for now").
+- Test fixtures across the suite migrated from invalid-checksum TFN `123 456 789` to valid TFN `123 456 782`.
+- Full suite: **220 passed**, 7 skipped, 7 deselected.
+
 ## 3.1.2 (2026-04-15)
 
 Supersedes 3.1.1, which was yanked due to a bug in DataFrame processing and
