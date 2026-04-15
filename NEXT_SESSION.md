@@ -47,3 +47,29 @@
 
 ### Dev-env
 - Local venv needs `python -m spacy download en_core_web_lg` for accurate NER; without it the fallback warning now fires loudly.
+
+## Release process
+
+Never `twine upload` without running the smoke script first. To cut a release:
+
+```bash
+# 1. Bump version in pyproject.toml, __init__.py, README.md, CHANGELOG.md.
+# 2. Commit, then build + validate locally:
+rm -rf dist build *.egg-info
+python -m build
+twine check dist/*
+python scripts/smoke_release.py    # exercises sdist install + public API
+
+# 3. Push, tag, push tag, hand artifacts to user for sign-off.
+git push origin main
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+
+# 4. ONLY after explicit user OK:
+twine upload dist/*
+```
+
+The Release Check workflow (`.github/workflows/release-check.yml`) runs
+the same smoke script on every push, PR, and tag — so a broken release
+fails CI before it gets uploaded anywhere. v3.1.1 would have been
+caught by this gate.

@@ -1,0 +1,50 @@
+name: Release Check
+
+# Validates that the package builds, ships everything it needs to, and
+# behaves correctly when installed from the sdist into a clean environment.
+# This catches release-class bugs that the regular test suite misses
+# because it runs against the working copy, not the packaged artifact.
+#
+# This workflow does NOT publish anything. PyPI uploads are still manual
+# after a human has validated the build locally.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: twine check
+        run: twine check dist/*
+
+      - name: Pre-release smoke test (install from sdist + exercise public API)
+        run: python scripts/smoke_release.py
+
+      - name: Upload artifacts for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 14
