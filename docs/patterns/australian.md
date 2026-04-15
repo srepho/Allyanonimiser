@@ -7,8 +7,7 @@ Allyanonimiser includes specialized patterns for detecting Australian-specific P
 Tax File Numbers are unique identifiers issued by the Australian Taxation Office.
 
 **Pattern Example:**
-- `123 456 782`
-- `123456789`
+- `123 456 782` *(checksum-valid — use this shape in tests)*
 - `TFN: 123 456 782`
 
 **Regex Pattern:**
@@ -18,6 +17,11 @@ Tax File Numbers are unique identifiers issued by the Australian Taxation Office
 
 **Contexts:**
 "tax", "file", "number", "tfn"
+
+> **Checksum validation** *(since v3.2.0)*: detected TFNs are re-checked
+> against the ATO's modulus-11 weighted algorithm. Numbers that match the
+> regex but fail the checksum — like `123 456 789` — are filtered out.
+> Use `123 456 782` in your own test data.
 
 ## Australian Phone Number (AU_PHONE)
 
@@ -38,19 +42,26 @@ Australian mobile and landline phone numbers.
 
 ## Australian Medicare Number (AU_MEDICARE)
 
-Medicare numbers issued by Services Australia.
+Medicare numbers issued by Services Australia. The first digit must be
+2–6 and the last digit (the individual reference number, IRN) must be
+1–9.
 
 **Pattern Example:**
-- `1234 56789 1`
-- `1234567891`
+- `2123 45678 1` *(starts with 2, IRN is 1)*
+- `5123 45678 1`
+- `Medicare: 2345 67890 1`
 
 **Regex Pattern:**
 ```
-\b\d{4}\s*\d{5}\s*\d{1}\b
+\b[2-6]\d{3}\s*\d{5}\s*[1-9]\b
 ```
 
 **Contexts:**
 "medicare", "card", "health", "insurance"
+
+> **Validation**: detected candidates are re-checked against the format
+> rules (first digit 2–6, IRN 1–9). Numbers like `1234 56789 1` (starts
+> with 1) or `2123 45678 0` (IRN is 0) are filtered out.
 
 ## Australian Driver's License (AU_DRIVERS_LICENSE)
 
@@ -121,8 +132,8 @@ BSB (Bank-State-Branch) and account number combinations.
 Australian Business Numbers issued by the Australian Business Register.
 
 **Pattern Example:**
-- `12 345 678 901`
-- `12345678901`
+- `51 824 753 556` *(the ATO's published test ABN — checksum-valid)*
+- `ABN: 51 824 753 556`
 
 **Regex Pattern:**
 ```

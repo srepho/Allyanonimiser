@@ -49,9 +49,12 @@ nav:
     - Quick Start: getting-started/quick-start.md
   - Usage:
     - Analyzing Text: usage/analyzing-text.md
+    - Anonymizing Text: usage/anonymizing-text.md
+    - Working with DataFrames: usage/dataframes.md
   - Patterns:
     - Overview: patterns/overview.md
     - Australian Patterns: patterns/australian.md
+    - Custom Patterns: patterns/custom.md
   - Advanced:
     - Anonymization Operators: advanced/anonymization-operators.md
     - Custom Operators: advanced/custom-operators.md

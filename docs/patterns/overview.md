@@ -62,16 +62,9 @@ for pattern in au_patterns:
     print(f"AU Pattern: {pattern['entity_type']}")
 ```
 
-## Pattern Categories
+## Pattern categories in detail
 
-In the following sections, we provide detailed information about each pattern category:
+- [Australian Patterns](australian.md) — TFN, ABN, Medicare, AU_PHONE, driver's license, Centrelink CRN, passport, postcode, addresses
+- [Custom Patterns](custom.md) — how to register your own entity types
 
-- [Australian Patterns](australian.md): Patterns for Australian-specific identifiers
-- [General Patterns](https://github.com/srepho/Allyanonimiser#entity-reference): Universal PII patterns
-- [Insurance Patterns](https://github.com/srepho/Allyanonimiser#entity-reference): Insurance industry-specific patterns
-
-## Custom Patterns
-
-Learn how to create and manage your own custom patterns:
-
-- [Creating Custom Patterns](https://github.com/srepho/Allyanonimiser#custom-patterns): Guide to creating and registering custom patterns
+General and insurance-specific patterns (EMAIL_ADDRESS, INSURANCE_POLICY_NUMBER, INSURANCE_CLAIM_NUMBER, VEHICLE_REGISTRATION, VEHICLE_VIN, etc.) are included in the built-in pattern set automatically. See the [README's entity reference](https://github.com/srepho/Allyanonimiser#entity-reference) for the complete list of detected types across all categories.

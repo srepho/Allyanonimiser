@@ -1,307 +1,255 @@
 # Main API Reference
 
-This page documents the main API of the Allyanonimiser package.
+This page is the flat reference for the public API at the package root.
+For task-oriented guides, start with
+[Analyzing Text](../usage/analyzing-text.md) or
+[Anonymizing Text](../usage/anonymizing-text.md) instead.
 
-## Main Classes and Functions
-
-### `create_allyanonimiser`
-
-```python
-def create_allyanonimiser(pattern_filepath=None, settings_path=None):
-    """
-    Create an Allyanonimiser instance with all patterns pre-configured.
-    
-    Args:
-        pattern_filepath: Optional path to a JSON file with pattern definitions
-        settings_path: Optional path to a settings file (JSON or YAML)
-        
-    Returns:
-        Allyanonimiser instance
-    """
-```
-
-This is the primary factory function for creating an Allyanonimiser instance.
-
-**Example:**
-```python
-from allyanonimiser import create_allyanonimiser
-
-# Create with default settings
-ally = create_allyanonimiser()
-
-# Create with custom patterns
-ally = create_allyanonimiser(pattern_filepath="my_patterns.json")
-
-# Create with custom settings
-ally = create_allyanonimiser(settings_path="my_settings.yaml")
-```
-
-### `Allyanonimiser` Class
-
-The main class that provides a unified interface for PII detection and anonymization.
+## Top-level exports
 
 ```python
-class Allyanonimiser:
-    """
-    Main class for PII detection and anonymization with comprehensive configuration options.
-    """
+from allyanonimiser import (
+    # Main facade
+    Allyanonimiser,
+    # Configuration dataclasses
+    AnalysisConfig,
+    AnonymizationConfig,
+    # Low-level components (rarely needed directly)
+    EnhancedAnalyzer,
+    EnhancedAnonymizer,
+    CustomPatternDefinition,
+    PatternManager,
+    PatternRegistry,
+    # I/O processors
+    DataFrameProcessor,
+    StreamProcessor,       # None if polars isn't installed
+    POLARS_AVAILABLE,
+    # Factories
+    create_allyanonimiser,
+    create_analyzer,
+    create_pattern_from_examples,
+    # spaCy model presets
+    SPACY_MODEL_FAST,       # "en_core_web_sm"
+    SPACY_MODEL_ACCURATE,   # "en_core_web_lg"
+)
 ```
 
-#### Key Methods
+## `create_allyanonimiser(...)`
 
-##### `analyze`
+Preferred entry point. Returns a fully configured `Allyanonimiser`
+instance with all built-in Australian, general, and insurance patterns
+loaded.
 
 ```python
-def analyze(self, text, config=None):
-    """
-    Analyze text to detect PII entities.
-    
-    Args:
-        text (str): The text to analyze
-        config (AnalysisConfig, optional): Configuration for analysis
-        
-    Returns:
-        List of detected entities
-    """
+create_allyanonimiser(
+    pattern_filepath: str | None = None,
+    settings_path: str | None = None,
+    enable_caching: bool = True,
+    max_cache_size: int = 10_000,
+    spacy_model: str | None = "en_core_web_sm",
+) -> Allyanonimiser
 ```
 
-##### `anonymize`
+**Arguments**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `pattern_filepath` | `str \| None` | `None` | Optional JSON file with extra `CustomPatternDefinition`s. |
+| `settings_path` | `str \| None` | `None` | Optional YAML/JSON settings file. |
+| `enable_caching` | `bool` | `True` | Cache analyze() results by text hash. |
+| `max_cache_size` | `int` | `10_000` | Max cached entries. |
+| `spacy_model` | `str \| None` | `"en_core_web_sm"` | spaCy model name. Pass `SPACY_MODEL_ACCURATE` for `en_core_web_lg`. Pass `None` to disable spaCy (pattern-only mode). |
+
+## `class Allyanonimiser`
+
+The main facade. Composes an analyzer, anonymizer, pattern registry,
+text preprocessor, and settings manager.
+
+### Core detection and anonymization
 
 ```python
-def anonymize(self, text, operators=None, config=None):
-    """
-    Anonymize text by replacing detected PII entities.
-    
-    Args:
-        text (str): The text to anonymize
-        operators (dict, optional): Mapping of entity types to operators
-        config (AnonymizationConfig, optional): Configuration for anonymization
-        
-    Returns:
-        Dict containing anonymized text and metadata
-    """
+analyze(
+    text: str,
+    language: str = "en",
+    active_entity_types: list[str] | None = None,
+    score_adjustment: dict[str, float] | None = None,
+    min_score_threshold: float | None = None,
+    expand_acronyms: bool = False,
+    config: AnalysisConfig | None = None,
+) -> list[RecognizerResult]
 ```
 
-##### `process`
+Detects PII in `text`. Returns a list of `RecognizerResult` objects with
+`entity_type`, `text`, `start`, `end`, and `score` fields.
 
 ```python
-def process(self, text, analysis_config=None, anonymization_config=None):
-    """
-    Process text by analyzing and anonymizing in one step.
-    
-    Args:
-        text (str): The text to process
-        analysis_config (AnalysisConfig, optional): Configuration for analysis
-        anonymization_config (AnonymizationConfig, optional): Configuration for anonymization
-        
-    Returns:
-        Dict containing analysis results and anonymized text
-    """
+anonymize(
+    text: str,
+    operators: dict[str, str] | None = None,
+    language: str = "en",
+    active_entity_types: list[str] | None = None,
+    expand_acronyms: bool = False,
+    age_bracket_size: int = 5,
+    keep_postcode: bool = True,
+    config: AnonymizationConfig | None = None,
+    document_id: str | None = None,
+    report: bool = True,
+) -> dict[str, Any]
 ```
 
-##### `add_pattern`
+Detects then rewrites `text`. Returns `{"text": anonymized_text,
+"items": [...]}`. See [Anonymizing Text](../usage/anonymizing-text.md)
+for the full operator catalogue.
 
 ```python
-def add_pattern(self, pattern_definition):
-    """
-    Add a custom pattern to the analyzer.
-    
-    Args:
-        pattern_definition (dict or CustomPatternDefinition): The pattern to add
-        
-    Returns:
-        None
-    """
+process(text, ...) -> dict[str, Any]
 ```
 
-##### `create_pattern_from_examples`
+Combined analyze + anonymize in one call, returning both the detected
+entities and the anonymized text.
 
 ```python
-def create_pattern_from_examples(self, entity_type, examples, context=None, name=None, 
-                                pattern_type="regex", generalization_level="none"):
-    """
-    Create and add a pattern from example strings.
-    
-    Args:
-        entity_type (str): Entity type this pattern detects
-        examples (List[str]): List of example strings to generate pattern from
-        context (List[str], optional): List of context words
-        name (str, optional): Name for the pattern
-        pattern_type (str, optional): Type of pattern to create - "regex" or "spacy"
-        generalization_level (str, optional): Level of pattern generalization
-        
-    Returns:
-        CustomPatternDefinition: The created pattern definition
-    """
+batch_process(
+    texts: list[str],
+    content_types: list[str] | None = None,
+    analysis_config: AnalysisConfig | None = None,
+    anonymization_config: AnonymizationConfig | None = None,
+    **kwargs,
+) -> list[dict[str, Any]]
 ```
 
-##### `process_dataframe`
+### Pattern management
+
+| Method | Purpose |
+|---|---|
+| `add_pattern(pattern_definition)` | Register a single `CustomPatternDefinition`. |
+| `create_pattern_from_examples(entity_type, examples, context=None, name=None, generalization_level="medium")` | Build a pattern from example strings and register it. |
+| `load_patterns(filepath)` | Load patterns from a JSON file. |
+| `save_patterns(filepath)` | Dump registered patterns to JSON. |
+| `import_patterns_from_csv(csv_path, ...)` | Bulk-import from a CSV. |
+| `get_available_entity_types()` | Dict of `entity_type -> {count, patterns}`. |
+
+### Acronym handling
+
+| Method | Purpose |
+|---|---|
+| `set_acronyms(acronym_dict, case_sensitive=False)` | Replace the acronym dictionary. |
+| `add_acronyms(acronym_dict)` | Merge into the existing dictionary. |
+| `remove_acronyms(acronyms)` | Delete by key list. |
+| `get_acronyms()` | Return the current dictionary. |
+| `import_acronyms_from_csv(csv_path, ...)` | Bulk-import from a CSV. |
+
+`set_acronym_dictionary(...)` is a legacy alias for `set_acronyms`.
+
+### DataFrames and files
+
+| Method | Purpose |
+|---|---|
+| `process_dataframe(df, text_columns=...)` | Full detect+anonymize across one or more columns. See [Working with DataFrames](../usage/dataframes.md). |
+| `anonymize_dataframe(df, column, **kwargs)` | Anonymize a single column. |
+| `detect_pii_in_dataframe(df, column, **kwargs)` | Entity DataFrame only. |
+| `detect_pii_columns(data, ...)` | Infer which columns likely contain PII (for schema discovery). |
+| `process_csv_file(input_file, output_file=None, ...)` | Full-file CSV pipeline. |
+| `process_csv_directory(input_dir, output_dir=None, ...)` | Recursively process every CSV under a directory. |
+| `preview_csv_changes(input_file, ...)` | Dry-run on the first N rows. |
+| `stream_process_csv(input_file, output_file, columns, ...)` | Chunked row-by-row for files too big to load. Requires `polars` (install with `pip install "allyanonimiser[stream]"`). |
+| `process_files(file_paths, ...)` | Batch plain text files. |
+
+### Configuration and persistence
+
+| Method | Purpose |
+|---|---|
+| `load_settings(settings_path)` | Load a YAML/JSON settings bundle. |
+| `save_settings(settings_path)` | Dump current settings. |
+| `export_config(config_path, include_metadata=True)` | Export patterns + acronyms + settings in one bundle. |
+
+### Reporting
+
+| Method | Purpose |
+|---|---|
+| `start_new_report(session_id=None)` | Begin tracking a batch run. |
+| `get_report(session_id=None)` | Retrieve a report. |
+| `finalize_report(output_path=None, format="html")` | Render and optionally save. |
+| `display_report_in_notebook(session_id=None)` | Jupyter-native rendering. |
+
+### Diagnostics
+
+| Method | Purpose |
+|---|---|
+| `check_spacy_status()` | Dict with `is_loaded`, `model_name`, `has_ner`, `entity_types`, `recommendation`. Use this to diagnose model-install issues. |
+| `explain_entity(text, entity)` | Return a dict explaining why a specific detection fired. |
+
+## `class AnalysisConfig`
+
+Reusable analysis settings.
 
 ```python
-def process_dataframe(self, df, column, operation="anonymize", output_column=None, 
-                     operators=None, config=None, batch_size=100, num_workers=1):
-    """
-    Process a pandas DataFrame by analyzing or anonymizing a text column.
-    
-    Args:
-        df (pandas.DataFrame): DataFrame to process
-        column (str): Name of the column containing text
-        operation (str, optional): Operation to perform - "analyze" or "anonymize"
-        output_column (str, optional): Name of the output column
-        operators (dict, optional): Entity type to operator mapping
-        config (AnonymizationConfig, optional): Configuration for anonymization
-        batch_size (int, optional): Batch size for processing
-        num_workers (int, optional): Number of parallel workers
-        
-    Returns:
-        pandas.DataFrame: Processed DataFrame
-    """
+AnalysisConfig(
+    language: str = "en",
+    active_entity_types: list[str] | None = None,
+    score_adjustment: dict[str, float] | None = None,
+    min_score_threshold: float | None = None,
+    expand_acronyms: bool = False,
+)
 ```
 
-##### `export_config`
+Pass via `ally.analyze(text, config=cfg)`.
+
+## `class AnonymizationConfig`
+
+Reusable anonymization settings.
 
 ```python
-def export_config(self, filepath, format="json"):
-    """
-    Export current configuration to a file.
-    
-    Args:
-        filepath (str): Path to save the configuration
-        format (str, optional): Format - "json" or "yaml"
-        
-    Returns:
-        None
-    """
+AnonymizationConfig(
+    operators: dict[str, str] | None = None,
+    language: str = "en",
+    active_entity_types: list[str] | None = None,
+    expand_acronyms: bool = False,
+    age_bracket_size: int = 5,
+    keep_postcode: bool = True,
+)
 ```
 
-### `AnalysisConfig` Class
+Pass via `ally.anonymize(text, config=cfg)`.
 
-Configuration object for the analysis process.
+## `RecognizerResult`
+
+Returned by `analyze`. Imported from
+[`allyanonimiser.core.recognizer_result`](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/recognizer_result.py):
 
 ```python
-class AnalysisConfig:
-    """
-    Configuration for the analysis process.
-    """
-    
-    def __init__(self, active_entity_types=None, min_score_threshold=0.5, context_words=None):
-        """
-        Initialize configuration with optional parameters.
-        
-        Args:
-            active_entity_types (List[str], optional): Entity types to detect
-            min_score_threshold (float, optional): Minimum confidence score
-            context_words (Dict[str, List[str]], optional): Additional context words
-        """
+@dataclass
+class RecognizerResult:
+    entity_type: str
+    start: int
+    end: int
+    score: float
+    text: str | None = None
 ```
 
-### `AnonymizationConfig` Class
+## `class CustomPatternDefinition`
 
-Configuration object for the anonymization process.
+Spec for registering a new entity type. Build via
+`create_pattern_from_examples(...)` or pass directly:
 
 ```python
-class AnonymizationConfig:
-    """
-    Configuration for the anonymization process.
-    """
-    
-    def __init__(self, operators=None, age_bracket_size=5, mask_char="*", 
-                redaction_text="[REDACTED]", hash_algorithm="sha256", 
-                hash_length=8, encryption_key=None):
-        """
-        Initialize configuration with optional parameters.
-        
-        Args:
-            operators (Dict[str, Union[str, callable]], optional): Entity type to operator mapping
-            age_bracket_size (int, optional): Size of age brackets
-            mask_char (str, optional): Character to use for masking
-            redaction_text (str, optional): Text to use for redaction
-            hash_algorithm (str, optional): Hashing algorithm to use
-            hash_length (int, optional): Length of hash output
-            encryption_key (str, optional): Key for encryption
-        """
+from allyanonimiser import CustomPatternDefinition
+
+pattern = CustomPatternDefinition(
+    entity_type="EMPLOYEE_ID",
+    patterns=[r"EMP\d{5}"],
+    context=["employee", "staff", "id"],
+    name="Employee ID",
+    score=0.85,
+)
+ally.add_pattern(pattern)
 ```
 
-## Pattern Related Classes
+## Further reading
 
-### `CustomPatternDefinition` Class
-
-```python
-class CustomPatternDefinition:
-    """
-    Definition of a custom pattern for detecting entities.
-    """
-    
-    def __init__(self, entity_type, patterns, context=None, name=None, 
-                 score=0.65, language="en", description=None):
-        """
-        Initialize a custom pattern definition.
-        
-        Args:
-            entity_type (str): Entity type this pattern detects
-            patterns (List[str]): List of regex patterns or spaCy patterns
-            context (List[str], optional): List of context words
-            name (str, optional): Name for the pattern
-            score (float, optional): Confidence score threshold
-            language (str, optional): Language code
-            description (str, optional): Description of the pattern
-        """
-```
-
-### `PatternManager` Class
-
-```python
-class PatternManager:
-    """
-    Manages pattern definitions and provides pattern registry functionality.
-    """
-```
-
-## Utility Functions
-
-### Pattern Generation
-
-```python
-def create_pattern_from_examples(entity_type, examples, context=None, name=None, 
-                               pattern_type="regex", generalization_level="none"):
-    """
-    Create a custom pattern definition from examples with optional generalization.
-    
-    Args:
-        entity_type (str): Entity type this pattern detects
-        examples (List[str]): List of example strings to generate pattern from
-        context (List[str], optional): List of context words
-        name (str, optional): Name for the pattern
-        pattern_type (str, optional): Type of pattern to create - "regex" or "spacy"
-        generalization_level (str, optional): Level of pattern generalization
-        
-    Returns:
-        CustomPatternDefinition: A pattern definition that can be added to an analyzer
-    """
-```
-
-### Pattern Validation
-
-```python
-def test_pattern_against_examples(pattern, positive_examples, negative_examples=None):
-    """
-    Test a regex pattern against example strings.
-    
-    Args:
-        pattern (str): Regex pattern to test
-        positive_examples (List[str]): Examples that should match
-        negative_examples (List[str], optional): Examples that should not match
-        
-    Returns:
-        Dict: Results of the test with is_valid flag and diagnostic message
-    """
-```
-
-## See Also
-
-For more detailed API documentation on specific components:
-
-- [Analyzer API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/analyzer.py) - Documentation for the EnhancedAnalyzer class
-- [Anonymizer API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/anonymizer.py) - Documentation for the EnhancedAnonymizer class
-- [Pattern Manager API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/pattern_manager.py) - Documentation for pattern management classes
-- [Utilities API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/utils/) - Documentation for utility functions
+- [Analyzing Text](../usage/analyzing-text.md) — detection walkthrough
+- [Anonymizing Text](../usage/anonymizing-text.md) — operator catalogue
+- [Working with DataFrames](../usage/dataframes.md) — pandas pipeline
+- [Custom Patterns](../patterns/custom.md) — extending detection
+- [Anonymization Operators](../advanced/anonymization-operators.md) — per-operator reference
+- [Source on GitHub](https://github.com/srepho/Allyanonimiser)
