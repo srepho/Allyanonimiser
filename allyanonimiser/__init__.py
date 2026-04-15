@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "3.1.1"
+__version__ = "3.1.2"
 
 __all__ = [
     # Core

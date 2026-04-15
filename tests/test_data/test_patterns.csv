@@ -1,0 +1,6 @@
+entity_type,pattern,context,name,score
+RESERVATION_NUMBER,RES-\d{6},reservation; booking; hotel,Hotel Reservation Pattern,0.85
+RESERVATION_NUMBER,BOOKING-[A-Z]{2}\d{4},booking; travel; confirmation,Travel Booking Pattern,0.9
+CASE_ID,CASE-\d{5},case; support; ticket,Support Case ID Pattern,0.8
+CASE_ID,SUPPORT-\d{6},support; help; issue,Support Ticket ID Pattern,0.85
+PROJECT_CODE,PRJ-\d{3}-[A-Z]{2},project; code; identifier,Project Code Pattern,0.9

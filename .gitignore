@@ -188,3 +188,5 @@ cache/
 # Dataset storage
 *.csv
 *.jsonl
+# ...except small, sanitized test fixtures that must ship in the sdist.
+!tests/test_data/*.csv

@@ -1,6 +1,25 @@
 # Changelog
 
-## 3.1.1 (2026-04-15)
+## 3.1.2 (2026-04-15)
+
+Supersedes 3.1.1, which was yanked due to a bug in DataFrame processing and
+inconsistent release metadata.
+
+### Fixed
+- **`DataFrameProcessor.process_dataframe`** now wires `expand_acronyms=` through to `ally.analyze()` and `ally.anonymize()`. In 3.1.1 (and earlier) the kwarg was silently swallowed by `**kwargs`, so `expand_acronyms=True` had no effect.
+
+### Packaging
+- **Test fixtures `tests/test_data/*.csv`** now ship in the sdist (`.gitignore` excluded them from earlier releases — tests in `test_csv_import.py` depended on them). Added a `!tests/test_data/*.csv` exception.
+- **`allyanonimiser.egg-info/PKG-INFO`** removed from version control. It was tracked from a pre-3.0 build and went stale every release; `*.egg-info/` is already in `.gitignore`.
+
+### Tests
+- `tests/test_example_scripts.py` rewritten to smoke-test the two real example scripts (`example_csv_processing.py`, `example_spacy_status.py`). Slow `main()` invocations opt-in via `-m slow`.
+- `pyproject.toml` excludes `slow` and `performance` markers from the default `pytest` run. Default suite: **207 passed, 7 skipped, 7 deselected** in ~8s.
+
+### Internal
+- Ruff autofix sweep: 136 fixes across 17 files (mostly `Optional[X]` → `X | None`). 64 manual line-length issues remain.
+
+## 3.1.1 (2026-04-15) — yanked
 
 ### Fixed
 - **`create_allyanonimiser` top-level wrapper** now forwards `enable_caching`, `max_cache_size`, and `spacy_model` (previously silently dropped — `from allyanonimiser import create_allyanonimiser; create_allyanonimiser(spacy_model=None)` raised `TypeError`).
