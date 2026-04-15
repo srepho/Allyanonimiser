@@ -149,6 +149,32 @@ def main() -> None:
             subprocess.run([str(venv_python), "-m", "pip", "install", "--quiet", str(sdist)],
                            check=True)
 
+        # Install the default spaCy model into the scratch venv directly
+        # via the release wheel URL. We can't use `python -m spacy download`
+        # here because spaCy's downloader shells out to pip, and when the
+        # scratch venv was created by uv, uv's pip wrapper "audits" the
+        # already-cached package without copying it into the venv's
+        # site-packages — so the import then fails. The wheel URL is
+        # stable per spaCy 3.8.x; bump SPACY_MODEL_WHEEL_URL when
+        # upgrading the spaCy minor pin in pyproject.toml.
+        SPACY_MODEL_WHEEL_URL = (
+            "https://github.com/explosion/spacy-models/releases/download/"
+            "en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+        )
+        if uv:
+            subprocess.run(
+                [uv, "pip", "install", "--quiet", "--python", str(venv_python),
+                 SPACY_MODEL_WHEEL_URL],
+                check=True,
+            )
+        else:
+            subprocess.run(
+                [str(venv_python), "-m", "pip", "install", "--quiet",
+                 SPACY_MODEL_WHEEL_URL],
+                check=True,
+            )
+        print("==> en_core_web_sm installed in scratch venv")
+
         # 3a. Version reported by the installed package matches.
         out = run_in_venv(venv_python, "import allyanonimiser; print(allyanonimiser.__version__)")
         installed_version = out.strip()
@@ -166,6 +192,30 @@ assert a is not None
 print('factory: OK')
 """)
         print("==> create_allyanonimiser kwargs: OK")
+
+        # 3b'. Default model contract: create_allyanonimiser() (no kwargs)
+        # must load en_core_web_sm. v3.3.0 changed the default from lg to
+        # sm; CI was previously installing only lg, which let the loader
+        # silently fall back to lg and made it impossible to tell whether
+        # the new default was actually wired up. Requires en_core_web_sm
+        # to be installed in the venv (the release-check workflow does so).
+        run_in_venv(venv_python, """
+from allyanonimiser import create_allyanonimiser, SPACY_MODEL_FAST, SPACY_MODEL_ACCURATE
+assert SPACY_MODEL_FAST == 'en_core_web_sm'
+assert SPACY_MODEL_ACCURATE == 'en_core_web_lg'
+ally = create_allyanonimiser()
+loaded = ally.analyzer.spacy_model_loaded
+assert loaded == 'en_core_web_sm', (
+    f'expected default to load en_core_web_sm, got {loaded!r}. '
+    'Either the default kwarg regressed or sm is not installed in this venv.'
+)
+status = ally.check_spacy_status()
+assert status['is_loaded'] is True
+assert status['has_ner'] is True
+assert status['model_name'] == 'en_core_web_sm'
+print(f'default model: OK ({loaded})')
+""")
+        print("==> default spaCy model is en_core_web_sm: OK")
 
         # 3c. expand_acronyms actually changes DataFrame output.
         # This is the regression that shipped in v3.1.1.

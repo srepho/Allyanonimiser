@@ -41,23 +41,31 @@ def load_spacy_model(model_name="en_core_web_sm", fallback_model="en_core_web_lg
 
         try:
             nlp = spacy.load(model_name)
+            nlp._allyanonimiser_loaded_as = model_name
         except OSError:
             try:
                 nlp = spacy.load(fallback_model)
+                nlp._allyanonimiser_loaded_as = fallback_model
                 logger.warning(
                     "spaCy model %r not found; falling back to %r. "
-                    "NER accuracy will be reduced. Install with: "
+                    "Install the requested model with: "
                     "python -m spacy download %s",
                     model_name, fallback_model, model_name,
                 )
             except OSError:
                 nlp = spacy.blank("en")
+                # Distinct sentinel so check_spacy_status() can tell this
+                # from a real model — spacy.blank('en').meta['name'] is
+                # 'pipeline', which is misleadingly model-shaped.
+                nlp._allyanonimiser_loaded_as = "blank_en"
                 logger.warning(
                     "Neither %r nor %r is installed; falling back to "
                     "spacy.blank('en'). NER entities (PERSON, LOCATION, ORG, "
                     "etc.) will NOT be detected — only regex patterns. "
-                    "Install with: python -m spacy download %s",
-                    model_name, fallback_model, fallback_model,
+                    "Install the default model with: "
+                    "python -m spacy download %s "
+                    "(or %s for higher NER accuracy).",
+                    model_name, fallback_model, model_name, fallback_model,
                 )
 
         _spacy_model_cache[cache_key] = nlp
@@ -94,17 +102,16 @@ class EnhancedAnalyzer:
         else:
             try:
                 self.nlp = load_spacy_model(spacy_model)
-                self.use_spacy = True
-                if hasattr(self.nlp, "meta") and "name" in self.nlp.meta:
-                    self.spacy_model_loaded = self.nlp.meta["name"]
+                # Use the loader-attached sentinel: spacy.blank('en') reports
+                # meta['name'] = 'pipeline', which misleads check_spacy_status.
+                self.spacy_model_loaded = getattr(
+                    self.nlp, "_allyanonimiser_loaded_as", spacy_model,
+                )
+                # use_spacy reflects whether real NER is available — blank
+                # has no NER pipe and should not be advertised as healthy.
+                self.use_spacy = self.spacy_model_loaded != "blank_en"
+                if self.use_spacy:
                     logger.info("spaCy model loaded: %s", self.spacy_model_loaded)
-                else:
-                    self.spacy_model_loaded = "blank_en"
-                    logger.warning(
-                        "Using blank spaCy model. Entity detection will be limited. "
-                        "Install a model: python -m spacy download %s",
-                        spacy_model,
-                    )
             except Exception as e:
                 logger.warning("Could not load spaCy model: %s", e)
                 self.use_spacy = False

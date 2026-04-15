@@ -39,6 +39,13 @@ jobs:
       - name: twine check
         run: twine check dist/*
 
+      - name: Install spaCy default model (en_core_web_sm)
+        # The library's default is en_core_web_sm; the smoke test asserts
+        # that create_allyanonimiser() actually loads it. Without this
+        # install, the smoke would fall back to spacy.blank('en') and the
+        # default-model assertion would fail.
+        run: python -m pip install spacy && python -m spacy download en_core_web_sm
+
       - name: Pre-release smoke test (install from sdist + exercise public API)
         run: python scripts/smoke_release.py
 

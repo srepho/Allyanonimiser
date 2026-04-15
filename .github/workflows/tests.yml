@@ -26,6 +26,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
+        # Install BOTH models. The library defaults to en_core_web_sm
+        # (so we must install it for the default code path to be tested),
+        # and tests that need higher NER recall opt into en_core_web_lg
+        # via spacy_model="en_core_web_lg" in their fixtures.
+        python -m spacy download en_core_web_sm
         python -m spacy download en_core_web_lg
 
     - name: Lint with ruff
