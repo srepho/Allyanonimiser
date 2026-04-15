@@ -1,3 +1,0 @@
-# Reporting System
-
-*Coming soon...*

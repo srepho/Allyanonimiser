@@ -1,3 +1,0 @@
-# Jupyter Integration
-
-*Coming soon...*

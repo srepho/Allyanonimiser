@@ -301,7 +301,7 @@ def test_pattern_against_examples(pattern, positive_examples, negative_examples=
 
 For more detailed API documentation on specific components:
 
-- [Analyzer API](analyzer.md) - Documentation for the EnhancedAnalyzer class
-- [Anonymizer API](anonymizer.md) - Documentation for the EnhancedAnonymizer class
-- [Pattern Manager API](pattern-manager.md) - Documentation for pattern management classes
-- [Utilities API](utilities.md) - Documentation for utility functions
+- [Analyzer API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/analyzer.py) - Documentation for the EnhancedAnalyzer class
+- [Anonymizer API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/anonymizer.py) - Documentation for the EnhancedAnonymizer class
+- [Pattern Manager API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/core/pattern_manager.py) - Documentation for pattern management classes
+- [Utilities API](https://github.com/srepho/Allyanonimiser/blob/main/allyanonimiser/utils/) - Documentation for utility functions

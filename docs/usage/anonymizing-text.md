@@ -1,3 +1,0 @@
-# Anonymizing Text
-
-*Coming soon...*

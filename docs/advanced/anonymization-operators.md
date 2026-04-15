@@ -169,4 +169,4 @@ result = ally.anonymize(
 
 - [Custom Operators](custom-operators.md) - Learn how to create your own anonymization operators
 - [Analyzing Text](../usage/analyzing-text.md) - Understanding the analysis capabilities
-- [Basic Usage](../usage/basic-usage.md) - General usage patterns
+- [Basic Usage](https://github.com/srepho/Allyanonimiser#quick-start) - General usage patterns

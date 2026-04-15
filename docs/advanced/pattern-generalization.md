@@ -1,3 +1,0 @@
-# Pattern Generalization
-
-*Coming soon...*

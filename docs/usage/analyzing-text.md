@@ -243,6 +243,6 @@ results = ally.analyze(
 
 ## Next Steps
 
-- [Anonymizing Text](anonymizing-text.md) - Learn how to anonymize the detected entities
-- [Working with DataFrames](dataframes.md) - Process tabular data efficiently
+- [Anonymizing Text](https://github.com/srepho/Allyanonimiser#anonymization-operators) - Learn how to anonymize the detected entities
+- [Working with DataFrames](https://github.com/srepho/Allyanonimiser#dataframe-processing) - Process tabular data efficiently
 - [Pattern Reference](../patterns/overview.md) - Explore all the built-in patterns

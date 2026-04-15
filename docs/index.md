@@ -2,74 +2,83 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.1.0-blue)](https://pypi.org/project/allyanonimiser/2.1.0/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.3.0-blue)](https://pypi.org/project/allyanonimiser/3.3.0/)
+[![Python Versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
-[![Package](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/package.yml)
+[![Release Check](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-Allyanonimiser is a specialized library for detecting and anonymizing personally identifiable information (PII) in text data, with a focus on Australian formats and insurance industry-specific content.
+Allyanonimiser detects and anonymizes personally identifiable information (PII) in text, with first-class support for Australian formats (TFN, ABN, Medicare, AU phone, etc.) and insurance-industry identifiers (policy numbers, claim references, vehicle rego, VIN).
 
-### Key Features
+## What's new in v3.3
 
-- **Australian-Focused PII Detection**: Specialized patterns for TFNs, Medicare numbers, vehicle registrations, addresses, and more
-- **Insurance Industry Specialization**: Detect policy numbers, claim references, and other industry-specific identifiers
-- **Multiple Entity Types**: Comprehensive detection of general and specialized PII
-- **Flexible Anonymization**: Multiple anonymization operators (replace, mask, redact, hash, and more)
-- **Stream Processing**: Memory-efficient processing of large files with chunking support
-- **Reporting System**: Comprehensive tracking and visualization of anonymization activities
-- **Jupyter Integration**: Rich visualization capabilities in notebook environments
-- **DataFrame Support**: Process pandas DataFrames with batch processing and multi-processing support
+- **Default spaCy model is now `en_core_web_sm`** (44 MB, fast). Previously was `en_core_web_lg` (587 MB). Pattern-based detection is unchanged; NER recall on PERSON/LOCATION/ORG is lower with `sm`. Switch explicitly with `spacy_model=SPACY_MODEL_ACCURATE` when accuracy matters.
+- **`SPACY_MODEL_FAST` / `SPACY_MODEL_ACCURATE`** constants exported for clarity.
+- Full v3.2 improvements: TFN/ABN checksum validation in every code path, pre-release smoke gate on the built sdist, direct unit tests for the conflict resolver.
 
-## Quick Example
+## Key Features
+
+- **Australian-focused PII**: TFN (with checksum), ABN (with checksum), Medicare, AU_PHONE, driver's license, Centrelink CRN, passport, postcode
+- **Insurance domain**: policy numbers, claim references, vehicle registration, VIN
+- **Flexible anonymization**: replace, mask, redact, hash (SHA-256), age-bracket, consistent-replacement
+- **Stream processing**: memory-efficient chunked processing for very large files via Polars
+- **DataFrame support**: pandas with optional PyArrow backing; expand_acronyms wiring for preprocessing
+- **Reporting**: session-level statistics, entity histograms, Jupyter-native rendering
+
+## Quick example
 
 ```python
 from allyanonimiser import create_allyanonimiser
 
-# Create the Allyanonimiser instance
-ally = create_allyanonimiser()
+ally = create_allyanonimiser()  # defaults to en_core_web_sm
 
-# Analyze text
 results = ally.analyze(
-    text="Customer John Smith (TFN: 123 456 782) reported an incident on 15/06/2023 in Sydney NSW 2000."
+    "Customer John Smith (TFN: 123 456 782) called about policy POL-987654."
 )
+for r in results:
+    print(f"{r.entity_type}: {r.text!r} (score={r.score:.2f})")
 
-# Print detected entities
-for result in results:
-    print(f"Entity: {result.entity_type}, Text: {result.text}, Score: {result.score}")
-
-# Anonymize text
-anonymized = ally.anonymize(
-    text="Customer John Smith (TFN: 123 456 782) reported an incident on 15/06/2023 in Sydney NSW 2000.",
+out = ally.anonymize(
+    "Customer John Smith (TFN: 123 456 782) called about policy POL-987654.",
     operators={
-        "PERSON": "replace",       # Replace with <PERSON>
-        "AU_TFN": "mask",          # Partially mask the TFN
-        "DATE": "redact",          # Replace date with [REDACTED]
-        "AU_ADDRESS": "replace"    # Replace with <AU_ADDRESS>
-    }
+        "PERSON": "replace",
+        "AU_TFN": "mask",
+        "INSURANCE_POLICY_NUMBER": "hash",
+    },
 )
-
-print(anonymized["text"])
-# Output: "Customer <PERSON> (TFN: ***-***-***) reported an incident on [REDACTED] in <AU_ADDRESS>."
+print(out["text"])
 ```
 
-## Getting Started
+## Choosing a spaCy model
 
-Check out the [Installation](getting-started/installation.md) guide to get started with Allyanonimiser. Then, follow the [Quick Start](getting-started/quick-start.md) guide to learn the basics of using the library.
+| | `SPACY_MODEL_FAST` (`en_core_web_sm`) | `SPACY_MODEL_ACCURATE` (`en_core_web_lg`) |
+|---|---|---|
+| Default in v3.3+? | yes | no |
+| Download size | 44 MB | 587 MB |
+| Cold start | ~0.5s | 2–5s |
+| Pattern detection (TFN, ABN, MEDICARE, AU_PHONE, EMAIL, dates) | identical | identical |
+| `PERSON` / `LOCATION` / `ORG` recall | medium | high |
+| Serverless friendliness (Azure Functions, Lambda) | good | poor |
 
-## Use Cases
+Opt into the accurate model when a missed name is expensive in your downstream workflow:
 
-Allyanonimiser is particularly useful for:
+```python
+from allyanonimiser import create_allyanonimiser, SPACY_MODEL_ACCURATE
 
-- Insurance claim processing and data analysis
-- Medical report anonymization
-- Customer service data management
-- Regulatory compliance with Australian privacy laws
-- Processing large datasets containing sensitive information
-- Creating anonymized training data for machine learning models
+ally = create_allyanonimiser(spacy_model=SPACY_MODEL_ACCURATE)
+```
+
+## Next steps
+
+- [Installation](getting-started/installation.md) — prerequisites and install options
+- [Quick Start](getting-started/quick-start.md) — 5-minute walkthrough
+- [Analyzing Text](usage/analyzing-text.md) — detection deep-dive
+- [Patterns Overview](patterns/overview.md) — the full entity catalogue
+- [Anonymization Operators](advanced/anonymization-operators.md) — how each operator works
+- [Main API](api/main.md) — the full class + function reference
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/srepho/Allyanonimiser/blob/main/LICENSE) file for details.
+MIT — see [LICENSE](https://github.com/srepho/Allyanonimiser/blob/main/LICENSE).

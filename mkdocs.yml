@@ -47,34 +47,16 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quick-start.md
-  - Usage Guide:
-    - Basic Usage: usage/basic-usage.md
+  - Usage:
     - Analyzing Text: usage/analyzing-text.md
-    - Anonymizing Text: usage/anonymizing-text.md
-    - Working with DataFrames: usage/dataframes.md
-  - Pattern Reference:
+  - Patterns:
     - Overview: patterns/overview.md
     - Australian Patterns: patterns/australian.md
-    - General Patterns: patterns/general.md
-    - Insurance Patterns: patterns/insurance.md
-    - Creating Custom Patterns: patterns/custom.md
-  - Advanced Features:
-    - Pattern Generalization: advanced/pattern-generalization.md
+  - Advanced:
     - Anonymization Operators: advanced/anonymization-operators.md
     - Custom Operators: advanced/custom-operators.md
-    - Stream Processing: advanced/stream-processing.md
-    - Reporting System: advanced/reporting.md
   - API Reference:
     - Main API: api/main.md
-    - Analyzer: api/analyzer.md
-    - Anonymizer: api/anonymizer.md
-    - Pattern Manager: api/pattern-manager.md
-    - Utilities: api/utilities.md
-  - Examples:
-    - Basic Examples: examples/basic.md
-    - Pattern Creation: examples/pattern-creation.md
-    - Custom Anonymization: examples/custom-anonymization.md
-    - Jupyter Integration: examples/jupyter.md
   - Changelog: changelog.md
 
 extra:

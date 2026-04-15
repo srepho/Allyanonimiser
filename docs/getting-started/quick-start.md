@@ -9,11 +9,23 @@ The first step is to create an instance of the Allyanonimiser class:
 ```python
 from allyanonimiser import create_allyanonimiser
 
-# Create an instance with default settings
+# Default: uses en_core_web_sm (44 MB, fast)
 ally = create_allyanonimiser()
 ```
 
 This instance comes pre-configured with all built-in patterns for Australian, general, and insurance-specific PII.
+
+### Choosing a spaCy model
+
+In v3.3+ the default spaCy model is `en_core_web_sm` — small (44 MB) and fast to load. Pattern-based detection (TFN, ABN, Medicare, AU phone, email, dates) is identical regardless of the model. If you need higher recall on `PERSON`, `LOCATION`, or `ORG` entities, opt into the larger model:
+
+```python
+from allyanonimiser import create_allyanonimiser, SPACY_MODEL_ACCURATE
+
+ally = create_allyanonimiser(spacy_model=SPACY_MODEL_ACCURATE)  # en_core_web_lg, 587 MB
+```
+
+Pass `spacy_model=None` to disable spaCy entirely — pattern detection keeps working. See the [Installation guide](installation.md#choosing-a-spacy-model) for the full tradeoff table.
 
 ## Analyzing Text for PII
 
@@ -117,7 +129,7 @@ Found EMPLOYEE_ID: EMP12345
 Now that you understand the basics, explore the following topics to learn more:
 
 - [Analyzing Text](../usage/analyzing-text.md) - Learn about the analysis capabilities in depth
-- [Anonymizing Text](../usage/anonymizing-text.md) - Explore the various anonymization operators
-- [Working with DataFrames](../usage/dataframes.md) - Process tabular data efficiently
+- [Anonymizing Text](https://github.com/srepho/Allyanonimiser#anonymization-operators) - Explore the various anonymization operators
+- [Working with DataFrames](https://github.com/srepho/Allyanonimiser#dataframe-processing) - Process tabular data efficiently
 - [Pattern Reference](../patterns/overview.md) - See all the built-in patterns
-- [Creating Custom Patterns](../patterns/custom.md) - Learn how to create and manage custom patterns
+- [Creating Custom Patterns](https://github.com/srepho/Allyanonimiser#custom-patterns) - Learn how to create and manage custom patterns

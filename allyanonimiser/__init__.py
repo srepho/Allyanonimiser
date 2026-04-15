@@ -2,51 +2,6 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "3.3.0"
-
-# Named spaCy model presets — use these instead of the bare strings to make
-# the deployment-vs-accuracy tradeoff explicit at call sites.
-#
-# - SPACY_MODEL_FAST (en_core_web_sm, ~44 MB): the default. Pattern-based
-#   detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is unaffected.
-#   NER quality drops noticeably for PERSON, LOCATION, and ORG entities.
-# - SPACY_MODEL_ACCURATE (en_core_web_lg, ~587 MB): higher NER recall on
-#   names, places, and organizations. Costs ~2-5s extra cold-start and
-#   ~1.5 GB resident memory; not friendly to slim serverless environments.
-SPACY_MODEL_FAST = "en_core_web_sm"
-SPACY_MODEL_ACCURATE = "en_core_web_lg"
-
-__all__ = [
-    # Core
-    "Allyanonimiser", "AnalysisConfig", "AnonymizationConfig",
-    "EnhancedAnalyzer", "EnhancedAnonymizer",
-    "CustomPatternDefinition", "PatternManager", "PatternRegistry",
-    # IO
-    "DataFrameProcessor", "StreamProcessor", "POLARS_AVAILABLE",
-    # Patterns
-    "get_au_pattern_definitions", "get_insurance_pattern_definitions",
-    "get_general_pattern_definitions",
-    # Validators
-    "validate_regex", "validate_spacy_pattern", "validate_context_list",
-    "validate_entity_type", "validate_pattern_definition",
-    "check_pattern_against_examples", "test_pattern_against_examples",
-    # Insurance
-    "ClaimNotesAnalyzer", "analyze_claim_note",
-    # Text processing
-    "LongTextProcessor", "segment_long_text", "extract_pii_rich_segments",
-    "analyze_claim_notes",
-    # Helpers
-    "create_spacy_pattern_from_examples", "create_regex_from_examples",
-    "detect_common_format", "create_pattern_from_regex",
-    "create_pattern_recognizer", "filter_results_by_score",
-    "filter_results_by_entity_type", "results_to_dict",
-    # Factories
-    "create_analyzer", "create_unified_analyzer",
-    "create_allyanonimiser", "create_pattern_from_examples",
-    # spaCy model presets
-    "SPACY_MODEL_FAST", "SPACY_MODEL_ACCURATE",
-]
-
 # Core classes
 # Config and main class
 from .allyanonimiser import (
@@ -107,6 +62,51 @@ from .utils.spacy_helpers import (
     create_spacy_pattern_from_examples,
     detect_common_format,
 )
+
+__version__ = "3.3.0"
+
+# Named spaCy model presets — use these instead of the bare strings to make
+# the deployment-vs-accuracy tradeoff explicit at call sites.
+#
+# - SPACY_MODEL_FAST (en_core_web_sm, ~44 MB): the default. Pattern-based
+#   detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is unaffected.
+#   NER quality drops noticeably for PERSON, LOCATION, and ORG entities.
+# - SPACY_MODEL_ACCURATE (en_core_web_lg, ~587 MB): higher NER recall on
+#   names, places, and organizations. Costs ~2-5s extra cold-start and
+#   ~1.5 GB resident memory; not friendly to slim serverless environments.
+SPACY_MODEL_FAST = "en_core_web_sm"
+SPACY_MODEL_ACCURATE = "en_core_web_lg"
+
+__all__ = [
+    # Core
+    "Allyanonimiser", "AnalysisConfig", "AnonymizationConfig",
+    "EnhancedAnalyzer", "EnhancedAnonymizer",
+    "CustomPatternDefinition", "PatternManager", "PatternRegistry",
+    # IO
+    "DataFrameProcessor", "StreamProcessor", "POLARS_AVAILABLE",
+    # Patterns
+    "get_au_pattern_definitions", "get_insurance_pattern_definitions",
+    "get_general_pattern_definitions",
+    # Validators
+    "validate_regex", "validate_spacy_pattern", "validate_context_list",
+    "validate_entity_type", "validate_pattern_definition",
+    "check_pattern_against_examples", "test_pattern_against_examples",
+    # Insurance
+    "ClaimNotesAnalyzer", "analyze_claim_note",
+    # Text processing
+    "LongTextProcessor", "segment_long_text", "extract_pii_rich_segments",
+    "analyze_claim_notes",
+    # Helpers
+    "create_spacy_pattern_from_examples", "create_regex_from_examples",
+    "detect_common_format", "create_pattern_from_regex",
+    "create_pattern_recognizer", "filter_results_by_score",
+    "filter_results_by_entity_type", "results_to_dict",
+    # Factories
+    "create_analyzer", "create_unified_analyzer",
+    "create_allyanonimiser", "create_pattern_from_examples",
+    # spaCy model presets
+    "SPACY_MODEL_FAST", "SPACY_MODEL_ACCURATE",
+]
 
 # ---------------------------------------------------------------------------
 # Factory functions

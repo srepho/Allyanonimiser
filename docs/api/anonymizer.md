@@ -1,3 +1,0 @@
-# Anonymizer API
-
-*Coming soon...*

@@ -299,5 +299,5 @@ print(result["text"])
 ## See Also
 
 - [Anonymization Operators](anonymization-operators.md) - Learn about built-in operators
-- [Pattern Generalization](pattern-generalization.md) - Understanding pattern flexibility
-- [Stream Processing](stream-processing.md) - Processing large volumes of data
+- [Pattern Generalization](https://github.com/srepho/Allyanonimiser#pattern-generalization) - Understanding pattern flexibility
+- [Stream Processing](https://github.com/srepho/Allyanonimiser#stream-processing) - Processing large volumes of data

@@ -67,11 +67,11 @@ for pattern in au_patterns:
 In the following sections, we provide detailed information about each pattern category:
 
 - [Australian Patterns](australian.md): Patterns for Australian-specific identifiers
-- [General Patterns](general.md): Universal PII patterns
-- [Insurance Patterns](insurance.md): Insurance industry-specific patterns
+- [General Patterns](https://github.com/srepho/Allyanonimiser#entity-reference): Universal PII patterns
+- [Insurance Patterns](https://github.com/srepho/Allyanonimiser#entity-reference): Insurance industry-specific patterns
 
 ## Custom Patterns
 
 Learn how to create and manage your own custom patterns:
 
-- [Creating Custom Patterns](custom.md): Guide to creating and registering custom patterns
+- [Creating Custom Patterns](https://github.com/srepho/Allyanonimiser#custom-patterns): Guide to creating and registering custom patterns

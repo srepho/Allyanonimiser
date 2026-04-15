@@ -1,3 +1,0 @@
-# General Patterns
-
-*Coming soon...*

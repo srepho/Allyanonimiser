@@ -75,7 +75,7 @@ from allyanonimiser import create_allyanonimiser, SPACY_MODEL_ACCURATE
 ally = create_allyanonimiser(spacy_model=SPACY_MODEL_ACCURATE)
 ```
 
-### Tradeoffs at a glance
+### Choosing a spaCy model
 
 | | `SPACY_MODEL_FAST` (`en_core_web_sm`) | `SPACY_MODEL_ACCURATE` (`en_core_web_lg`) |
 |---|---|---|
