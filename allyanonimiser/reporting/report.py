@@ -1,15 +1,9 @@
-"""
-Reporting module for Allyanonimiser.
-
-This module provides functionality for generating reports on anonymization activities,
-including statistics, visualizations, and export capabilities.
-"""
+"""AnonymizationReport: collects and renders statistics from anonymization runs."""
 
 import datetime
 import json
 import logging
 import os
-import threading
 from collections import Counter, defaultdict
 from typing import Any, Optional
 
@@ -83,31 +77,25 @@ class AnonymizationReport:
         self.total_documents += 1
         self.processing_times.append(processing_time)
 
-        # Track character counts
         original_chars = len(original_text)
         self.total_characters += original_chars
 
-        # Extract entities and operators from the anonymization result
         items = anonymization_result.get('items', [])
         self.total_entities += len(items)
 
-        # Count entities by type and operators
         anonymized_chars = 0
         for item in items:
             entity_type = item.get('entity_type', 'UNKNOWN')
             self.entity_counts[entity_type] += 1
 
-            # Count characters anonymized
             original_entity = item.get('original', '')
             anonymized_chars += len(original_entity)
 
-            # Record operator used (if available)
             if 'operator' in item:
                 self.operator_counts[item['operator']] += 1
 
         self.total_anonymized_characters += anonymized_chars
 
-        # Store document-level statistics
         doc_stats = {
             'document_id': document_id,
             'original_length': original_chars,
@@ -118,7 +106,6 @@ class AnonymizationReport:
         }
         self.document_stats.append(doc_stats)
 
-        # Store detailed report for this document
         self.document_reports.append({
             'document_id': document_id,
             'timestamp': datetime.datetime.now().isoformat(),
@@ -148,18 +135,15 @@ class AnonymizationReport:
         self.total_documents += batch_size
         self.processing_times.append(processing_time)
 
-        # Extract entity counts from batch result
         if 'entity_counts' in batch_result:
             for entity_type, count in batch_result['entity_counts'].items():
                 self.entity_counts[entity_type] += count
                 self.total_entities += count
 
-        # Extract operator counts if available
         if 'operator_counts' in batch_result:
             for operator, count in batch_result['operator_counts'].items():
                 self.operator_counts[operator] += count
 
-        # Store batch-level statistics
         batch_stats = {
             'batch_id': batch_id,
             'batch_size': batch_size,
@@ -183,16 +167,12 @@ class AnonymizationReport:
         if not self.end_time:
             self.finalize()
 
-        # Calculate time elapsed
         elapsed_time = (self.end_time - self.start_time).total_seconds()
 
-        # Calculate average processing time per document
         avg_processing_time = sum(self.processing_times) / len(self.processing_times) if self.processing_times else 0
 
-        # Calculate anonymization rate
         anonymization_rate = self.total_anonymized_characters / self.total_characters if self.total_characters > 0 else 0
 
-        # Calculate entity distribution
         entity_distribution = {
             entity_type: count / self.total_entities * 100
             for entity_type, count in self.entity_counts.items()
@@ -241,23 +221,19 @@ class AnonymizationReport:
         if not self.end_time:
             self.finalize()
 
-        # Ensure the directory exists
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         if format.lower() == "json":
-            # Export as JSON
             with open(filepath, 'w') as f:
                 json.dump(self.get_detailed_report(), f, indent=2)
             return filepath
 
         elif format.lower() == "csv":
-            # Export document stats as CSV
             df = pd.DataFrame(self.document_stats)
             df.to_csv(filepath, index=False)
             return filepath
 
         elif format.lower() == "html":
-            # Export as HTML report
             html_content = self.generate_html_report()
             with open(filepath, 'w') as f:
                 f.write(html_content)
@@ -275,7 +251,6 @@ class AnonymizationReport:
         """
         summary = self.get_summary()
 
-        # Create HTML
         html = f"""
         <html>
         <head>
@@ -353,7 +328,6 @@ class AnonymizationReport:
                 </tr>
         """
 
-        # Add entity distribution rows
         for entity_type, count in sorted(summary['entity_counts'].items(),
                                       key=lambda x: x[1], reverse=True):
             percentage = count / summary['total_entities'] * 100 if summary['total_entities'] > 0 else 0
@@ -377,7 +351,6 @@ class AnonymizationReport:
                 </tr>
         """
 
-        # Add operator distribution rows
         total_ops = sum(summary['operator_counts'].values())
         for operator, count in sorted(summary['operator_counts'].items(),
                                    key=lambda x: x[1], reverse=True):
@@ -410,12 +383,10 @@ class AnonymizationReport:
 
         summary = self.get_summary()
 
-        # Display header
         display(Markdown(f"# Anonymization Report: {summary['session_id']}"))
         display(Markdown(f"**Period:** {summary['start_time']} to {summary['end_time']}"))
         display(Markdown(f"**Total elapsed time:** {summary['elapsed_time_seconds']:.2f} seconds"))
 
-        # Create summary table
         summary_data = {
             'Metric': ['Documents Processed', 'Entities Detected', 'Entities per Document',
                       'Characters Processed', 'Characters Anonymized', 'Anonymization Rate',
@@ -434,7 +405,6 @@ class AnonymizationReport:
         display(Markdown("## Summary Statistics"))
         display(pd.DataFrame(summary_data))
 
-        # Create entity distribution table
         if summary['entity_counts']:
             display(Markdown("## Entity Type Distribution"))
 
@@ -450,13 +420,10 @@ class AnonymizationReport:
 
             display(pd.DataFrame(entity_data))
 
-            # Create visualizations if matplotlib is available
             if HAS_VISUALIZATION and entity_data:
-                # Prepare data for pie chart
-                labels = [item['Entity Type'] for item in entity_data[:10]]  # Top 10 entities
+                labels = [item['Entity Type'] for item in entity_data[:10]]
                 sizes = [summary['entity_counts'][label] for label in labels]
 
-                # Create pie chart
                 plt.figure(figsize=(10, 6))
                 plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
                 plt.axis('equal')
@@ -464,7 +431,6 @@ class AnonymizationReport:
                 plt.tight_layout()
                 plt.show()
 
-        # Create operator distribution table
         if summary['operator_counts']:
             display(Markdown("## Anonymization Operators Used"))
 
@@ -481,13 +447,10 @@ class AnonymizationReport:
 
             display(pd.DataFrame(operator_data))
 
-            # Create visualizations if matplotlib is available
             if HAS_VISUALIZATION and operator_data:
-                # Prepare data for bar chart
                 operators = [item['Operator'] for item in operator_data]
                 counts = [summary['operator_counts'][op] for op in operators]
 
-                # Create bar chart
                 plt.figure(figsize=(10, 6))
                 plt.bar(operators, counts)
                 plt.xlabel('Operator')
@@ -497,7 +460,6 @@ class AnonymizationReport:
                 plt.tight_layout()
                 plt.show()
 
-        # Display processing time distribution if we have multiple documents
         if len(self.processing_times) > 1 and HAS_VISUALIZATION:
             display(Markdown("## Processing Time Distribution"))
 
@@ -521,96 +483,3 @@ class AnonymizationReport:
             f"Anonymization Rate: {summary['anonymization_rate']*100:.2f}%\n"
             f"Avg Processing Time: {summary['avg_processing_time']*1000:.1f} ms\n"
         )
-
-
-class ReportingManager:
-    """Manager for creating and handling anonymization reports.
-
-    Thread-safe: all mutations are protected by a lock for free-threaded Python.
-    """
-
-    def __init__(self):
-        self._lock = threading.Lock()
-        self.current_report = None
-        self.reports: dict[str, AnonymizationReport] = {}
-
-    def start_new_report(self, session_id: str | None = None) -> AnonymizationReport:
-        """
-        Start a new anonymization report.
-
-        Args:
-            session_id: Optional identifier for this reporting session
-
-        Returns:
-            The new AnonymizationReport instance
-        """
-        with self._lock:
-            self.current_report = AnonymizationReport(session_id)
-            self.reports[self.current_report.session_id] = self.current_report
-            return self.current_report
-
-    def get_current_report(self) -> Optional[AnonymizationReport]:
-        """
-        Get the current report.
-
-        Returns:
-            The current AnonymizationReport instance, or None if no report is active
-        """
-        return self.current_report
-
-    def get_report(self, session_id: str) -> Optional[AnonymizationReport]:
-        """
-        Get a specific report by session ID.
-
-        Args:
-            session_id: The session ID of the report to retrieve
-
-        Returns:
-            The requested AnonymizationReport instance, or None if not found
-        """
-        return self.reports.get(session_id)
-
-    def finalize_current_report(self) -> dict[str, Any]:
-        """
-        Finalize the current report and return its summary.
-
-        Returns:
-            Dictionary containing report summary
-        """
-        if self.current_report:
-            self.current_report.finalize()
-            return self.current_report.get_summary()
-        return {}
-
-    def generate_report_from_results(self, results: list[dict[str, Any]],
-                                   session_id: Optional[str] = None) -> AnonymizationReport:
-        """
-        Generate a report from a list of anonymization results.
-
-        Args:
-            results: List of anonymization result dictionaries
-            session_id: Optional identifier for this reporting session
-
-        Returns:
-            The generated AnonymizationReport instance
-        """
-        report = AnonymizationReport(session_id)
-
-        for i, result in enumerate(results):
-            document_id = result.get('document_id', f"document_{i}")
-            original_text = result.get('original_text', '')
-            processing_time = result.get('processing_time', 0.0)
-
-            report.record_anonymization(
-                document_id=document_id,
-                original_text=original_text,
-                anonymization_result=result,
-                processing_time=processing_time
-            )
-
-        report.finalize()
-        self.reports[report.session_id] = report
-        return report
-
-# Create a singleton instance
-report_manager = ReportingManager()

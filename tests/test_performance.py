@@ -8,8 +8,15 @@ import numpy as np
 from allyanonimiser import create_allyanonimiser
 from allyanonimiser.io.dataframe_processor import DataFrameProcessor
 
-# Skip these tests in CI or when running regular test suite
-pytestmark = pytest.mark.skip(reason="Performance tests are slow and only run manually")
+# Opt-in: run with `pytest -m performance tests/test_performance.py`.
+# Excluded from the default suite so CI and `pytest tests/` stay fast.
+pytestmark = [
+    pytest.mark.performance,
+    pytest.mark.skipif(
+        "not config.getoption('-m') or 'performance' not in config.getoption('-m')",
+        reason="Performance tests are opt-in; run with -m performance",
+    ),
+]
 
 @pytest.fixture
 def large_df():
@@ -117,22 +124,22 @@ def test_acronym_expansion_overhead(large_df, ally):
     }
     ally.set_acronym_dictionary(acronyms)
     
-    # Test without acronym expansion
-    processor = DataFrameProcessor(ally,batch_size=100)
-    _, no_expansion_time = measure_time(
-        processor.process_dataframe,
-        large_df,
-        'text',
-        expand_acronyms=False
-    )
-    
-    # Test with acronym expansion
-    _, with_expansion_time = measure_time(
-        processor.process_dataframe,
-        large_df,
-        'text',
-        expand_acronyms=True
-    )
+    # DataFrameProcessor.process_dataframe does not wire expand_acronyms;
+    # benchmark acronym expansion at the Allyanonimiser level instead.
+    processor = DataFrameProcessor(ally, batch_size=100)
+
+    def _run_without_expansion():
+        ally.text_preprocessor.acronym_dict = {}
+        return processor.process_dataframe(large_df, 'text')
+
+    def _run_with_expansion():
+        ally.text_preprocessor.acronym_dict = acronyms
+        texts = [ally.text_preprocessor.expand_acronyms(t)[0] for t in large_df['text']]
+        df = large_df.assign(text=texts)
+        return processor.process_dataframe(df, 'text')
+
+    _, no_expansion_time = measure_time(_run_without_expansion)
+    _, with_expansion_time = measure_time(_run_with_expansion)
     
     overhead = with_expansion_time - no_expansion_time
     percentage = (overhead / no_expansion_time) * 100
@@ -208,11 +215,10 @@ def test_row_count_scaling(ally):
         print(f"{count} rows: {rows_per_second:.1f} rows/second")
 
 if __name__ == "__main__":
-    # Create fixtures manually for standalone execution
-    df = large_df()
-    analyzer = ally()
-    
-    # Run all performance tests
+    # Standalone execution: invoke fixtures by resolving their underlying function.
+    df = large_df.__wrapped__()
+    analyzer = ally.__wrapped__()
+
     test_batch_size_performance(df, analyzer)
     test_worker_performance(df, analyzer)
     test_acronym_expansion_overhead(df, analyzer)

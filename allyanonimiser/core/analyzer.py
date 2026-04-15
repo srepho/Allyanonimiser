@@ -4,9 +4,12 @@ Unified analyzer for PII detection across all document types.
 import logging
 import re
 import threading
-from dataclasses import dataclass
 
 import spacy
+
+from .common_formats import analyze_common_formats
+from .conflict_resolver import deduplicate_and_resolve_conflicts
+from .recognizer_result import RecognizerResult
 
 logger = logging.getLogger(__name__)
 
@@ -53,19 +56,6 @@ def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm
 
         _spacy_model_cache[cache_key] = nlp
         return nlp
-
-@dataclass
-class RecognizerResult:
-    """A class representing the result of a recognized entity."""
-    entity_type: str
-    start: int
-    end: int
-    score: float
-    text: str = None
-
-    def __post_init__(self):
-        """Ensure all fields are properly initialized."""
-        # We don't need to do anything here as text can be populated externally
 
 class EnhancedAnalyzer:
     """Unified analyzer for PII detection.
@@ -306,7 +296,7 @@ class EnhancedAnalyzer:
                         self._spacy_result_cache = {}
 
         # Add entity-specific extraction for common formats
-        format_results = self._analyze_common_formats(text)
+        format_results = analyze_common_formats(text)
 
         # Combine results
         combined_results = pattern_results + spacy_results + format_results
@@ -326,7 +316,9 @@ class EnhancedAnalyzer:
         combined_results = [r for r in combined_results if r.score >= self.min_score_threshold]
 
         # De-duplicate results and resolve entity conflicts
-        deduplicated_results = self._deduplicate_and_resolve_conflicts(combined_results)
+        deduplicated_results = deduplicate_and_resolve_conflicts(
+            combined_results, self.patterns,
+        )
 
         # Apply context-aware filtering
         from .context_analyzer import ContextAnalyzer
@@ -778,159 +770,6 @@ class EnhancedAnalyzer:
 
         return results
 
-    def _analyze_common_formats(self, text):
-        """
-        Analyze text to identify common data formats (email, phone, etc).
-
-        Args:
-            text: The text to analyze
-
-        Returns:
-            List of RecognizerResult objects for common formats
-        """
-        results = []
-
-        # Email patterns
-        email_patterns = {
-            'EMAIL_ADDRESS': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        }
-
-        # Phone number patterns - improved for Australian numbers
-        phone_patterns = {
-            'AU_PHONE': [
-                r'\b(?:\+61|0)4\d{2}[\s-]?\d{3}[\s-]?\d{3}\b',  # Mobile
-                r'\b(?:\+61|0)[2378][\s-]?\d{4}[\s-]?\d{4}\b',  # Landline
-                r'\(\d{2}\)\s*\d{4}[\s-]?\d{4}\b',              # (02) 1234 5678
-                r'\b13\d{2}\s*\d{2}\b',                          # 13xx xx
-                r'\b1300\s+\d{3}\s+\d{3}\b',                     # 1300 xxx xxx
-                r'\b1800\s*\d{3}\s*\d{3}\b'                      # 1800 xxx xxx
-            ]
-        }
-
-        # ID and reference number patterns
-        id_patterns = {
-            'INSURANCE_CLAIM_NUMBER': [
-                r'(?:Claim|CL|CLM)[#:\-\s]+([A-Z0-9-]+)',
-                r'(?:Claim\s+(?:Number|Reference|ID|#))[#:\-\s]+([A-Z0-9-]+)'
-            ],
-            'INSURANCE_POLICY_NUMBER': [
-                r'(?:Policy|POL)[#:\-\s]+([A-Z0-9-]+)',
-                r'(?:Policy\s+(?:Number|ID|#))[#:\-\s]+([A-Z0-9-]+)'
-            ],
-            'VEHICLE_REGISTRATION': [
-                r'(?:Registration|Rego|REG)[#:\-\s]+([A-Z0-9-]+)',
-                r'(?:Vehicle\s+(?:Registration|Rego|REG))[#:\-\s]+([A-Z0-9-]+)'
-            ],
-            'VEHICLE_VIN': [
-                r'(?:VIN|Vehicle\s+Identification\s+Number)[#:\-\s]+([A-Z0-9]{17})'
-            ]
-        }
-
-        # AU-specific patterns with improved detection
-        au_patterns = {
-            'AU_TFN': [
-                r'(?:TFN|Tax\s+File\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b'
-            ],
-            'AU_MEDICARE': [
-                r'(?:Medicare|Medicare\s+Number)[:\s]*([2-6]\d{3}\s*\d{5}\s*\d{1})\b'
-            ],
-            'AU_ABN': [
-                r'(?:ABN|Australian\s+Business\s+Number)[:\s]*(\d{2}\s*\d{3}\s*\d{3}\s*\d{3})\b'
-            ],
-            'AU_ACN': [
-                r'(?:ACN|Australian\s+Company\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b'
-            ],
-            'AU_DRIVERS_LICENSE': [
-                r'(?:Driver\'?s?\s+License|Licence|DL)[:\s#]*([A-Z0-9]{6,10})\b',
-                r'(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+License[:\s]*(\d{6,10})\b'
-            ],
-            'AU_PASSPORT': [
-                r'(?:Passport|Passport\s+Number)[:\s]*([A-Z][0-9]{7})\b'
-            ],
-            'AU_CENTRELINK_CRN': [
-                r'(?:CRN|Centrelink\s+Reference\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3}[A-Z]?)\b'
-            ]
-        }
-
-        # Process email patterns
-        for entity_type, pattern in email_patterns.items():
-            for match in re.finditer(pattern, text):
-                start = match.start()
-                end = match.end()
-                matched_text = match.group()
-
-                results.append(RecognizerResult(
-                    entity_type=entity_type,
-                    start=start,
-                    end=end,
-                    score=0.95,  # High confidence for email format
-                    text=matched_text
-                ))
-
-        # Process phone patterns
-        for entity_type, patterns_list in phone_patterns.items():
-            for pattern in patterns_list:
-                for match in re.finditer(pattern, text):
-                    start = match.start()
-                    end = match.end()
-                    matched_text = match.group()
-
-                    results.append(RecognizerResult(
-                        entity_type=entity_type,
-                        start=start,
-                        end=end,
-                        score=0.92,  # High confidence for phone format
-                        text=matched_text
-                    ))
-
-        # Process ID patterns
-        for entity_type, patterns_list in id_patterns.items():
-            for pattern in patterns_list:
-                for match in re.finditer(pattern, text, re.IGNORECASE):
-                    if match.lastindex and match.lastindex > 0:
-                        # Use the capturing group
-                        start = match.start(1)
-                        end = match.end(1)
-                        matched_text = match.group(1)
-                    else:
-                        # Use the whole match
-                        start = match.start()
-                        end = match.end()
-                        matched_text = match.group()
-
-                    results.append(RecognizerResult(
-                        entity_type=entity_type,
-                        start=start,
-                        end=end,
-                        score=0.9,
-                        text=matched_text
-                    ))
-
-        # Process AU-specific patterns
-        for entity_type, patterns_list in au_patterns.items():
-            for pattern in patterns_list:
-                for match in re.finditer(pattern, text, re.IGNORECASE):
-                    if match.lastindex and match.lastindex > 0:
-                        # Use the capturing group
-                        start = match.start(1)
-                        end = match.end(1)
-                        matched_text = match.group(1)
-                    else:
-                        # Use the whole match
-                        start = match.start()
-                        end = match.end()
-                        matched_text = match.group()
-
-                    results.append(RecognizerResult(
-                        entity_type=entity_type,
-                        start=start,
-                        end=end,
-                        score=0.93,  # High confidence for structured AU formats
-                        text=matched_text
-                    ))
-
-        return results
-
     def _get_context_around_entity(self, text, entity_result):
         """
         Get the text surrounding an entity for context.
@@ -1009,222 +848,3 @@ class EnhancedAnalyzer:
 
         return mapping.get(spacy_entity_type)
 
-    def _deduplicate_and_resolve_conflicts(self, results):
-        """
-        Deduplicate results and resolve entity conflicts.
-
-        Args:
-            results: List of RecognizerResult objects
-
-        Returns:
-            Deduplicated list of RecognizerResult objects
-        """
-        # Import validator here to avoid circular imports
-        from .validators import EntityValidator
-
-        deduplicated_results = []
-        seen_spans = {}  # Maps (start, end, text) to list of results
-
-        # Group results by span
-        for result in results:
-            span_key = (result.start, result.end, result.text)
-            if span_key not in seen_spans:
-                seen_spans[span_key] = []
-            seen_spans[span_key].append(result)
-
-        # Post-processing to resolve entity conflicts
-        for span_key, span_results in seen_spans.items():
-            if len(span_results) == 1:
-                # Only one entity type for this span, validate it
-                result = span_results[0]
-
-                # Apply validation based on entity type
-                if result.entity_type == 'DATE':
-                    is_valid, date_type = EntityValidator.validate_date(result.text)
-                    if not is_valid and date_type in ['state_postcode', 'phone_prefix', 'phone_suffix', 'medicare_number', 'service_number']:
-                        continue  # Skip false positive dates
-
-                elif result.entity_type == 'NUMBER':
-                    is_valid, num_type = EntityValidator.validate_number(result.text)
-                    if not is_valid:
-                        continue  # Skip invalid numbers
-
-                elif result.entity_type == 'AU_PHONE':
-                    is_valid, phone_type = EntityValidator.validate_phone_number(result.text)
-                    if not is_valid:
-                        continue  # Skip invalid phone numbers
-
-                elif result.entity_type == 'AU_MEDICARE':
-                    # Remove spaces before validation
-                    medicare_text = result.text.replace(' ', '')
-                    is_valid, error = EntityValidator.validate_medicare_number(medicare_text)
-                    if not is_valid:
-                        continue  # Skip invalid Medicare numbers
-
-                elif result.entity_type == 'AU_TFN':
-                    # Remove spaces before validation
-                    tfn_text = result.text.replace(' ', '')
-                    is_valid, error = EntityValidator.validate_tfn(tfn_text)
-                    if not is_valid:
-                        continue  # Skip invalid TFNs
-
-                elif result.entity_type == 'AU_ABN':
-                    # Remove spaces before validation
-                    abn_text = result.text.replace(' ', '')
-                    is_valid, error = EntityValidator.validate_abn(abn_text)
-                    if not is_valid:
-                        continue  # Skip invalid ABNs
-
-                deduplicated_results.append(result)
-            else:
-                # Multiple entity types for the same span, resolve the conflict
-                resolved_result = self._resolve_entity_conflicts(span_results, span_key[2])
-                if resolved_result:
-                    deduplicated_results.append(resolved_result)
-
-        return deduplicated_results
-
-    def _resolve_entity_conflicts(self, results, text):
-        """
-        Resolve conflicts when multiple entity types match the same text span.
-
-        Args:
-            results: List of RecognizerResult objects for the same text span
-            text: The matched text
-
-        Returns:
-            The most appropriate RecognizerResult
-        """
-        # Skip false positives (specific cases we know are problematic)
-        if any(text.lower().endswith(term) for term in ["number", "ref", "#", "id", "identifier"]):
-            # These are likely identifiers/labels and not PII themselves
-            return None
-
-        # Skip false positives for common phrases incorrectly identified as PERSON
-        if any(r.entity_type == "PERSON" for r in results):
-            lower_text = text.lower()
-            upper_text = text.upper()
-
-            # Check for common false positive patterns
-            false_positive_patterns = [
-                lower_text.startswith("policy"),
-                lower_text.startswith("ref"),
-                lower_text.startswith("claim"),
-                upper_text.startswith("POL-"),  # Policy numbers
-                upper_text.startswith("CL-"),   # Claim numbers
-                upper_text.startswith("CLM-"),  # Claim numbers
-                "number" in lower_text,
-                # Common street/place suffixes that might be misidentified as person names
-                any(text.lower().endswith(suffix) for suffix in [" st", " street", " rd", " road", " ave", " avenue",
-                                                                " dr", " drive", " ln", " lane", " pl", " place",
-                                                                " ct", " court", " cr", " crescent"]),
-                # Medicare/insurance terms
-                lower_text == "medicare",
-                lower_text == "dob",  # Date of birth abbreviation
-                lower_text == "doi"   # Date of incident abbreviation
-            ]
-
-            if any(false_positive_patterns):
-                # Filter out results that are PERSON entity types for these patterns
-                filtered_results = [r for r in results if r.entity_type != "PERSON"]
-                if filtered_results:
-                    return filtered_results[0]
-                else:
-                    return None
-
-        # Use entity priority to resolve conflicts.
-        # Custom (user-added) patterns get a bonus so they can override built-in ones.
-        from .anonymizer import DEFAULT_ENTITY_PRIORITY
-
-        # Patterns registered later (user-added) get a small priority boost
-        pattern_order = {
-            p.entity_type: i
-            for i, p in enumerate(self.patterns)
-            if hasattr(p, "entity_type")
-        }
-        num_patterns = len(self.patterns)
-
-        def _priority(r):
-            base = DEFAULT_ENTITY_PRIORITY.get(r.entity_type, 75)
-            # Bonus for later-registered patterns (user custom)
-            order = pattern_order.get(r.entity_type, -1)
-            # Scale bonus: max +10 for the last-registered pattern
-            bonus = (order / max(num_patterns, 1)) * 10 if order >= 0 else 0
-            return base + bonus + r.score
-
-        best = max(results, key=_priority)
-        return best
-
-        # Special handling for service numbers that might be detected as DATE
-        if any(r.entity_type == 'AU_PHONE' for r in results) and any(r.entity_type == 'DATE' for r in results):
-            # Check if it's a service number pattern
-            if re.match(r'^(1300|1800|13\d{2})\s+', text):
-                # Prefer AU_PHONE over DATE for service numbers
-                for r in results:
-                    if r.entity_type == 'AU_PHONE':
-                        return r
-
-        # Priority by score (higher score wins)
-        max_score_result = max(results, key=lambda r: r.score)
-        if max_score_result.score > 0.95:  # Very high confidence
-            return max_score_result
-
-        # Document-specific entity types have higher priority
-        doc_specific_types = [
-            "EMAIL_ADDRESS", "EMAIL_SUBJECT", "EMAIL_FROM", "EMAIL_TO",
-            "INSURANCE_CLAIM_NUMBER", "INSURANCE_POLICY_NUMBER", "VEHICLE_REGISTRATION", "VEHICLE_VIN", "INCIDENT_DATE",
-            "MEDICARE_NUMBER", "PATIENT_ID", "DOCTOR_ID", "DIAGNOSIS_CODE", "MEDICATION"
-        ]
-
-        for entity_type in doc_specific_types:
-            matching_results = [r for r in results if r.entity_type == entity_type]
-            if matching_results:
-                return matching_results[0]
-
-        # Pattern-based rules for common prefixes
-        if text.startswith("POL") and any(r.entity_type == "INSURANCE_POLICY_NUMBER" for r in results):
-            # POL prefix is almost certainly an insurance policy number
-            for r in results:
-                if r.entity_type == "INSURANCE_POLICY_NUMBER":
-                    return r
-
-        # Common prefixes mapping to specific entity types
-        prefix_to_entity = {
-            "POL": "INSURANCE_POLICY_NUMBER",
-            "CL": "INSURANCE_CLAIM_NUMBER",
-            "CLM": "INSURANCE_CLAIM_NUMBER",
-            "INV": "INVOICE_NUMBER",
-            "REF": "INSURANCE_CLAIM_NUMBER",  # REF is typically a reference/claim number
-            "DOB": "DATE_OF_BIRTH",
-            "DOI": "DATE_OF_INCIDENT",
-            "VIN": "VEHICLE_VIN",
-            "ABN": "AU_ABN",
-            "TFN": "AU_TFN",
-            "ACN": "AU_ACN",
-            "MEDICARE": "MEDICARE_NUMBER"
-        }
-
-        for prefix, entity_type in prefix_to_entity.items():
-            if text.upper().startswith(prefix) and any(r.entity_type == entity_type for r in results):
-                for r in results:
-                    if r.entity_type == entity_type:
-                        return r
-
-        # Format-based rules
-        if re.match(r'^\d{4}\s*\d{5}\s*\d{1}$', text) and any(r.entity_type == "MEDICARE_NUMBER" for r in results):
-            # Medicare number format
-            for r in results:
-                if r.entity_type == "MEDICARE_NUMBER":
-                    return r
-
-        # For dates, prioritize more specific date types over generic DATE
-        date_priority = ["DATE_OF_BIRTH", "DATE_OF_INCIDENT", "INCIDENT_DATE", "DATE"]
-        if re.match(r'^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$', text):
-            for date_type in date_priority:
-                for r in results:
-                    if r.entity_type == date_type:
-                        return r
-
-        # For generic alphanumeric patterns, prioritize by context
-        # For now, return the first result (we'll enhance this later)
-        return results[0]
