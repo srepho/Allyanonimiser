@@ -72,7 +72,7 @@ def create_allyanonimiser(
     settings_path: str | None = None,
     enable_caching: bool = True,
     max_cache_size: int = 10_000,
-    spacy_model: str | None = "en_core_web_lg",
+    spacy_model: str | None = "en_core_web_sm",
 ) -> "Allyanonimiser":
     """Create a pre-configured Allyanonimiser instance.
 
@@ -81,8 +81,11 @@ def create_allyanonimiser(
         settings_path: Path to a settings file (JSON / YAML).
         enable_caching: Enable result caching in the analyzer.
         max_cache_size: Maximum cached entries.
-        spacy_model: spaCy model name. Use ``"en_core_web_sm"`` for speed,
-            or ``None`` to disable spaCy (pattern-only mode).
+        spacy_model: spaCy model name. Defaults to ``"en_core_web_sm"`` (~44 MB,
+            fast). Use ``"en_core_web_lg"`` (~587 MB) for higher NER recall on
+            ``PERSON``, ``LOCATION``, and ``ORG`` entities — pattern-based
+            detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is identical
+            either way. Pass ``None`` to disable spaCy entirely (pattern-only).
     """
     if settings_path:
         settings_manager = SettingsManager(settings_path=settings_path)
@@ -607,16 +610,23 @@ class Allyanonimiser:
             if model == "blank_en":
                 status["has_ner"] = False
                 status["recommendation"] = (
-                    "Basic spaCy model loaded. For full NER:\n"
-                    "  python -m spacy download en_core_web_lg"
+                    "Blank spaCy model — NER disabled. Install one with:\n"
+                    "  python -m spacy download en_core_web_sm   # ~44 MB, fast\n"
+                    "  python -m spacy download en_core_web_lg   # ~587 MB, higher PERSON/LOCATION/ORG accuracy"
                 )
             else:
                 status["has_ner"] = True
-                status["recommendation"] = f"Full functionality available with {model}"
+                if model == "en_core_web_sm":
+                    status["recommendation"] = (
+                        "Loaded en_core_web_sm (default). For higher NER recall on "
+                        "PERSON/LOCATION/ORG, install and pass en_core_web_lg."
+                    )
+                else:
+                    status["recommendation"] = f"Full functionality available with {model}"
         else:
             status["recommendation"] = (
                 "spaCy not loaded. Install with:\n"
-                "  pip install spacy && python -m spacy download en_core_web_lg"
+                "  pip install spacy && python -m spacy download en_core_web_sm"
             )
 
         return status

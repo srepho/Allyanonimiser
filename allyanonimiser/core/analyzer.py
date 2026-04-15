@@ -19,8 +19,14 @@ _spacy_model_cache: dict = {}
 _spacy_model_lock = threading.Lock()
 
 
-def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
-    """Load a spaCy model with fallback, cached at module level (thread-safe)."""
+def load_spacy_model(model_name="en_core_web_sm", fallback_model="en_core_web_lg"):
+    """Load a spaCy model with fallback, cached at module level (thread-safe).
+
+    Defaults to ``en_core_web_sm`` (small, ~44 MB). The fallback is
+    ``en_core_web_lg`` (large, ~587 MB); if neither is installed, falls
+    back to ``spacy.blank("en")``, which disables NER entirely (only regex
+    pattern detection will work).
+    """
     cache_key = (model_name, fallback_model)
 
     # Fast path: already cached (no lock needed for dict reads in CPython,
@@ -73,7 +79,7 @@ class EnhancedAnalyzer:
         min_score_threshold: float = 0.7,
         enable_caching: bool = True,
         max_cache_size: int = 10_000,
-        spacy_model: str | None = "en_core_web_lg",
+        spacy_model: str | None = "en_core_web_sm",
     ):
         self.patterns: list = []
         self.active_entity_types: set = set()
@@ -486,7 +492,7 @@ class EnhancedAnalyzer:
             if source == "spaCy NER":
                 explanation["match_details"] = {
                     "detection_method": "spaCy Natural Language Processing",
-                    "model": "en_core_web_lg" if self.use_spacy else "None",
+                    "model": self.spacy_model_loaded or "None",
                     "context_aware": True,
                     "context": self._get_context_around_entity(text, entity_result)
                 }

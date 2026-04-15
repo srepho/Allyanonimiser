@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.3.0 (2026-04-15)
+
+### Behavior change (observable)
+
+- **Default spaCy model is now `en_core_web_sm`** (was `en_core_web_lg`). The choice is now explicit: pass `spacy_model="en_core_web_lg"` (or the new `SPACY_MODEL_ACCURATE` constant) to opt into the larger model.
+
+  | What gets worse if you stay on the new default | Magnitude |
+  |---|---|
+  | `PERSON` recall on insurance text | ~92% → ~80% (titled names, two-word edge cases more often missed) |
+  | `LOCATION` recall (cities, suburbs, addresses) | noticeably worse |
+  | `ORG` recall (insurance companies, repairers, hospitals) | noticeably worse |
+  | Pattern detection (TFN, ABN, MEDICARE, AU_PHONE, EMAIL, dates) | unchanged — still 100% identical |
+
+  | What gets better | |
+  |---|---|
+  | Cold start | ~2-5s → ~0.5s |
+  | Resident memory | ~1.5 GB → ~200 MB |
+  | Download size | 587 MB → 44 MB |
+  | Serverless friendliness (Azure Functions, Lambda) | poor → good |
+
+### Added
+- **`SPACY_MODEL_FAST` and `SPACY_MODEL_ACCURATE`** constants exported from the top-level package, so callers can pick the model without remembering the spaCy package name:
+  ```python
+  from allyanonimiser import create_allyanonimiser, SPACY_MODEL_ACCURATE
+  ally = create_allyanonimiser(spacy_model=SPACY_MODEL_ACCURATE)
+  ```
+- README and `docs/getting-started/installation.md` now lead with the small-model install and include a tradeoff table for picking between them.
+- `Allyanonimiser.check_spacy_status()` now prints a nudge toward `en_core_web_lg` when the default `sm` is loaded, so users discover the upgrade path without reading docs first.
+
+### Migration
+- If you previously relied on `lg`-quality `PERSON`/`LOCATION`/`ORG` detection (e.g. you have insurance call notes where names are signal), pin the model in your factory call:
+  ```python
+  ally = create_allyanonimiser(spacy_model="en_core_web_lg")
+  ```
+- The `lg`-not-installed → `sm` fallback chain still works, so existing environments with `lg` already installed will load it when you ask for it.
+
 ## 3.2.0 (2026-04-15)
 
 ### Behavior change (mildly observable)

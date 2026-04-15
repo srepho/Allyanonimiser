@@ -2,7 +2,19 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "3.2.0"
+__version__ = "3.3.0"
+
+# Named spaCy model presets — use these instead of the bare strings to make
+# the deployment-vs-accuracy tradeoff explicit at call sites.
+#
+# - SPACY_MODEL_FAST (en_core_web_sm, ~44 MB): the default. Pattern-based
+#   detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is unaffected.
+#   NER quality drops noticeably for PERSON, LOCATION, and ORG entities.
+# - SPACY_MODEL_ACCURATE (en_core_web_lg, ~587 MB): higher NER recall on
+#   names, places, and organizations. Costs ~2-5s extra cold-start and
+#   ~1.5 GB resident memory; not friendly to slim serverless environments.
+SPACY_MODEL_FAST = "en_core_web_sm"
+SPACY_MODEL_ACCURATE = "en_core_web_lg"
 
 __all__ = [
     # Core
@@ -31,6 +43,8 @@ __all__ = [
     # Factories
     "create_analyzer", "create_unified_analyzer",
     "create_allyanonimiser", "create_pattern_from_examples",
+    # spaCy model presets
+    "SPACY_MODEL_FAST", "SPACY_MODEL_ACCURATE",
 ]
 
 # Core classes
@@ -120,12 +134,18 @@ def create_allyanonimiser(
     settings_path: str | None = None,
     enable_caching: bool = True,
     max_cache_size: int = 10_000,
-    spacy_model: str | None = "en_core_web_lg",
+    spacy_model: str | None = SPACY_MODEL_FAST,
 ) -> Allyanonimiser:
     """Create a fully configured Allyanonimiser instance.
 
-    See ``allyanonimiser.allyanonimiser.create_allyanonimiser`` for parameter
-    details. This wrapper forwards all keyword arguments.
+    The default ``spacy_model`` is ``SPACY_MODEL_FAST`` (``en_core_web_sm``,
+    ~44 MB). Pattern-based detection is identical regardless of model;
+    ``SPACY_MODEL_ACCURATE`` (``en_core_web_lg``, ~587 MB) gives noticeably
+    better NER recall for ``PERSON``, ``LOCATION``, and ``ORG`` entities at
+    the cost of ~2-5s extra startup and ~1.5 GB resident memory.
+
+    See ``allyanonimiser.allyanonimiser.create_allyanonimiser`` for the
+    full parameter list. This wrapper forwards all keyword arguments.
     """
     from .allyanonimiser import create_allyanonimiser as _create
     return _create(
@@ -151,11 +171,10 @@ def create_pattern_from_examples(
         pattern = _create_regex(examples, generalization_level=generalization_level)
         patterns = [pattern]
     else:
-        import spacy
-        try:
-            nlp = spacy.load("en_core_web_lg")
-        except OSError:
-            nlp = spacy.load("en_core_web_sm")
+        from .core.analyzer import load_spacy_model
+        # Match the library default: try the small model first, then large
+        # if installed. The shared loader already handles the blank fallback.
+        nlp = load_spacy_model(SPACY_MODEL_FAST, fallback_model=SPACY_MODEL_ACCURATE)
         patterns = create_spacy_pattern_from_examples(nlp, examples, "token")
 
     return CustomPatternDefinition(

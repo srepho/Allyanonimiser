@@ -11,7 +11,7 @@ from spacy.matcher import Matcher, PhraseMatcher
 from spacy.tokens import Doc, Span
 
 
-def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm"):
+def load_spacy_model(model_name="en_core_web_sm", fallback_model="en_core_web_lg"):
     """Load a spaCy model with fallback. Delegates to cached loader in core."""
     from ..core.analyzer import load_spacy_model as _load
     return _load(model_name, fallback_model)

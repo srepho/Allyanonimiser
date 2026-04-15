@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.2.0-blue)](https://pypi.org/project/allyanonimiser/3.2.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.3.0-blue)](https://pypi.org/project/allyanonimiser/3.3.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,7 +12,7 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 3.2.0 — Major Restructure
+## Version 3.3.0 — Major Restructure
 
 **Breaking changes** — see [Migration Guide](#migrating-from-v2x) below.
 
@@ -29,26 +29,51 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.2.0
+pip install allyanonimiser==3.3.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.2.0"
+pip install "allyanonimiser[stream]==3.3.0"
 ```
 
 **Prerequisites:**
 - Python 3.12 or 3.13 (spaCy does not yet ship cp314 wheels)
-- A spaCy language model for Named Entity Recognition (NER):
-  
+- A spaCy language model for Named Entity Recognition (NER). The library
+  defaults to the small model — install it with:
+
   ```bash
-  # Recommended - Best accuracy (788 MB)
-  python -m spacy download en_core_web_lg
-  
-  # Alternative - Smaller size (44 MB)
-  python -m spacy download en_core_web_sm
+  python -m spacy download en_core_web_sm   # 44 MB, fast — the default
   ```
-  
-  > **Note**: spaCy models enable detection of PERSON, ORGANIZATION, LOCATION, and DATE entities. 
-  > Without a spaCy model, pattern-based detection (emails, phones, IDs, etc.) will still work.
+
+  Switch to the large model if you need higher NER recall on names,
+  places, and organisations (see the table below):
+
+  ```bash
+  python -m spacy download en_core_web_lg   # 587 MB, higher accuracy
+  ```
+
+  Then pass it explicitly:
+
+  ```python
+  from allyanonimiser import create_allyanonimiser, SPACY_MODEL_ACCURATE
+  ally = create_allyanonimiser(spacy_model=SPACY_MODEL_ACCURATE)
+  ```
+
+### Choosing a spaCy model
+
+| | `SPACY_MODEL_FAST` (`en_core_web_sm`) | `SPACY_MODEL_ACCURATE` (`en_core_web_lg`) |
+|---|---|---|
+| **Default in v3.3+?** | yes | no |
+| Download size | 44 MB | 587 MB |
+| Resident memory | ~200 MB | ~1.5 GB |
+| Cold start | ~0.5s | 2 – 5s |
+| Pattern detection (TFN, ABN, MEDICARE, AU_PHONE, EMAIL, dates, etc.) | identical | identical |
+| `PERSON` recall on insurance text | medium (~80%) | high (~92%) |
+| `LOCATION` and `ORG` recall | noticeably worse | high |
+| Serverless / Azure Functions friendliness | good | poor (size + cold start) |
+
+**TL;DR:** the default works for most pipelines. Switch to `SPACY_MODEL_ACCURATE` only when missing a person's name or a city is a real cost in your downstream workflow.
+
+> **Note:** Pass `spacy_model=None` to disable spaCy entirely — pattern detection (emails, phones, IDs, dates, etc.) keeps working.
 
 ### Verify Your Setup
 
