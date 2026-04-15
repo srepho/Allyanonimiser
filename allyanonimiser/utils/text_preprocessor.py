@@ -3,7 +3,6 @@ Utility functions for text preprocessing before PII detection.
 """
 
 import re
-from typing import Optional
 
 
 class TextPreprocessor:
@@ -11,7 +10,7 @@ class TextPreprocessor:
     Provides text preprocessing functionality for improving PII detection.
     """
 
-    def __init__(self, acronym_dict: Optional[dict[str, str]] = None, case_sensitive: bool = False):
+    def __init__(self, acronym_dict: dict[str, str] | None = None, case_sensitive: bool = False):
         """
         Initialize the text preprocessor.
 
@@ -139,7 +138,7 @@ class TextPreprocessor:
         return processed_text, metadata
 
 
-def create_text_preprocessor(acronym_dict: Optional[dict[str, str]] = None,
+def create_text_preprocessor(acronym_dict: dict[str, str] | None = None,
                             case_sensitive: bool = False) -> TextPreprocessor:
     """
     Create a text preprocessor with the given configuration.

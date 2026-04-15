@@ -60,6 +60,9 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
+# Default run excludes opt-in suites (`pytest -m slow` / `-m performance`
+# to include them explicitly).
+addopts = "-m 'not slow and not performance'"
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",

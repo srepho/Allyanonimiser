@@ -9,14 +9,8 @@ from allyanonimiser import create_allyanonimiser
 from allyanonimiser.io.dataframe_processor import DataFrameProcessor
 
 # Opt-in: run with `pytest -m performance tests/test_performance.py`.
-# Excluded from the default suite so CI and `pytest tests/` stay fast.
-pytestmark = [
-    pytest.mark.performance,
-    pytest.mark.skipif(
-        "not config.getoption('-m') or 'performance' not in config.getoption('-m')",
-        reason="Performance tests are opt-in; run with -m performance",
-    ),
-]
+# Excluded from the default suite via pyproject.toml's addopts.
+pytestmark = pytest.mark.performance
 
 @pytest.fixture
 def large_df():
@@ -124,22 +118,13 @@ def test_acronym_expansion_overhead(large_df, ally):
     }
     ally.set_acronym_dictionary(acronyms)
     
-    # DataFrameProcessor.process_dataframe does not wire expand_acronyms;
-    # benchmark acronym expansion at the Allyanonimiser level instead.
     processor = DataFrameProcessor(ally, batch_size=100)
-
-    def _run_without_expansion():
-        ally.text_preprocessor.acronym_dict = {}
-        return processor.process_dataframe(large_df, 'text')
-
-    def _run_with_expansion():
-        ally.text_preprocessor.acronym_dict = acronyms
-        texts = [ally.text_preprocessor.expand_acronyms(t)[0] for t in large_df['text']]
-        df = large_df.assign(text=texts)
-        return processor.process_dataframe(df, 'text')
-
-    _, no_expansion_time = measure_time(_run_without_expansion)
-    _, with_expansion_time = measure_time(_run_with_expansion)
+    _, no_expansion_time = measure_time(
+        processor.process_dataframe, large_df, 'text', expand_acronyms=False
+    )
+    _, with_expansion_time = measure_time(
+        processor.process_dataframe, large_df, 'text', expand_acronyms=True
+    )
     
     overhead = with_expansion_time - no_expansion_time
     percentage = (overhead / no_expansion_time) * 100

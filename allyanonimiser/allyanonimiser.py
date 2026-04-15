@@ -5,7 +5,7 @@ Main interface for the Allyanonimiser package.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -36,9 +36,9 @@ class AnonymizationConfig:
         keep_postcode: Preserve postcodes within addresses.
     """
 
-    operators: Optional[dict[str, str]] = None
+    operators: dict[str, str] | None = None
     language: str = "en"
-    active_entity_types: Optional[list[str]] = None
+    active_entity_types: list[str] | None = None
     expand_acronyms: bool = False
     age_bracket_size: int = 5
     keep_postcode: bool = True
@@ -57,9 +57,9 @@ class AnalysisConfig:
     """
 
     language: str = "en"
-    active_entity_types: Optional[list[str]] = None
-    score_adjustment: Optional[dict[str, float]] = None
-    min_score_threshold: Optional[float] = None
+    active_entity_types: list[str] | None = None
+    score_adjustment: dict[str, float] | None = None
+    min_score_threshold: float | None = None
     expand_acronyms: bool = False
 
 
@@ -123,11 +123,11 @@ class Allyanonimiser:
 
     def __init__(
         self,
-        analyzer: Optional[EnhancedAnalyzer] = None,
-        anonymizer: Optional[EnhancedAnonymizer] = None,
-        pattern_registry: Optional[PatternRegistry] = None,
-        text_preprocessor: Optional[TextPreprocessor] = None,
-        settings_manager: Optional[SettingsManager] = None,
+        analyzer: EnhancedAnalyzer | None = None,
+        anonymizer: EnhancedAnonymizer | None = None,
+        pattern_registry: PatternRegistry | None = None,
+        text_preprocessor: TextPreprocessor | None = None,
+        settings_manager: SettingsManager | None = None,
         enable_caching: bool = True,
     ):
         self.settings_manager = settings_manager or SettingsManager()
@@ -243,7 +243,7 @@ class Allyanonimiser:
     def import_acronyms_from_csv(
         self,
         csv_path: str,
-        settings_path: Optional[str] = None,
+        settings_path: str | None = None,
         acronym_col: str = "acronym",
         expansion_col: str = "expansion",
         case_sensitive: bool = False,
@@ -278,11 +278,11 @@ class Allyanonimiser:
         self,
         text: str,
         language: str = "en",
-        active_entity_types: Optional[list[str]] = None,
-        score_adjustment: Optional[dict[str, float]] = None,
-        min_score_threshold: Optional[float] = None,
+        active_entity_types: list[str] | None = None,
+        score_adjustment: dict[str, float] | None = None,
+        min_score_threshold: float | None = None,
         expand_acronyms: bool = False,
-        config: Optional[AnalysisConfig] = None,
+        config: AnalysisConfig | None = None,
     ) -> list[RecognizerResult]:
         """Detect PII entities in *text*.
 
@@ -325,14 +325,14 @@ class Allyanonimiser:
     def anonymize(
         self,
         text: str,
-        operators: Optional[dict[str, str]] = None,
+        operators: dict[str, str] | None = None,
         language: str = "en",
-        active_entity_types: Optional[list[str]] = None,
+        active_entity_types: list[str] | None = None,
         expand_acronyms: bool = False,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
-        config: Optional[AnonymizationConfig] = None,
-        document_id: Optional[str] = None,
+        config: AnonymizationConfig | None = None,
+        document_id: str | None = None,
         report: bool = True,
     ) -> dict[str, Any]:
         """Anonymize PII entities in *text*.
@@ -388,16 +388,16 @@ class Allyanonimiser:
         self,
         text: str,
         language: str = "en",
-        active_entity_types: Optional[list[str]] = None,
-        score_adjustment: Optional[dict[str, float]] = None,
-        min_score_threshold: Optional[float] = None,
+        active_entity_types: list[str] | None = None,
+        score_adjustment: dict[str, float] | None = None,
+        min_score_threshold: float | None = None,
         expand_acronyms: bool = False,
-        operators: Optional[dict[str, str]] = None,
+        operators: dict[str, str] | None = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
-        analysis_config: Optional[AnalysisConfig] = None,
-        anonymization_config: Optional[AnonymizationConfig] = None,
-        document_id: Optional[str] = None,
+        analysis_config: AnalysisConfig | None = None,
+        anonymization_config: AnonymizationConfig | None = None,
+        document_id: str | None = None,
         report: bool = True,
     ) -> dict[str, Any]:
         """Analyze and anonymize *text* in one call.
@@ -524,8 +524,8 @@ class Allyanonimiser:
         self,
         entity_type: str,
         examples: list[str],
-        context: Optional[list[str]] = None,
-        name: Optional[str] = None,
+        context: list[str] | None = None,
+        name: str | None = None,
         generalization_level: str = "medium",
     ) -> CustomPatternDefinition:
         """Generate a regex pattern from *examples* and register it."""
@@ -556,7 +556,7 @@ class Allyanonimiser:
     def import_patterns_from_csv(
         self,
         csv_path: str,
-        pattern_filepath: Optional[str] = None,
+        pattern_filepath: str | None = None,
         entity_type_col: str = "entity_type",
         pattern_col: str = "pattern",
         context_col: str = "context",
@@ -636,12 +636,12 @@ class Allyanonimiser:
         self,
         df: pd.DataFrame,
         text_columns=None,
-        column: Optional[str] = None,
+        column: str | None = None,
         operation: str = "process",
-        n_workers: Optional[int] = None,
-        use_pyarrow: Optional[bool] = None,
-        analysis_config: Optional[AnalysisConfig] = None,
-        anonymization_config: Optional[AnonymizationConfig] = None,
+        n_workers: int | None = None,
+        use_pyarrow: bool | None = None,
+        analysis_config: AnalysisConfig | None = None,
+        anonymization_config: AnonymizationConfig | None = None,
         **kwargs,
     ):
         """Process a DataFrame: detect, anonymize, or full process.
@@ -696,9 +696,9 @@ class Allyanonimiser:
     def batch_process(
         self,
         texts: list[str],
-        content_types: Optional[list[str]] = None,
-        analysis_config: Optional[AnalysisConfig] = None,
-        anonymization_config: Optional[AnonymizationConfig] = None,
+        content_types: list[str] | None = None,
+        analysis_config: AnalysisConfig | None = None,
+        anonymization_config: AnonymizationConfig | None = None,
         **kwargs,
     ) -> list[dict[str, Any]]:
         """Process multiple texts. Returns a list of result dicts."""
@@ -728,12 +728,12 @@ class Allyanonimiser:
     def process_files(
         self,
         file_paths: list[str],
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         save_results: bool = False,
-        analysis_config: Optional[AnalysisConfig] = None,
-        anonymization_config: Optional[AnonymizationConfig] = None,
+        analysis_config: AnalysisConfig | None = None,
+        anonymization_config: AnonymizationConfig | None = None,
         report: bool = True,
-        report_output: Optional[str] = None,
+        report_output: str | None = None,
         report_format: str = "html",
         **kwargs,
     ) -> dict[str, Any]:
@@ -771,7 +771,7 @@ class Allyanonimiser:
         results = []
         for i, fpath in enumerate(file_paths):
             try:
-                with open(fpath, "r", encoding="utf-8") as f:
+                with open(fpath, encoding="utf-8") as f:
                     text = f.read()
 
                 name = os.path.splitext(os.path.basename(fpath))[0]
@@ -831,18 +831,18 @@ class Allyanonimiser:
     # Reporting
     # ------------------------------------------------------------------
 
-    def get_report(self, session_id: Optional[str] = None):
+    def get_report(self, session_id: str | None = None):
         """Retrieve an anonymization report."""
         if session_id:
             return report_manager.get_report(session_id)
         return report_manager.get_current_report()
 
-    def start_new_report(self, session_id: Optional[str] = None):
+    def start_new_report(self, session_id: str | None = None):
         """Start a fresh anonymization report."""
         return report_manager.start_new_report(session_id)
 
     def finalize_report(
-        self, output_path: Optional[str] = None, format: str = "html"
+        self, output_path: str | None = None, format: str = "html"
     ) -> dict[str, Any]:
         """Finalize the current report and optionally export it."""
         rpt = report_manager.get_current_report()
@@ -856,7 +856,7 @@ class Allyanonimiser:
                 return {"error": str(exc), "summary": rpt.get_summary()}
         return rpt.get_summary()
 
-    def display_report_in_notebook(self, session_id: Optional[str] = None) -> None:
+    def display_report_in_notebook(self, session_id: str | None = None) -> None:
         """Display a report with rich visualizations in Jupyter."""
         rpt = self.get_report(session_id)
         if not rpt:
@@ -871,9 +871,9 @@ class Allyanonimiser:
     def process_csv_file(
         self,
         input_file: str,
-        output_file: Optional[str] = None,
-        columns_to_anonymize: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        output_file: str | None = None,
+        columns_to_anonymize: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         operation: str = "anonymize",
         encoding: str = "utf-8",
         delimiter: str = ",",
@@ -909,8 +909,8 @@ class Allyanonimiser:
     def preview_csv_changes(
         self,
         input_file: str,
-        columns: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        columns: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         sample_rows: int = 10,
         encoding: str = "utf-8",
     ) -> pd.DataFrame:
@@ -928,7 +928,7 @@ class Allyanonimiser:
         input_file: str,
         output_file: str,
         columns: list[str],
-        operators: Optional[dict[str, str]] = None,
+        operators: dict[str, str] | None = None,
         chunk_size: int = 10_000,
         encoding: str = "utf-8",
         delimiter: str = ",",
@@ -947,9 +947,9 @@ class Allyanonimiser:
     def process_csv_directory(
         self,
         input_dir: str,
-        output_dir: Optional[str] = None,
-        columns_to_anonymize: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        output_dir: str | None = None,
+        columns_to_anonymize: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         file_pattern: str = "*.csv",
         recursive: bool = False,
     ) -> dict[str, Any]:

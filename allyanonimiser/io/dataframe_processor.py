@@ -3,7 +3,7 @@ DataFrame processing utilities for Allyanonimiser.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
@@ -52,9 +52,9 @@ class DataFrameProcessor(BaseProcessor):
     def __init__(
         self,
         allyanonimiser=None,
-        n_workers: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        use_pyarrow: Optional[bool] = None,
+        n_workers: int | None = None,
+        batch_size: int | None = None,
+        use_pyarrow: bool | None = None,
     ):
         super().__init__(allyanonimiser)
 
@@ -81,7 +81,7 @@ class DataFrameProcessor(BaseProcessor):
         self,
         df: pd.DataFrame,
         column: str,
-        active_entity_types: Optional[list[str]] = None,
+        active_entity_types: list[str] | None = None,
         min_score_threshold: float = 0.7,
         batch_size: int = 1000,
     ) -> pd.DataFrame:
@@ -124,10 +124,10 @@ class DataFrameProcessor(BaseProcessor):
         self,
         df: pd.DataFrame,
         column: str,
-        operators: Optional[dict[str, str]] = None,
-        active_entity_types: Optional[list[str]] = None,
+        operators: dict[str, str] | None = None,
+        active_entity_types: list[str] | None = None,
         inplace: bool = False,
-        output_column: Optional[str] = None,
+        output_column: str | None = None,
         batch_size: int = 1000,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
@@ -160,19 +160,19 @@ class DataFrameProcessor(BaseProcessor):
         self,
         df: pd.DataFrame,
         text_columns: str | list[str],
-        active_entity_types: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        active_entity_types: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         min_score_threshold: float = 0.7,
         batch_size: int = 1000,
         anonymize: bool = True,
         save_entities: bool = True,
         output_prefix: str = "",
         progress_bar: bool = True,
-        use_pyarrow: Optional[bool] = None,
+        use_pyarrow: bool | None = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
         adaptive_batch_size: bool = True,
-        **kwargs,
+        expand_acronyms: bool = False,
     ) -> dict[str, Any]:
         """Full processing: detect + anonymize across one or more columns.
 
@@ -212,7 +212,7 @@ class DataFrameProcessor(BaseProcessor):
 
             for idx, text in iterator:
                 text_str = str(text)
-                entities = self.ally.analyze(text_str)
+                entities = self.ally.analyze(text_str, expand_acronyms=expand_acronyms)
 
                 if save_entities:
                     for e in entities:
@@ -234,6 +234,7 @@ class DataFrameProcessor(BaseProcessor):
                         operators=operators,
                         age_bracket_size=age_bracket_size,
                         keep_postcode=keep_postcode,
+                        expand_acronyms=expand_acronyms,
                     )
                     result_df.at[idx, output_column] = r["text"]
 
@@ -246,8 +247,8 @@ class DataFrameProcessor(BaseProcessor):
     def analyze_dataframe_statistics(
         self,
         entity_df: pd.DataFrame,
-        text_df: Optional[pd.DataFrame] = None,
-        text_column: Optional[str] = None,
+        text_df: pd.DataFrame | None = None,
+        text_column: str | None = None,
     ) -> pd.DataFrame:
         """Generate summary statistics from an entity DataFrame."""
         if entity_df.empty:

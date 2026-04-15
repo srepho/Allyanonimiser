@@ -10,7 +10,6 @@ Custom (user-added) patterns receive a small registration-order bonus so that
 later-registered entries can override built-in defaults.
 """
 
-from typing import Optional
 
 from .recognizer_result import RecognizerResult
 from .validators import EntityValidator
@@ -80,7 +79,7 @@ def resolve_entity_conflicts(
     results: list[RecognizerResult],
     text: str,
     patterns: list,
-) -> Optional[RecognizerResult]:
+) -> RecognizerResult | None:
     """Pick the best result when multiple entity types match the same span.
 
     Args:

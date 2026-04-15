@@ -5,7 +5,7 @@ Enhanced anonymizer for PII data anonymization.
 import datetime
 import hashlib
 import re
-from typing import Any, Optional
+from typing import Any
 
 # Default entity priority for overlap resolution.
 # Higher numbers win when two entities overlap the same text span.
@@ -52,7 +52,7 @@ class EnhancedAnonymizer:
             priorities.  Merged on top of ``DEFAULT_ENTITY_PRIORITY``.
     """
 
-    def __init__(self, analyzer=None, entity_priority: Optional[dict[str, int]] = None):
+    def __init__(self, analyzer=None, entity_priority: dict[str, int] | None = None):
         self.analyzer = analyzer
         self.entity_priority = {**DEFAULT_ENTITY_PRIORITY}
         if entity_priority:
@@ -61,7 +61,7 @@ class EnhancedAnonymizer:
     def anonymize(
         self,
         text: str,
-        operators: Optional[dict[str, str]] = None,
+        operators: dict[str, str] | None = None,
         language: str = "en",
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
@@ -243,7 +243,7 @@ class EnhancedAnonymizer:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _extract_age_from_date(date_string: str) -> Optional[int]:
+    def _extract_age_from_date(date_string: str) -> int | None:
         """Parse a date string and return age in years, or None."""
         patterns = [
             (r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})", "dmy"),

@@ -3,7 +3,7 @@ Pattern manager for handling custom PII detection patterns.
 """
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 
 class CustomPatternDefinition:
@@ -89,7 +89,7 @@ class PatternManager:
         """
         return [p for p in self.patterns if p.entity_type == entity_type]
 
-    def apply_patterns(self, text: str, entity_types: Optional[list[str]] = None) -> list[dict[str, Any]]:
+    def apply_patterns(self, text: str, entity_types: list[str] | None = None) -> list[dict[str, Any]]:
         """
         Apply patterns to text and return matches.
 

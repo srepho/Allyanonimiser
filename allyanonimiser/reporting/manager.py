@@ -1,7 +1,7 @@
 """ReportingManager: owns the lifecycle of AnonymizationReport instances."""
 
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from .report import AnonymizationReport
 
@@ -32,7 +32,7 @@ class ReportingManager:
             self.reports[self.current_report.session_id] = self.current_report
             return self.current_report
 
-    def get_current_report(self) -> Optional[AnonymizationReport]:
+    def get_current_report(self) -> AnonymizationReport | None:
         """
         Get the current report.
 
@@ -41,7 +41,7 @@ class ReportingManager:
         """
         return self.current_report
 
-    def get_report(self, session_id: str) -> Optional[AnonymizationReport]:
+    def get_report(self, session_id: str) -> AnonymizationReport | None:
         """
         Get a specific report by session ID.
 
@@ -66,7 +66,7 @@ class ReportingManager:
         return {}
 
     def generate_report_from_results(self, results: list[dict[str, Any]],
-                                   session_id: Optional[str] = None) -> AnonymizationReport:
+                                   session_id: str | None = None) -> AnonymizationReport:
         """
         Generate a report from a list of anonymization results.
 

@@ -8,7 +8,7 @@ import csv
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class SettingsManager:
     and provides access to different configuration sections.
     """
 
-    def __init__(self, settings: Optional[dict[str, Any]] = None, settings_path: Optional[str] = None):
+    def __init__(self, settings: dict[str, Any] | None = None, settings_path: str | None = None):
         """
         Initialize the settings manager.
 
@@ -51,7 +51,7 @@ class SettingsManager:
             file_ext = os.path.splitext(settings_path)[1].lower()
 
             if file_ext == '.json':
-                with open(settings_path, 'r', encoding='utf-8') as f:
+                with open(settings_path, encoding='utf-8') as f:
                     new_settings = json.load(f)
             elif file_ext in ['.yaml', '.yml']:
                 try:
@@ -60,7 +60,7 @@ class SettingsManager:
                     logger.error("YAML support requires PyYAML. Install with: pip install pyyaml")
                     return False
 
-                with open(settings_path, 'r', encoding='utf-8') as f:
+                with open(settings_path, encoding='utf-8') as f:
                     new_settings = yaml.safe_load(f)
             else:
                 logger.error(f"Unsupported settings file format: {file_ext}")
@@ -75,7 +75,7 @@ class SettingsManager:
             logger.error(f"Error loading settings from {settings_path}: {str(e)}")
             return False
 
-    def save_settings(self, settings_path: str, sections: Optional[list[str]] = None) -> bool:
+    def save_settings(self, settings_path: str, sections: list[str] | None = None) -> bool:
         """
         Save settings to a file.
 
@@ -148,7 +148,7 @@ class SettingsManager:
             acronyms = {}
             count = 0
 
-            with open(csv_path, 'r', encoding='utf-8') as f:
+            with open(csv_path, encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 if acronym_col not in reader.fieldnames or expansion_col not in reader.fieldnames:
                     logger.error(f"Required columns not found: {acronym_col}, {expansion_col}")
@@ -206,7 +206,7 @@ class SettingsManager:
             patterns = []
             count = 0
 
-            with open(csv_path, 'r', encoding='utf-8') as f:
+            with open(csv_path, encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 required_cols = [entity_type_col, pattern_col]
 
@@ -261,7 +261,7 @@ class SettingsManager:
             logger.error(f"Error importing patterns from {csv_path}: {str(e)}")
             return False, 0, []
 
-    def get_section(self, section: str, default: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def get_section(self, section: str, default: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Get a section of settings.
 
@@ -441,7 +441,7 @@ class SettingsManager:
         self.settings.setdefault('processing', {})
         self.settings['processing']['batch_size'] = batch_size
 
-    def get_worker_count(self) -> Optional[int]:
+    def get_worker_count(self) -> int | None:
         """
         Get the worker count for parallel processing from settings.
 
@@ -450,7 +450,7 @@ class SettingsManager:
         """
         return self.get_section('processing', {}).get('worker_count', None)
 
-    def set_worker_count(self, worker_count: Optional[int]) -> None:
+    def set_worker_count(self, worker_count: int | None) -> None:
         """
         Set the worker count for parallel processing in settings.
 

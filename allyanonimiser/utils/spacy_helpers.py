@@ -4,7 +4,7 @@ Utility functions for working with spaCy.
 
 import os
 import re
-from typing import Any, Optional
+from typing import Any
 
 from spacy.language import Language
 from spacy.matcher import Matcher, PhraseMatcher
@@ -486,7 +486,7 @@ def generalize_single_example(example: str) -> str:
 
     return pattern
 
-def detect_common_format(examples: list[str]) -> Optional[str]:
+def detect_common_format(examples: list[str]) -> str | None:
     """
     Detect if examples match common formats and return appropriate regex.
 

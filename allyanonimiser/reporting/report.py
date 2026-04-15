@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from collections import Counter, defaultdict
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -33,7 +33,7 @@ class AnonymizationReport:
     for Jupyter notebooks.
     """
 
-    def __init__(self, session_id: Optional[str] = None):
+    def __init__(self, session_id: str | None = None):
         """
         Initialize a new report.
 

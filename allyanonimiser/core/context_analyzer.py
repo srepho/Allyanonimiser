@@ -3,7 +3,6 @@ Context-aware analysis for improving entity detection accuracy.
 """
 
 import re
-from typing import Optional
 
 
 class ContextAnalyzer:
@@ -153,7 +152,7 @@ class ContextAnalyzer:
             'suggested_entity_type': self.suggest_entity_type(entity_text, context_before, context_after)
         }
 
-    def suggest_entity_type(self, entity_text: str, context_before: str, context_after: str) -> Optional[str]:
+    def suggest_entity_type(self, entity_text: str, context_before: str, context_after: str) -> str | None:
         """
         Suggest the most likely entity type based on context.
 

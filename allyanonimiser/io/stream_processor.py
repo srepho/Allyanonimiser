@@ -7,7 +7,8 @@ using Polars for maximum efficiency and minimal memory usage.
 
 import logging
 import os
-from typing import Any, Generator, Optional
+from collections.abc import Generator
+from typing import Any
 
 import pandas as pd
 
@@ -76,14 +77,14 @@ class StreamProcessor(BaseProcessor):
         self,
         file_path: str,
         text_columns: str | list[str],
-        active_entity_types: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        active_entity_types: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
-        chunk_size: Optional[int] = None,
-        output_path: Optional[str] = None,
+        chunk_size: int | None = None,
+        output_path: str | None = None,
         progress_bar: bool = True,
-        csv_options: Optional[dict[str, Any]] = None,
+        csv_options: dict[str, Any] | None = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True
     ) -> Generator[dict[str, pd.DataFrame | list], None, None]:
@@ -172,7 +173,7 @@ class StreamProcessor(BaseProcessor):
             # Get file size and estimate number of chunks
             file_size = os.path.getsize(file_path)
             # Check for header to estimate rows
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 header = f.readline()
             avg_row_size = len(header)  # Use header as initial estimate
             est_rows = max(10, file_size // max(1, avg_row_size))
@@ -252,8 +253,8 @@ class StreamProcessor(BaseProcessor):
         self,
         chunk,
         text_columns: list[str],
-        active_entity_types: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        active_entity_types: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
         age_bracket_size: int = 5,
@@ -329,14 +330,14 @@ class StreamProcessor(BaseProcessor):
         file_path: str,
         text_columns: str | list[str],
         output_path: str,
-        active_entity_types: Optional[list[str]] = None,
-        operators: Optional[dict[str, str]] = None,
+        active_entity_types: list[str] | None = None,
+        operators: dict[str, str] | None = None,
         min_score_threshold: float = 0.7,
         anonymize: bool = True,
-        chunk_size: Optional[int] = None,
+        chunk_size: int | None = None,
         save_entities: bool = True,
-        entities_output_path: Optional[str] = None,
-        csv_options: Optional[dict[str, Any]] = None,
+        entities_output_path: str | None = None,
+        csv_options: dict[str, Any] | None = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
         progress_bar: bool = True

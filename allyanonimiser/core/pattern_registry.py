@@ -7,7 +7,6 @@ loaded, and shared between analyzer instances.
 
 import json
 import os
-from typing import Optional
 
 from .pattern_manager import CustomPatternDefinition, PatternManager
 
@@ -19,7 +18,7 @@ class PatternRegistry:
     This class provides persistent storage for patterns, with methods to save
     and load patterns from disk.
     """
-    def __init__(self, storage_path: Optional[str] = None):
+    def __init__(self, storage_path: str | None = None):
         """
         Initialize a pattern registry.
 
@@ -44,7 +43,7 @@ class PatternRegistry:
         if pattern not in self.patterns[entity_type]:
             self.patterns[entity_type].append(pattern)
 
-    def get_patterns(self, entity_type: Optional[str] = None) -> list[CustomPatternDefinition]:
+    def get_patterns(self, entity_type: str | None = None) -> list[CustomPatternDefinition]:
         """
         Get patterns from the registry.
 
@@ -63,7 +62,7 @@ class PatternRegistry:
                 all_patterns.extend(patterns_list)
             return all_patterns
 
-    def save_patterns(self, filepath: Optional[str] = None) -> str:
+    def save_patterns(self, filepath: str | None = None) -> str:
         """
         Save pattern definitions to a JSON file.
 
@@ -95,7 +94,7 @@ class PatternRegistry:
 
         return path
 
-    def load_patterns(self, filepath: Optional[str] = None) -> int:
+    def load_patterns(self, filepath: str | None = None) -> int:
         """
         Load pattern definitions from a JSON file.
 
@@ -114,7 +113,7 @@ class PatternRegistry:
             return 0
 
         # Load from JSON file
-        with open(path, 'r') as file:
+        with open(path) as file:
             pattern_dicts = json.load(file)
 
         # Register each pattern
