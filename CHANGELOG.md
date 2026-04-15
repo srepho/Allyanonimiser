@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.1 (2026-04-15)
+
+### Fixed
+- **`create_allyanonimiser` top-level wrapper** now forwards `enable_caching`, `max_cache_size`, and `spacy_model` (previously silently dropped — `from allyanonimiser import create_allyanonimiser; create_allyanonimiser(spacy_model=None)` raised `TypeError`).
+- **`DataFrameProcessor.process_dataframe`** now raises `ValueError` up front when `text_columns` names a column that does not exist, instead of logging a warning and returning a "successful" result. This restores pre-v3.1 behavior and prevents typos from silently producing empty output.
+- **`tests/test_pyarrow_integration.py`** rewritten to target the current API (`_use_arrow_strings`, `string[pyarrow]` dtype behavior, and missing-column regression). The old suite referenced `_to_arrow_table` / `_get_column_from_arrow`, which were removed in v3.1 — any environment with pyarrow installed would have errored on import.
+
+### Changed
+- **Python support narrowed to 3.12 – 3.13.** spaCy 3.8.x does not ship cp314 wheels on macOS x86_64, so the 3.14 classifier and the `"switch to uv + Python 3.14"` claim were not reproducible. `requires-python` is now `>=3.12,<3.14`; the 3.14 classifier has been removed.
+- **CI matrix updated** from `['3.10', '3.11', '3.12']` to `['3.12', '3.13']` to match `requires-python`.
+- **README / installation docs** updated from "Python 3.10 or higher" to reflect the actual supported range.
+
 ## 3.0.0 (2026-04-14)
 
 ### Breaking Changes

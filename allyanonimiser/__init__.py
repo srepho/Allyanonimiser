@@ -2,7 +2,7 @@
 Allyanonimiser - Australian-focused PII detection and anonymization for the insurance industry.
 """
 
-__version__ = "3.0.0"
+__version__ = "3.1.1"
 
 __all__ = [
     # Core
@@ -116,11 +116,25 @@ create_unified_analyzer = create_analyzer
 
 
 def create_allyanonimiser(
-    pattern_filepath=None, settings_path=None
+    pattern_filepath: str | None = None,
+    settings_path: str | None = None,
+    enable_caching: bool = True,
+    max_cache_size: int = 10_000,
+    spacy_model: str | None = "en_core_web_lg",
 ) -> Allyanonimiser:
-    """Create a fully configured Allyanonimiser instance."""
+    """Create a fully configured Allyanonimiser instance.
+
+    See ``allyanonimiser.allyanonimiser.create_allyanonimiser`` for parameter
+    details. This wrapper forwards all keyword arguments.
+    """
     from .allyanonimiser import create_allyanonimiser as _create
-    return _create(pattern_filepath, settings_path)
+    return _create(
+        pattern_filepath=pattern_filepath,
+        settings_path=settings_path,
+        enable_caching=enable_caching,
+        max_cache_size=max_cache_size,
+        spacy_model=spacy_model,
+    )
 
 
 def create_pattern_from_examples(

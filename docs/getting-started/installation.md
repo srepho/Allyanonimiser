@@ -4,7 +4,7 @@ Allyanonimiser can be installed using pip with various installation options depe
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.12 or 3.13 (spaCy does not yet ship cp314 wheels)
 - A spaCy language model (recommended)
 
 ## Basic Installation

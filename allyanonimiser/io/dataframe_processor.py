@@ -182,6 +182,13 @@ class DataFrameProcessor(BaseProcessor):
         if isinstance(text_columns, str):
             text_columns = [text_columns]
 
+        missing = [c for c in text_columns if c not in df.columns]
+        if missing:
+            raise ValueError(
+                f"Column(s) not found in DataFrame: {missing}. "
+                f"Available columns: {list(df.columns)}"
+            )
+
         # Optionally convert string columns to Arrow-backed strings
         should_use_pyarrow = use_pyarrow if use_pyarrow is not None else self.use_pyarrow
         if should_use_pyarrow:
@@ -195,9 +202,6 @@ class DataFrameProcessor(BaseProcessor):
         all_entities: list = []
 
         for column in text_columns:
-            if column not in df.columns:
-                logger.warning("Column '%s' not found, skipping", column)
-                continue
 
             output_column = f"{output_prefix}{column}_anonymized"
 

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "allyanonimiser"
-version = "3.0.0"
+version = "3.1.1"
 description = "Australian-focused PII detection and anonymization for the insurance industry"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 license = "MIT"
 authors = [
     {name = "Stephen Oates", email = "stephen.j.a.oates@gmail.com"}
@@ -17,7 +17,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Security",
     "Topic :: Text Processing",

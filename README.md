@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.0.0-blue)](https://pypi.org/project/allyanonimiser/3.0.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.1.1-blue)](https://pypi.org/project/allyanonimiser/3.1.1/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,7 +12,7 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 3.0.0 — Major Restructure
+## Version 3.1.1 — Major Restructure
 
 **Breaking changes** — see [Migration Guide](#migrating-from-v2x) below.
 
@@ -29,14 +29,14 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.0.0
+pip install allyanonimiser==3.1.1
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.0.0"
+pip install "allyanonimiser[stream]==3.1.1"
 ```
 
 **Prerequisites:**
-- Python 3.10 or higher
+- Python 3.12 or 3.13 (spaCy does not yet ship cp314 wheels)
 - A spaCy language model for Named Entity Recognition (NER):
   
   ```bash

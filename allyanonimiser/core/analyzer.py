@@ -35,8 +35,21 @@ def load_spacy_model(model_name="en_core_web_lg", fallback_model="en_core_web_sm
         except OSError:
             try:
                 nlp = spacy.load(fallback_model)
+                logger.warning(
+                    "spaCy model %r not found; falling back to %r. "
+                    "NER accuracy will be reduced. Install with: "
+                    "python -m spacy download %s",
+                    model_name, fallback_model, model_name,
+                )
             except OSError:
                 nlp = spacy.blank("en")
+                logger.warning(
+                    "Neither %r nor %r is installed; falling back to "
+                    "spacy.blank('en'). NER entities (PERSON, LOCATION, ORG, "
+                    "etc.) will NOT be detected — only regex patterns. "
+                    "Install with: python -m spacy download %s",
+                    model_name, fallback_model, fallback_model,
+                )
 
         _spacy_model_cache[cache_key] = nlp
         return nlp

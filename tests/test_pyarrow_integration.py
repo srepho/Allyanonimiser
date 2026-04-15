@@ -1,219 +1,159 @@
 """
 Tests for PyArrow integration in the DataFrame processor.
+
+The v3 processor no longer exposes ``_to_arrow_table`` / ``_get_column_from_arrow``.
+Instead, ``use_pyarrow=True`` causes object-dtype string columns to be converted
+to ``string[pyarrow]`` via ``_use_arrow_strings`` before processing. These tests
+exercise that current behavior.
 """
 
-import pytest
-import pandas as pd
 import numpy as np
-from allyanonimiser import create_allyanonimiser
-from allyanonimiser.io.dataframe_processor import DataFrameProcessor, PYARROW_AVAILABLE
+import pandas as pd
+import pytest
+from hypothesis import given, strategies as st
+import hypothesis.extra.pandas as hpd
 
-# Skip all tests if PyArrow is not available
+from allyanonimiser import create_allyanonimiser
+from allyanonimiser.io.dataframe_processor import (
+    PYARROW_AVAILABLE,
+    DataFrameProcessor,
+    _use_arrow_strings,
+)
+
 pytestmark = pytest.mark.skipif(not PYARROW_AVAILABLE, reason="PyArrow not available")
+
 
 @pytest.fixture
 def large_sample_df():
-    """Create a larger DataFrame for testing PyArrow performance."""
-    # Either load from file or generate on the fly
-    import os
-    test_data_path = os.path.join(os.path.dirname(__file__), "test_data", "large_sample.csv")
-    
-    if os.path.exists(test_data_path):
-        return pd.read_csv(test_data_path)
-    else:
-        # Generate test data if file doesn't exist
-        rows = []
-        for i in range(10):
-            row = {
-                "id": i,
-                "text": f"Sample text {i} with PII: john.doe{i}@example.com"
-            }
-            rows.append(row)
-        return pd.DataFrame(rows)
+    rows = [
+        {"id": i, "text": f"Sample text {i} with PII: john.doe{i}@example.com"}
+        for i in range(10)
+    ]
+    return pd.DataFrame(rows)
+
 
 @pytest.fixture
 def allyanonimiser():
-    """Create an Allyanonimiser instance with PyArrow enabled."""
     ally = create_allyanonimiser()
-    # Ensure PyArrow is enabled
     ally.use_pyarrow = True
     return ally
 
+
 @pytest.fixture
 def dataframe_processor(allyanonimiser):
-    """Create a DataFrameProcessor with PyArrow enabled."""
     return DataFrameProcessor(allyanonimiser, use_pyarrow=True)
 
-def test_pyarrow_conversion(dataframe_processor, large_sample_df):
-    """Test conversion of DataFrame to Arrow Table."""
-    # Convert to Arrow
-    arrow_table = dataframe_processor._to_arrow_table(large_sample_df)
-    
-    # Check that conversion happened
-    assert arrow_table is not None
-    
-    # Check column names match
-    assert set(arrow_table.column_names) == set(large_sample_df.columns)
-    
-    # Try to extract a column
-    col_data = dataframe_processor._get_column_from_arrow(arrow_table, "text")
-    
-    # Check that we got data back
-    assert col_data is not None
-    assert len(col_data) == len(large_sample_df)
-    
-    # Verify some values
-    assert col_data[0] == large_sample_df.iloc[0]["text"]
+
+def test_use_arrow_strings_converts_object_columns():
+    """String object columns should become string[pyarrow]."""
+    df = pd.DataFrame({"text": ["a", "b", "c"]}, dtype="object")
+    assert df["text"].dtype == "object"
+    converted = _use_arrow_strings(df)
+    assert str(converted["text"].dtype) == "string"
+
 
 def test_process_with_pyarrow(dataframe_processor, large_sample_df):
-    """Test processing DataFrame with PyArrow enabled."""
-    # Process with PyArrow
     result = dataframe_processor.process_dataframe(
         large_sample_df,
         text_columns="text",
         use_pyarrow=True,
         min_score_threshold=0.7,
-        batch_size=2
+        batch_size=2,
     )
-    
-    # Check results
+
     assert "dataframe" in result
     assert "entities" in result
-    
-    # Check entities
     assert not result["entities"].empty
     assert "text" in result["entities"]["column"].unique()
-    
-    # Should find at least some entities like emails
-    entities = result["entities"]
-    assert "EMAIL_ADDRESS" in entities["entity_type"].unique() or \
-           "PERSON" in entities["entity_type"].unique() or \
-           "DATE" in entities["entity_type"].unique()
+
+    entity_types = set(result["entities"]["entity_type"].unique())
+    assert entity_types & {"EMAIL_ADDRESS", "PERSON", "DATE"}
+
 
 def test_toggle_pyarrow(dataframe_processor, large_sample_df):
-    """Test toggling PyArrow setting during processing."""
-    # Run with PyArrow
     with_arrow = dataframe_processor.process_dataframe(
-        large_sample_df,
-        text_columns="text",
-        use_pyarrow=True
+        large_sample_df, text_columns="text", use_pyarrow=True
     )
-    
-    # Run without PyArrow
     without_arrow = dataframe_processor.process_dataframe(
-        large_sample_df,
-        text_columns="text",
-        use_pyarrow=False
+        large_sample_df, text_columns="text", use_pyarrow=False
     )
-    
-    # Results should be similar
+
     assert "dataframe" in with_arrow
     assert "dataframe" in without_arrow
-    
-    # Original setting should be preserved
+    # Instance flag should not have been mutated by the per-call overrides
     assert dataframe_processor.use_pyarrow is True
 
-def test_fallback_handling(dataframe_processor):
-    """Test fallback if PyArrow conversion fails."""
-    # Create a DataFrame with complex objects that might cause conversion issues
-    df = pd.DataFrame({
-        "id": range(5),
-        "complex": [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}, {"e": 5}],
-        "text": ["Sample text"] * 5
-    })
-    
-    # Process the DataFrame
-    # This should fall back to pandas if PyArrow conversion fails
-    result = dataframe_processor.process_dataframe(
-        df,
-        text_columns="text",
-        use_pyarrow=True
+
+def test_mixed_type_column_falls_back_gracefully(dataframe_processor):
+    """Non-convertible columns should not break processing."""
+    df = pd.DataFrame(
+        {
+            "id": range(5),
+            "complex": [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}, {"e": 5}],
+            "text": ["Sample text"] * 5,
+        }
     )
-    
-    # Should still get results
+
+    result = dataframe_processor.process_dataframe(
+        df, text_columns="text", use_pyarrow=True
+    )
     assert "dataframe" in result
+
 
 def test_nan_handling(dataframe_processor):
-    """Test handling of NaN values with PyArrow."""
-    # Create DataFrame with NaN values
-    df = pd.DataFrame({
-        "id": range(5),
-        "text": ["Text 1", np.nan, "Text 3", "", None]
-    })
-    
-    # Process the DataFrame
-    result = dataframe_processor.process_dataframe(
-        df,
-        text_columns="text",
-        use_pyarrow=True
+    df = pd.DataFrame(
+        {"id": range(5), "text": ["Text 1", np.nan, "Text 3", "", None]}
     )
-    
-    # Should process the DataFrame without errors
+
+    result = dataframe_processor.process_dataframe(
+        df, text_columns="text", use_pyarrow=True
+    )
+
     assert "dataframe" in result
-    
-    # Check that NaN values are handled appropriately
     assert len(result["dataframe"]) == 5
 
+
+def test_missing_column_raises(dataframe_processor, large_sample_df):
+    """Regression: missing columns must raise, not silently skip."""
+    with pytest.raises(ValueError, match="not found"):
+        dataframe_processor.process_dataframe(
+            large_sample_df, text_columns="does_not_exist"
+        )
+
+
 def test_integration_with_allyanonimiser(allyanonimiser, large_sample_df):
-    """Test PyArrow integration at the Allyanonimiser class level."""
-    # Set PyArrow flag
     allyanonimiser.use_pyarrow = True
-    
-    # Process DataFrame
     result = allyanonimiser.process_dataframe(
-        large_sample_df,
-        text_columns="text"
+        large_sample_df, text_columns="text"
     )
-    
-    # Check results
     assert "dataframe" in result
     assert "entities" in result
 
-from hypothesis import given, strategies as st
-import hypothesis.extra.pandas as hpd
 
-# Create a strategy for DataFrames with text columns
 dataframes = hpd.data_frames(
     columns=[
-        hpd.column('id', elements=st.integers(min_value=1, max_value=1000)),
-        hpd.column('text', elements=st.text(min_size=1, max_size=100))
+        hpd.column("id", elements=st.integers(min_value=1, max_value=1000)),
+        hpd.column("text", elements=st.text(min_size=1, max_size=100)),
     ],
-    index=st.just(pd.RangeIndex(0, 10))
+    index=st.just(pd.RangeIndex(0, 10)),
 )
 
-@pytest.mark.skipif(not PYARROW_AVAILABLE, reason="PyArrow not available")
+
 @given(df=dataframes)
 def test_property_based(df):
-    """Property-based test for PyArrow integration."""
-    # Skip empty DataFrames
     if df.empty:
         return
-        
-    # Clean the text data to ensure it's not too complex
-    df['text'] = df['text'].fillna('').astype(str)
-    
-    try:
-        # Create processor with PyArrow
-        ally = create_allyanonimiser()
-        processor = DataFrameProcessor(ally, use_pyarrow=True)
-        
-        # Try to process
-        result = processor.process_dataframe(
-            df,
-            text_columns="text",
-            use_pyarrow=True,
-            anonymize=False,  # Simplify for testing
-            min_score_threshold=0.9  # Higher threshold to reduce noise
-        )
-        
-        # Basic assertions
-        assert isinstance(result, dict)
-        assert "dataframe" in result
-        
-    except Exception as e:
-        # If we hit conversion errors, that's acceptable
-        # Just ensure we don't have critical failures
-        if "PyArrow conversion failed" in str(e) or "No match found" in str(e):
-            pass
-        else:
-            raise
+
+    df["text"] = df["text"].fillna("").astype(str)
+
+    ally = create_allyanonimiser()
+    processor = DataFrameProcessor(ally, use_pyarrow=True)
+    result = processor.process_dataframe(
+        df,
+        text_columns="text",
+        use_pyarrow=True,
+        anonymize=False,
+        min_score_threshold=0.9,
+    )
+    assert isinstance(result, dict)
+    assert "dataframe" in result
