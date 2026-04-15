@@ -12,6 +12,8 @@ from typing import Any
 
 import pandas as pd
 
+from .base import BaseProcessor
+
 logger = logging.getLogger(__name__)
 
 # Polars support is optional
@@ -37,9 +39,6 @@ except ImportError:
                 pass
 
     pl = DummyModule()
-
-
-from .base import BaseProcessor
 
 
 class StreamProcessor(BaseProcessor):
