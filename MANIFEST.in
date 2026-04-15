@@ -3,6 +3,7 @@ include README.md
 include requirements.txt
 
 recursive-include tests *.py
+recursive-include tests/test_data *.csv
 recursive-include allyanonimiser *.py
 include allyanonimiser/*.py
 
