@@ -7,9 +7,9 @@ Allyanonimiser includes specialized patterns for detecting Australian-specific P
 Tax File Numbers are unique identifiers issued by the Australian Taxation Office.
 
 **Pattern Example:**
-- `123 456 789`
+- `123 456 782`
 - `123456789`
-- `TFN: 123 456 789`
+- `TFN: 123 456 782`
 
 **Regex Pattern:**
 ```
@@ -158,7 +158,7 @@ ally = create_allyanonimiser()
 
 # Example text with Australian PII
 text = """
-The customer John Smith with TFN 123 456 789 and Medicare 1234 56789 1 
+The customer John Smith with TFN 123 456 782 and Medicare 1234 56789 1 
 called from 0412 345 678 regarding their policy. They live at 
 42 Main St, Sydney NSW 2000 and their ABN is 12 345 678 901.
 """

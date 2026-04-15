@@ -33,7 +33,7 @@ ally = create_allyanonimiser()
 
 # Analyze text
 results = ally.analyze(
-    text="Customer John Smith (TFN: 123 456 789) reported an incident on 15/06/2023 in Sydney NSW 2000."
+    text="Customer John Smith (TFN: 123 456 782) reported an incident on 15/06/2023 in Sydney NSW 2000."
 )
 
 # Print detected entities
@@ -42,7 +42,7 @@ for result in results:
 
 # Anonymize text
 anonymized = ally.anonymize(
-    text="Customer John Smith (TFN: 123 456 789) reported an incident on 15/06/2023 in Sydney NSW 2000.",
+    text="Customer John Smith (TFN: 123 456 782) reported an incident on 15/06/2023 in Sydney NSW 2000.",
     operators={
         "PERSON": "replace",       # Replace with <PERSON>
         "AU_TFN": "mask",          # Partially mask the TFN

@@ -13,7 +13,7 @@ from allyanonimiser import create_allyanonimiser
 ally = create_allyanonimiser()
 
 # Text to analyze
-text = """Customer John Smith (TFN: 123 456 789) reported an incident on 15/06/2023
+text = """Customer John Smith (TFN: 123 456 782) reported an incident on 15/06/2023
 regarding their policy AU-12345678. They can be reached at 0412 345 678 or
 john.smith@example.com. They live at 42 Main St, Sydney NSW 2000."""
 
@@ -29,7 +29,7 @@ Example output:
 
 ```
 Entity: PERSON, Text: John Smith, Score: 0.85
-Entity: AU_TFN, Text: 123 456 789, Score: 0.75
+Entity: AU_TFN, Text: 123 456 782, Score: 0.75
 Entity: DATE, Text: 15/06/2023, Score: 0.8
 Entity: POLICY_NUMBER, Text: AU-12345678, Score: 0.9
 Entity: AU_PHONE, Text: 0412 345 678, Score: 0.85
@@ -111,7 +111,7 @@ The analysis results are returned as objects with useful attributes:
 from allyanonimiser import create_allyanonimiser
 
 ally = create_allyanonimiser()
-results = ally.analyze("John Smith's TFN is 123 456 789.")
+results = ally.analyze("John Smith's TFN is 123 456 782.")
 
 # Each result object contains detailed information
 for result in results:

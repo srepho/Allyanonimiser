@@ -15,12 +15,12 @@ Customer Information:
 - Name: John Smith
 - Phone: 0412 345 678 (mobile) or (02) 9876 5432 (landline)
 - Medicare Number: 2123 45678 1
-- Tax File Number: 123 456 789
+- Tax File Number: 123 456 782
 - Driver's License: VIC1234567 or NSW98765
 - Home Address: 123 Collins Street, Melbourne VIC 3000
 - Postal Address: PO Box 456, Sydney NSW 2000
 - BSB: 062-000 Account Number: 1234567890
-- ABN: 11 222 333 444
+- ABN: 51 824 753 556
 - ACN: 123 456 789
 - Passport: PA1234567
 - Centrelink CRN: 123 456 789A
@@ -105,7 +105,7 @@ results = ally.analyze(spacy_text)
 | Entity Type | Description | Example |
 |-------------|-------------|---------|
 | **Australian-Specific** | | |
-| AU_TFN | Tax File Number | 123 456 789 |
+| AU_TFN | Tax File Number | 123 456 782 |
 | AU_PHONE | Phone Number | 0412 345 678, (02) 9876 5432 |
 | AU_MEDICARE | Medicare Number | 2123 45678 1 |
 | AU_DRIVERS_LICENSE | Driver's License | VIC1234567, NSW98765 |
@@ -113,7 +113,7 @@ results = ally.analyze(spacy_text)
 | AU_POSTCODE | Postcode | 2000, 3000, 4000 |
 | AU_BSB | Bank State Branch | 062-000, 123-456 |
 | AU_ACCOUNT_NUMBER | Bank Account | 1234567890 |
-| AU_ABN | Business Number | 11 222 333 444 |
+| AU_ABN | Business Number | 51 824 753 556 |
 | AU_ACN | Company Number | 123 456 789 |
 | AU_PASSPORT | Passport Number | PA1234567, AB9876543 |
 | AU_CENTRELINK_CRN | Centrelink Reference | 123 456 789A |
@@ -167,7 +167,7 @@ DOB: 01/01/1990
 Email: sarah.oconnor@email.com
 Phone: 0412 345 678
 Address: 123 Collins Street, Melbourne VIC 3000
-TFN: 123 456 789
+TFN: 123 456 782
 Medicare: 2123 45678 1
 License: VIC1234567
 Passport: PA1234567
@@ -258,7 +258,8 @@ print(anonymized['text'][:500] + "...")
 ```python
 # Validate specific patterns
 test_cases = {
-    "AU_TFN": ["123 456 789", "123456789", "not a tfn"],
+    # 123 456 782 is checksum-valid; the others fail and won't be detected.
+    "AU_TFN": ["123 456 782", "123 456 789", "not a tfn"],
     "AU_MEDICARE": ["2123 45678 1", "5999 12345 9", "1234567890"],
     "AU_BSB": ["062-000", "123-456", "123456"],
     "EMAIL_ADDRESS": ["test@example.com", "user@company.com.au", "notanemail"],

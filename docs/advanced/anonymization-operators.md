@@ -103,7 +103,7 @@ The `encrypt` operator uses AES-256 encryption to replace the entity, allowing r
 
 ```python
 result = ally.anonymize(
-    text="TFN: 123 456 789",
+    text="TFN: 123 456 782",
     operators={"AU_TFN": "encrypt"},
     encryption_key="my-secret-key"  # Optional: provide your own key
 )
@@ -116,7 +116,7 @@ To decrypt:
 from allyanonimiser.utils.cipher import decrypt_text
 
 original = decrypt_text(result["entity_replacements"][0]["replacement"], "my-secret-key")
-print(original)  # "123 456 789"
+print(original)  # "123 456 782"
 ```
 
 ### Age Bracket Operator
