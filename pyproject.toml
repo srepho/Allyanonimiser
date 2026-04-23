@@ -46,6 +46,16 @@ stream = [
     "polars>=0.20.0",
     "pyarrow>=14.0.0",
 ]
+bench = [
+    # Dependencies for the head-to-head benchmarks under bench/
+    # (TAB, AI4Privacy, AU-insurance vs openai/privacy-filter).
+    "faker>=22.0.0",
+    "datasets>=2.0.0",
+    "huggingface_hub>=0.20.0",
+    "tokenizers>=0.15.0",
+    "onnxruntime>=1.16.0",
+    "numpy>=1.26,<2",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/srepho/Allyanonimiser"

@@ -47,12 +47,16 @@ def get_au_pattern_definitions():
         {
             "entity_type": "AU_ADDRESS",
             "patterns": [
-                # Full address with street, suburb/city, state and postcode
-                r"\b\d+\s+[A-Za-z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Crescent|Cr),?\s*[A-Za-z\s]*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}\b",
-                # Address with just street and suburb/city
-                r"\b\d+\s+[A-Za-z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Crescent|Cr),?\s*[A-Za-z\s]+(?:,\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT))?\b",
-                # Simple street address
-                r"\b\d+\s+[A-Za-z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Court|Ct|Crescent|Cr)\b"
+                # Title-case form: anchored by state, postcode optional. Title
+                # case on street/suburb tokens keeps narrative prose like
+                # "2007 the Court decided to notify the Government" from matching.
+                r"\b\d{1,5}[A-Za-z]?(?:[-/]\d{1,4})?\s+(?:[A-Z][A-Za-z]*\s+){1,4}(?:Street|St\.?|Road|Rd\.?|Avenue|Ave\.?|Drive|Dr\.?|Lane|Ln\.?|Place|Pl\.?|Court|Ct\.?|Crescent|Cres\.?|Cr\.?|Boulevard|Blvd\.?|Parade|Pde\.?|Highway|Hwy\.?|Close|Cl\.?|Terrace|Tce\.?|Way)\.?,?\s+(?:[A-Z][A-Za-z]*\s*){1,3},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s+\d{4})?\b",
+                # Case-tolerant form: accepts lowercase/mixed suburb and street
+                # names ("sydney NSW 2000", "42 queen st melbourne vic 3000")
+                # but REQUIRES a full postcode after the state, which is a
+                # strong enough anchor to prevent prose false positives even
+                # without capitalization.
+                r"(?i)\b\d{1,5}[A-Za-z]?(?:[-/]\d{1,4})?\s+(?:[A-Za-z]+\s+){1,4}(?:Street|St\.?|Road|Rd\.?|Avenue|Ave\.?|Drive|Dr\.?|Lane|Ln\.?|Place|Pl\.?|Court|Ct\.?|Crescent|Cres\.?|Cr\.?|Boulevard|Blvd\.?|Parade|Pde\.?|Highway|Hwy\.?|Close|Cl\.?|Terrace|Tce\.?|Way)\.?,?\s+(?:[A-Za-z]+\s*){1,3},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{4}\b",
             ],
             "context": ["address", "street", "road", "suburb", "live", "residence"],
             "name": "Australian Address"
@@ -60,8 +64,19 @@ def get_au_pattern_definitions():
         {
             "entity_type": "AU_POSTCODE",
             "patterns": [
-                r"\b(?:0[289]\d{2}|[1-9]\d{3})\b",  # Valid Australian postcode ranges
-                r"(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+(\d{4})\b"  # State followed by postcode
+                # Require AU context: postcode must be preceded by a state
+                # abbreviation or an explicit postcode label. Bare 4-digit
+                # matching produced too many false positives on years (e.g.
+                # "15/03/2023") and amounts (e.g. "8500 dollars").
+                # Split per-state-length because Python's re requires fixed-
+                # width lookbehind.
+                r"(?i)(?<=(?:NSW|VIC|QLD|TAS|ACT)\s)(?:0[289]\d{2}|[1-9]\d{3})\b",
+                r"(?i)(?<=(?:WA|SA|NT)\s)(?:0[289]\d{2}|[1-9]\d{3})\b",
+                # Label forms. Lookbehinds must be fixed width, so each spacing
+                # / punctuation variant needs its own pattern.
+                r"(?i)(?<=postcode\s)(?:0[289]\d{2}|[1-9]\d{3})\b",
+                r"(?i)(?<=post\scode\s)(?:0[289]\d{2}|[1-9]\d{3})\b",
+                r"(?i)(?<=postal\scode\s)(?:0[289]\d{2}|[1-9]\d{3})\b",
             ],
             "context": ["postcode", "postal", "code", "zip", "post code"],
             "name": "Australian Postcode"

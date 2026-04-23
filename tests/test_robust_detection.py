@@ -134,6 +134,115 @@ class TestRobustDetection:
             assert len(person_entities) == 0, \
                 f"Street name incorrectly detected as PERSON in '{text}'"
     
+    def test_au_postcode_no_false_positive_on_years_or_amounts(self, analyzer):
+        """AU_POSTCODE must not fire on bare 4-digit numbers (years, amounts,
+        case numbers). Previously 'The incident occurred on 15/03/2023' tagged
+        '2023' as AU_POSTCODE and '8500 dollars' matched too, leaking into
+        ADDRESS precision on real AU eval data."""
+        negatives = [
+            "The incident occurred on 15/03/2023 at 10:30am.",
+            "The claim amount was 8500 dollars.",
+            "In 2023 the policy was renewed.",
+            "Case reference 1234 was filed.",
+        ]
+        for text in negatives:
+            results = analyzer.analyze(text)
+            pc = [r for r in results if r.entity_type == "AU_POSTCODE"]
+            assert not pc, (
+                f"AU_POSTCODE FP in {text!r}: "
+                f"{[(r.start, r.end, text[r.start:r.end]) for r in pc]}"
+            )
+
+    def test_au_postcode_matches_with_state_or_label(self, analyzer):
+        """AU_POSTCODE must still match when state abbrev or 'postcode' label
+        precedes the 4-digit code. Includes label variants ('post code',
+        'postal code') and mixed case."""
+        positives = [
+            "Send mail to Sydney NSW 2000.",
+            "Office in Perth WA 6000.",
+            "Send to postcode 3000.",
+            "42 Queen St, Sydney NSW 2000.",
+            "Post code 3000",
+            "postal code 3000",
+            "Postal Code 3000",
+        ]
+        for text in positives:
+            results = analyzer.analyze(text)
+            pc = [r for r in results if r.entity_type == "AU_POSTCODE"]
+            assert pc, f"AU_POSTCODE missed in {text!r}"
+
+    def test_au_address_no_false_positive_on_narrative(self, analyzer):
+        """AU_ADDRESS must not absorb narrative prose that happens to contain
+        year + street-suffix-lookalike words ('Court', 'Place', 'Drive'). This
+        was a regression surfaced by running Allyanonimiser over ECHR legal text
+        where spans like '2007 the Court decided to give notice of the application
+        to the Government' were being tagged as AU_ADDRESS (74 chars)."""
+        negatives = [
+            "On 15 May 2007 the Court decided to give notice of the application to the Government.",
+            "In 1997 the General Directorate of National Roads and Highways started construction.",
+            "On 3 November 2000 the Tunceli Court asked the Forensic Medicine Institute to clarify.",
+            "The case concerns events that took place in the Drive of the Prime Minister in 1998.",
+            "The applicant complained that 42 days after his release he was re-arrested.",
+        ]
+        for text in negatives:
+            results = analyzer.analyze(text)
+            addr = [r for r in results if r.entity_type == "AU_ADDRESS"]
+            assert not addr, (
+                f"AU_ADDRESS false positive in {text!r}: "
+                f"{[(r.start, r.end, text[r.start:r.end]) for r in addr]}"
+            )
+
+    def test_au_address_still_matches_real_addresses(self, analyzer):
+        """Full AU addresses with street + suburb + state (+ optional postcode)
+        must still be detected as a single span."""
+        positives = [
+            "The applicant lives at 123 Queen St, Sydney NSW 2000.",
+            "Please send mail to 42 Wallaby Way, Sydney NSW 2000.",
+            "Our office is located at 456 Elizabeth Street, Melbourne VIC 3000.",
+            "15 Smith Road, Brisbane QLD 4000",
+            "Unit 5, 23 Bourke Court, Canberra ACT 2600",
+            "Customer lives at 42 Park Avenue, Brisbane QLD.",  # no postcode
+        ]
+        for text in positives:
+            results = analyzer.analyze(text)
+            addr = [r for r in results if r.entity_type == "AU_ADDRESS"]
+            assert addr, f"AU_ADDRESS missed in {text!r}"
+            # No more overlapping same-type spans for a single address
+            assert len(addr) == 1, (
+                f"Expected 1 AU_ADDRESS span, got {len(addr)} in {text!r}: "
+                f"{[(r.start, r.end, text[r.start:r.end]) for r in addr]}"
+            )
+
+    def test_au_address_case_tolerance(self, analyzer):
+        """AU_ADDRESS must match real-world case variants (lowercase suburb,
+        all-caps, mixed) when the state+postcode anchor is present. Users
+        don't consistently title-case addresses."""
+        positives = [
+            "123 Main Street, sydney NSW 2000",       # lowercase suburb
+            "42 queen st, melbourne vic 3000",        # all lowercase
+            "Unit 5, 23 BOURKE COURT, CANBERRA ACT 2600",  # all caps
+        ]
+        for text in positives:
+            results = analyzer.analyze(text)
+            addr = [r for r in results if r.entity_type == "AU_ADDRESS"]
+            assert addr, f"AU_ADDRESS missed in {text!r}"
+
+    def test_natural_language_dates_still_detected(self, analyzer):
+        """spaCy NER tags phrases like 'March 2024', 'next Monday', 'Q1 2024'
+        as DATE. They must not be dropped by the tightened DATE validator."""
+        positives = [
+            "The incident happened in March 2024.",
+            "I'll be there next Monday.",
+            "Data from January 1990 onwards.",
+            "Results for Q1 2024 are in.",
+            "She arrived yesterday.",
+            "Filed on Monday.",
+        ]
+        for text in positives:
+            results = analyzer.analyze(text)
+            dates = [r for r in results if r.entity_type in ("DATE", "DATE_OF_BIRTH")]
+            assert dates, f"DATE missed in {text!r}"
+
     def test_australian_specific_patterns(self, analyzer):
         """Test Australian-specific pattern improvements."""
         test_cases = [

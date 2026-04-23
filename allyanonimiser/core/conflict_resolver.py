@@ -29,8 +29,12 @@ _STREET_SUFFIXES = (
 # it as one of these specific false-positive shapes. Other validation failures
 # are allowed through (the span still reads like a date).
 _DATE_REJECT_REASONS = frozenset({
-    "state_postcode", "phone_prefix", "phone_suffix",
+    "state_postcode", "phone_prefix", "phone_suffix", "phone_fragment",
     "medicare_number", "service_number",
+    # spaCy NER frequently mislabels bare numbers (phone fragments, postcodes,
+    # generic integers) and random short strings as DATE. If the validator
+    # cannot recognise the span as a real date, drop it rather than trust NER.
+    "number", "postcode", "duration", "unknown",
 })
 
 

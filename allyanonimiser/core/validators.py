@@ -124,6 +124,17 @@ class EntityValidator:
         if re.match(r'^(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}$', text, re.IGNORECASE):
             return False, 'state_postcode'
 
+        # Phone fragments (checked before the generic 4-digit branch because
+        # "0415" matches both ^\d{4}$ and ^0\d{3}$ — we want the more specific
+        # phone-prefix signal to win).
+        if re.match(r'^0\d{3}$', text):
+            return False, 'phone_prefix'
+        if re.match(r'^\d{4}-\d{4}$', text):
+            return False, 'phone_suffix'
+        # Phone fragments with spaces (e.g., "0437 159", "08 5755")
+        if re.match(r'^0\d{1,3}\s+\d{3,4}(\s+\d{3,4})?$', text):
+            return False, 'phone_fragment'
+
         # Just a 4-digit number could be postcode or year
         if re.match(r'^\d{4}$', text):
             num = int(text)
@@ -137,23 +148,28 @@ class EntityValidator:
             else:
                 return False, 'number'
 
-        # Phone number parts (e.g., "0412", "9876-5432")
-        if re.match(r'^0\d{3}$', text):
-            return False, 'phone_prefix'
-
-        if re.match(r'^\d{4}-\d{4}$', text):
-            return False, 'phone_suffix'
-
         # Medicare numbers (10 digits)
         if re.match(r'^\d{10}$', text):
             return False, 'medicare_number'
 
-        # Actual date patterns
+        # Actual date patterns — cover the common shapes spaCy NER tags as DATE
+        # so they don't fall through to 'unknown' and get dropped by the
+        # conflict resolver.
         date_patterns = [
             r'^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$',  # DD/MM/YYYY or similar
             r'^\d{4}[/.-]\d{1,2}[/.-]\d{1,2}$',    # YYYY-MM-DD
             r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2},?\s+\d{4}$',  # Month DD, YYYY
             r'^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}$',     # DD Month YYYY
+            r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}$',               # Month YYYY
+            r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[/.-]\d{2,4}$',           # Month/YY
+            r'^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*$',                                           # day names
+            r'^(next|last|this|every)\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*$',                  # next Monday
+            r'^(next|last|this|every)\s+(day|week|fortnight|month|quarter|year|decade|century|morning|afternoon|evening|night|weekend)s?$',
+            r'^Q[1-4]\s+\d{2,4}$',                                                           # Q1 2024
+            r'^(FY|H[12])\s*\d{2,4}$',                                                       # FY24, H1 2024
+            r'^\d{1,2}:\d{2}(:\d{2})?(\s*[ap]\.?m\.?)?$',                                    # 20:10:26, 10:30am
+            r'^(yesterday|today|tomorrow|tonight|noon|midnight)$',
+            r'^the\s+(\d{2}s|\d{4}s|early|late|mid)(\s+\d{4}s)?$',                           # the 90s, the 1990s, the early 2000s
         ]
 
         for pattern in date_patterns:

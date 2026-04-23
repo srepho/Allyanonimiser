@@ -215,6 +215,79 @@ for result in results:
 - **Improved Medicare Detection**: Fixed detection and validation for Australian Medicare numbers
 - **Multiple Entity Masking**: Simultaneous masking of multiple entity types with different operators
 
+## Benchmarks
+
+Head-to-head against [`openai/privacy-filter`](https://huggingface.co/openai/privacy-filter)
+(a 1.5B-parameter MoE token classifier, Apache 2.0) on three datasets.
+Scoring is character-level binary masking (P/R/F1 per category).
+
+### AU insurance (synthetic, 100 documents, ~12 PII spans/doc)
+
+Our primary use case. Faker en_AU data plus test-valid TFN/Medicare/ABN/ACN
+across claim notes, emails, underwriting forms, and medical reports.
+
+| Category | Allyanonimiser F1 | openai/privacy-filter F1 |
+|---|---:|---:|
+| PERSON | 0.836 | **0.855** |
+| ADDRESS | **0.980** | 0.918 |
+| EMAIL | **1.000** | 0.982 |
+| PHONE | **1.000** | 0.837 |
+| DATE | 0.863 | **0.991** |
+| Account-like IDs (TFN, Medicare, ABN, policy, VIN, etc.) | **0.877** | 0.846 |
+| **Overall (any PII)** | 0.920 | **0.943** |
+
+Allyanonimiser wins 4 of 6 categories. openai wins overall by a small margin
+on precision, but Allyanonimiser runs ~25× faster per document on CPU
+(1.4s vs 36s for the full eval) and has perfect recall on AU-formatted
+phones and emails.
+
+### AI4Privacy open-pii-500k (English validation, 1,000 rows)
+
+General-purpose multilingual PII. Allyanonimiser's AU-specific phone and
+account patterns don't match US/EU formats, so it loses those categories
+by design — the table below explains *why* each category falls where it does.
+
+| Category | Allyanonimiser F1 | openai/privacy-filter F1 |
+|---|---:|---:|
+| PERSON | 0.653 | **0.836** |
+| EMAIL | **0.990** | 0.915 |
+| ADDRESS | 0.216 | **0.464** |
+| PHONE | 0.011 | **0.829** |
+| DATE | 0.490 | **0.642** |
+| ACCOUNT | 0.074 | **0.700** |
+| **Overall (any PII)** | 0.729 | **0.781** |
+
+### Text Anonymization Benchmark (TAB, ECHR legal text, 127 docs)
+
+Real multi-annotator court cases from the European Court of Human Rights.
+Allyanonimiser doesn't target legal quasi-identifiers like case numbers
+(TAB `CODE`) or geographic-entity masking (TAB `LOC`, ~cities/countries),
+so those categories are expected low. DATE includes fuzzy temporal
+expressions ("14 days ago", "summer 2005").
+
+| Category | Allyanonimiser F1 | openai/privacy-filter F1 |
+|---|---:|---:|
+| PERSON | 0.761 | **0.805** |
+| DATE | **0.904** | 0.459 |
+| LOCATION | 0.424 | 0.000* |
+| CODE | 0.012 | 0.077 |
+| **Overall (any PII)** | **0.560** | 0.378 |
+
+*openai's `private_address` semantics don't cover TAB's `LOC`
+(city/country names).
+
+### How to read this
+
+- **On Australian insurance data, Allyanonimiser is competitive with or
+  beats a state-of-the-art 1.5B-parameter model** on 4 out of 6 categories,
+  at ~25× the throughput, and runs on CPU without torch.
+- **On general multilingual PII, openai/privacy-filter is stronger** —
+  its training data covers phone/address/account formats we don't target.
+- The methodology is deliberately transparent: all scoring is char-level,
+  and the eval scripts + synthetic AU data are in [`bench/`](bench/).
+  Run `uv pip install -e ".[bench]" && python bench/run_au_insurance_eval.py`
+  to reproduce.
+
 ## Package Structure (v3.0)
 
 ```

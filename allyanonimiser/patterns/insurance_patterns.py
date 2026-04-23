@@ -20,7 +20,7 @@ def get_insurance_pattern_definitions():
         {
             "entity_type": "INSURANCE_CLAIM_NUMBER",
             "patterns": [
-                r"\b(?:CL|C)[- ]?\d{6,9}\b",
+                r"\b(?:CLM|CL|C)[- ]?\d{6,9}\b",
                 r"\bClaim (?:Number|Reference|#):\s*[A-Za-z0-9-]{6,15}\b",
                 r"\bClaim\s*(?:Number|#|No|Ref):\s*[A-Za-z0-9-]{6,15}\b",
                 r"\bClaim:\s*[A-Za-z0-9-]{6,15}\b"
