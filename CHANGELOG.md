@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.4.0 (2026-04-24)
+
+Pattern precision fixes and a new benchmark suite. Surfaced by head-to-head evaluation against [`openai/privacy-filter`](https://huggingface.co/openai/privacy-filter) on three datasets (TAB, AI4Privacy open-pii-500k, synthetic AU insurance). See the README *Benchmarks* section and `bench/README.md` for methodology and full results.
+
+### Fixes — false positives
+
+- **AU_ADDRESS** no longer absorbs narrative prose. The two loose fallback patterns are gone. The remaining two patterns (strict title-case + case-tolerant) are anchored by a state abbreviation; the case-tolerant form additionally requires a postcode. Previously, text like *"On 15 May 2007 the Court decided to give notice of the application to the Government"* produced a 74-char `AU_ADDRESS` span because `Court` is in the street-suffix list.
+- **AU_POSTCODE** no longer matches bare 4-digit numbers. It now requires either a state abbreviation or a `postcode` / `post code` / `postal code` label (via fixed-width lookbehind). This stops year-in-date matches like `"15/03/2023"` → `2023` and amount matches like `"8500 dollars"` → `8500`.
+- **DATE** validator reordered so phone-prefix check runs before the generic 4-digit branch. Added `phone_fragment` pattern for space-separated mobile fragments like `"0437 159"`. Added `phone_fragment`, `number`, `postcode`, `duration` to the conflict-resolver reject list so spaCy NER mislabels don't slip through.
+
+### Fixes — false negatives
+
+- **AU_ADDRESS** now handles case variants: `"123 Main Street, sydney NSW 2000"`, `"42 queen st, melbourne vic 3000"`, and `"Unit 5, 23 BOURKE COURT, CANBERRA ACT 2600"` all match via a new case-insensitive pattern.
+- **AU_POSTCODE** label variants now recognised: `post code 3000`, `postal code 3000`, mixed/lowercase (`Post Code`, `Postal Code`).
+- **DATE** validator extended with 11 new patterns for spaCy's natural-language DATE outputs: `March 2024`, `Month/YY`, day names (`Friday`, `Mon`), relative (`next Monday`, `last week`, `this morning`), quarter/half (`Q1 2024`, `FY24`, `H1 2024`), times (`20:10:26`, `10:30am`), `yesterday`/`today`/`tomorrow`, and decade forms (`the 1990s`, `the early 2000s`).
+- **INSURANCE_CLAIM_NUMBER** accepts `CLM` prefix alongside `CL`/`C`.
+
+### New — Benchmarks
+
+- `bench/` directory with three eval scripts, a Faker-based synth AU-insurance generator, and a README with reproduction steps.
+- New `[bench]` optional dependency group (`pip install "allyanonimiser[bench]"`) pulling `faker`, `datasets`, `huggingface_hub`, `tokenizers`, `onnxruntime`.
+- README *Benchmarks* section with per-dataset P/R/F1 tables and interpretation.
+
+### Results snapshot
+
+On synthetic AU insurance (100 documents, ~12 PII spans/doc), Allyanonimiser beats `openai/privacy-filter` on 4 of 6 categories (ADDRESS 0.980, EMAIL 1.000, PHONE 1.000, ACCOUNT-like 0.877) while running ~25× faster per document on CPU. Both tools converge on the ANY F1 metric (0.920 vs 0.943). `openai/privacy-filter` leads on the multilingual AI4Privacy benchmark, where Allyanonimiser's AU-specific phone and account-number patterns don't match US/EU formats.
+
+### Compatibility
+
+No API changes. Runtime behaviour changes only affect the spans that were previously mis-detected. The new optional `[bench]` extra does not affect the core install.
+
 ## 3.3.0 (2026-04-15)
 
 ### Behavior change (observable)

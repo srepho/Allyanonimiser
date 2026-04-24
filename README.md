@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.3.0-blue)](https://pypi.org/project/allyanonimiser/3.3.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.4.0-blue)](https://pypi.org/project/allyanonimiser/3.4.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,27 +12,25 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 3.3.0 — Major Restructure
+## Version 3.4.0 — Pattern Precision + Benchmarks
 
-**Breaking changes** — see [Migration Guide](#migrating-from-v2x) below.
+Surfaced by head-to-head eval vs `openai/privacy-filter` on three datasets (see [Benchmarks](#benchmarks) below).
 
 ### What's New
-- **Layered package structure**: `core/` (detection/anonymization), `io/` (CSV/DataFrame/stream), `patterns/`, `utils/`
-- **Explicit API**: `manage_acronyms(action="add", ...)` → `add_acronyms(...)`. Same for patterns and DataFrame ops
-- **Configurable entity priority**: `DEFAULT_ENTITY_PRIORITY` dict controls overlap resolution; custom patterns beat generic NER
-- **Deterministic hashing**: `hash` operator uses SHA-256 instead of Python's non-deterministic `hash()`
-- **No print() in library code**: all output via `logging`
-- **28x faster test suite**: spaCy model cached at module level
-- **Tooling**: ruff + pyright replace black/isort/flake8/mypy; pyproject.toml is single source of truth
+- **Tightened AU_ADDRESS** — dropped two loose fallback patterns that absorbed narrative prose ("2007 the Court decided..." was producing 74-char false-positive spans). New patterns are anchored by state+postcode; case-tolerant variant accepts lowercase/mixed-case (e.g. "sydney NSW 2000")
+- **Tightened AU_POSTCODE** — removed bare 4-digit matching that was firing on years ("2023") and amounts ("8500"). Now requires a state abbrev or `postcode`/`post code`/`postal code` label
+- **Expanded DATE validator** — recognizes spaCy's natural-language DATE outputs (`March 2024`, `next Monday`, `Q1 2024`, `yesterday`, `the 1990s`, times, etc.); rejects phone-fragment false positives first
+- **Widened INSURANCE_CLAIM_NUMBER** — now accepts `CLM` prefix alongside `CL`/`C`
+- **Benchmark suite** — new `bench/` directory with eval scripts vs `openai/privacy-filter`; installable via `pip install "allyanonimiser[bench]"`
 
 ## Installation
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.3.0
+pip install allyanonimiser==3.4.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.3.0"
+pip install "allyanonimiser[stream]==3.4.0"
 ```
 
 **Prerequisites:**
@@ -62,7 +60,7 @@ pip install "allyanonimiser[stream]==3.3.0"
 
 | | `SPACY_MODEL_FAST` (`en_core_web_sm`) | `SPACY_MODEL_ACCURATE` (`en_core_web_lg`) |
 |---|---|---|
-| **Default in v3.3+?** | yes | no |
+| **Default in v3.3+?** (unchanged in v3.4) | yes | no |
 | Download size | 44 MB | 587 MB |
 | Resident memory | ~200 MB | ~1.5 GB |
 | Cold start | ~0.5s | 2 – 5s |

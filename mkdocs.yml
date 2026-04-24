@@ -60,6 +60,7 @@ nav:
     - Custom Operators: advanced/custom-operators.md
   - API Reference:
     - Main API: api/main.md
+  - Benchmarks: benchmarks.md
   - Changelog: changelog.md
 
 extra:

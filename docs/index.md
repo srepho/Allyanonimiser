@@ -2,7 +2,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.3.0-blue)](https://pypi.org/project/allyanonimiser/3.3.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.4.0-blue)](https://pypi.org/project/allyanonimiser/3.4.0/)
 [![Python Versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Release Check](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml)
@@ -12,11 +12,20 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 Allyanonimiser detects and anonymizes personally identifiable information (PII) in text, with first-class support for Australian formats (TFN, ABN, Medicare, AU phone, etc.) and insurance-industry identifiers (policy numbers, claim references, vehicle rego, VIN).
 
-## What's new in v3.3
+## What's new in v3.4
 
-- **Default spaCy model is now `en_core_web_sm`** (44 MB, fast). Previously was `en_core_web_lg` (587 MB). Pattern-based detection is unchanged; NER recall on PERSON/LOCATION/ORG is lower with `sm`. Switch explicitly with `spacy_model=SPACY_MODEL_ACCURATE` when accuracy matters.
+Pattern precision fixes surfaced by head-to-head [benchmarks](benchmarks.md) against `openai/privacy-filter` on three datasets.
+
+- **Tightened AU_ADDRESS** — dropped two loose fallback patterns that were absorbing narrative prose; remaining patterns are anchored by state + postcode. New case-tolerant variant accepts lowercase/mixed case.
+- **Tightened AU_POSTCODE** — no longer matches bare 4-digit numbers (years, amounts). Requires state abbrev or `postcode`/`post code`/`postal code` label.
+- **Expanded DATE validator** — recognizes spaCy's natural-language DATE outputs (`March 2024`, `next Monday`, `Q1 2024`, `yesterday`, etc.).
+- **Widened INSURANCE_CLAIM_NUMBER** — accepts `CLM` prefix alongside `CL`/`C`.
+- **New `[bench]` optional extra** — `pip install "allyanonimiser[bench]"` for the benchmark suite.
+
+### v3.3 (prior)
+
+- **Default spaCy model** is now `en_core_web_sm` (44 MB, fast). Previously `en_core_web_lg` (587 MB). Switch with `spacy_model=SPACY_MODEL_ACCURATE` when accuracy matters.
 - **`SPACY_MODEL_FAST` / `SPACY_MODEL_ACCURATE`** constants exported for clarity.
-- Full v3.2 improvements: TFN/ABN checksum validation in every code path, pre-release smoke gate on the built sdist, direct unit tests for the conflict resolver.
 
 ## Key Features
 
