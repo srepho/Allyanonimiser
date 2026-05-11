@@ -305,6 +305,31 @@ class EntityValidator:
         return True, None
 
     @staticmethod
+    def validate_credit_card(text: str) -> tuple[bool, str | None]:
+        """Validate a credit card number via the Luhn checksum.
+
+        Strips spaces and dashes, requires 13-19 digits, then runs the Luhn
+        algorithm. Returns ``(False, reason)`` for any non-conforming input
+        so random multi-digit blocks (policy numbers, claim references) get
+        rejected before they appear as ``CREDIT_CARD`` matches.
+        """
+        cleaned = re.sub(r"[\s-]+", "", text)
+        if not re.fullmatch(r"\d{13,19}", cleaned):
+            return False, "wrong_length"
+        # Luhn: double every second digit from the right; sum all digits.
+        total = 0
+        for i, ch in enumerate(reversed(cleaned)):
+            d = int(ch)
+            if i % 2 == 1:
+                d *= 2
+                if d > 9:
+                    d -= 9
+            total += d
+        if total % 10 != 0:
+            return False, "luhn_failed"
+        return True, None
+
+    @staticmethod
     def validate_australian_postcode(text: str) -> tuple[bool, str | None]:
         """
         Validate Australian postcode.

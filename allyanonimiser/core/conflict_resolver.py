@@ -11,8 +11,15 @@ later-registered entries can override built-in defaults.
 """
 
 
+import re
+
 from .recognizer_result import RecognizerResult
 from .validators import EntityValidator
+
+# spaCy NER occasionally mislabels date strings as ORGANIZATION. We drop
+# those candidates before priority resolution so the legitimate
+# DATE / DATE_OF_BIRTH / INCIDENT_DATE detection wins.
+_DATE_SHAPE = re.compile(r"^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$")
 
 # Known false-positive span-text patterns. If the span text ends in one of
 # these, all results for the span are discarded (the span is a label, not PII).
@@ -22,7 +29,37 @@ _LABEL_SUFFIXES = ("number", "ref", "#", "id", "identifier")
 _STREET_SUFFIXES = (
     " st", " street", " rd", " road", " ave", " avenue",
     " dr", " drive", " ln", " lane", " pl", " place",
-    " ct", " court", " cr", " crescent",
+    " ct", " court", " cr", " crescent", " mall",
+)
+
+# AU capitals + major cities that spaCy frequently mislabels as PERSON when
+# they appear alone (no surrounding sentence context to reveal "place").
+_AU_CITIES = frozenset({
+    "sydney", "melbourne", "brisbane", "perth", "adelaide",
+    "hobart", "canberra", "darwin", "newcastle", "wollongong",
+    "geelong", "cairns", "townsville",
+})
+
+# Acronyms / labels that spaCy sometimes tags as PERSON.
+_PERSON_ACRONYMS = frozenset({
+    "vin", "abn", "acn", "tfn", "plc", "llc", "gst", "bsb",
+    "crn", "dob", "doi", "ref", "pol", "id",
+})
+
+# Common label / non-name words that spaCy occasionally tags as PERSON
+# alone or as the leading token of a multi-word span.
+_PERSON_LABEL_WORDS = frozenset({
+    "email", "phone", "mobile", "address", "subject", "tel", "fax",
+    "claim", "claims", "policy", "vehicle", "residential", "patient",
+    "customer", "insured", "director", "policyholder", "contact",
+    "ref", "reference", "number", "date", "time", "dob", "doi",
+    "medicare", "matter", "issue", "category", "type", "status",
+})
+
+# A span containing an AU state abbreviation followed by a 3-4 digit
+# postcode is an address line, never a person.
+_STATE_POSTCODE_RE = re.compile(
+    r"\b(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{3,4}\b"
 )
 
 # When a DATE result fails validation, drop it only if the validator flagged
@@ -58,13 +95,15 @@ def _is_valid_single(result: RecognizerResult) -> bool:
             return EntityValidator.validate_tfn(text.replace(" ", ""))[0]
         case "AU_ABN":
             return EntityValidator.validate_abn(text.replace(" ", ""))[0]
+        case "CREDIT_CARD":
+            return EntityValidator.validate_credit_card(text)[0]
         case _:
             return True
 
 
 def _is_false_positive_person(text: str) -> bool:
     """Detect span text that spaCy is likely to have miscategorised as PERSON."""
-    lower = text.lower()
+    lower = text.lower().strip()
     upper = text.upper()
     return (
         lower.startswith("policy")
@@ -75,7 +114,24 @@ def _is_false_positive_person(text: str) -> bool:
         or upper.startswith("CLM-")
         or "number" in lower
         or any(lower.endswith(sfx) for sfx in _STREET_SUFFIXES)
-        or lower in {"medicare", "dob", "doi"}
+        or lower in {"medicare"}
+        # AU capital alone is almost always a place, not a person.
+        or lower in _AU_CITIES
+        # Three-letter acronyms / labels frequently misfired as PERSON.
+        or lower in _PERSON_ACRONYMS
+        # Date-shaped spans labelled PERSON (e.g. spaCy occasionally tags
+        # "04/07/1999" as PERSON when a name precedes it).
+        or _DATE_SHAPE.match(lower) is not None
+        # State+postcode line absorbed into a PERSON span: "Darwin NT 6000",
+        # "Sydney NSW 2000". Always an address fragment.
+        or _STATE_POSTCODE_RE.search(text) is not None
+        # Street numbers absorbed: "460 Rundle Mall", "123 Queen St". The
+        # _STREET_SUFFIXES branch catches the common ones; this catches
+        # spans that BEGIN with a digit (street number).
+        or (text and text[0].isdigit() and " " in text)
+        # First (or only) token is a label word ("Email", "vehicle AU-4321",
+        # "Residential ..."). Real names don't start with these.
+        or (bool(lower.split()) and lower.split()[0] in _PERSON_LABEL_WORDS)
     )
 
 
@@ -99,6 +155,11 @@ def resolve_entity_conflicts(
     if any(text.lower().endswith(sfx) for sfx in _LABEL_SUFFIXES):
         return None
 
+    if _DATE_SHAPE.match(text):
+        results = [r for r in results if r.entity_type not in ("ORGANIZATION", "LOCATION")]
+        if not results:
+            return None
+
     if any(r.entity_type == "PERSON" for r in results) and _is_false_positive_person(text):
         filtered = [r for r in results if r.entity_type != "PERSON"]
         return filtered[0] if filtered else None
@@ -119,7 +180,15 @@ def resolve_entity_conflicts(
         bonus = (order / num_patterns) * 10 if order >= 0 else 0
         return base + bonus + r.score
 
-    return max(results, key=priority)
+    # Validate-then-pick: walk candidates from highest priority down and
+    # return the first one that passes per-type validation. Without this,
+    # a permissive pattern (e.g. CREDIT_CARD matching a 13-digit phone
+    # number) wins by priority, fails its checksum, and then the WHOLE
+    # span is dropped — silently losing a valid runner-up like PHONE_INTL.
+    for candidate in sorted(results, key=priority, reverse=True):
+        if _is_valid_single(candidate):
+            return candidate
+    return None
 
 
 def deduplicate_and_resolve_conflicts(
@@ -145,6 +214,12 @@ def deduplicate_and_resolve_conflicts(
     for (_start, _end, span_text), span_results in spans.items():
         if len(span_results) == 1:
             winner = span_results[0]
+            # Single-candidate PERSON spans skip resolve_entity_conflicts, so
+            # apply the FP check here too. Without this, spaCy NER PERSON
+            # mislabels (cities, address fragments, label words) slip through
+            # whenever they don't co-occur with another competing entity.
+            if winner.entity_type == "PERSON" and _is_false_positive_person(span_text):
+                continue
         else:
             winner = resolve_entity_conflicts(span_results, span_text, patterns)
         # Validate the winner regardless of how it was chosen.

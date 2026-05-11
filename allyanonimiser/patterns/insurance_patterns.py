@@ -5,14 +5,15 @@ Insurance patterns for detecting insurance-specific information.
 def get_insurance_pattern_definitions():
     """Return patterns for insurance-specific information."""
     return [
+        # Standalone-identifier patterns only. The labelled forms ("Policy
+        # Number: P12345", "Claim: CL-98765") are handled by
+        # core/common_formats.py with capture-group spans so the trigger
+        # prefix doesn't bloat the matched span.
         {
             "entity_type": "INSURANCE_POLICY_NUMBER",
             "patterns": [
                 r"\b(?:POL|P|Policy)[- ]?\d{6,9}\b",
                 r"\bAU[-\s]*\d{5,10}\b",                    # AU-12345678 format
-                r"\bPolicy (?:Number|#):\s*[A-Za-z0-9-]{6,15}\b",
-                r"\bPolicy\s*(?:Number|#|No):\s*[A-Za-z0-9-]{6,15}\b",
-                r"\bPolicy:\s*[A-Za-z0-9-]{6,15}\b"
             ],
             "context": ["policy", "insurance", "coverage", "insured"],
             "name": "Insurance Policy Number"
@@ -21,9 +22,6 @@ def get_insurance_pattern_definitions():
             "entity_type": "INSURANCE_CLAIM_NUMBER",
             "patterns": [
                 r"\b(?:CLM|CL|C)[- ]?\d{6,9}\b",
-                r"\bClaim (?:Number|Reference|#):\s*[A-Za-z0-9-]{6,15}\b",
-                r"\bClaim\s*(?:Number|#|No|Ref):\s*[A-Za-z0-9-]{6,15}\b",
-                r"\bClaim:\s*[A-Za-z0-9-]{6,15}\b"
             ],
             "context": ["claim", "incident", "accident", "reference"],
             "name": "Insurance Claim Number"
@@ -32,8 +30,6 @@ def get_insurance_pattern_definitions():
             "entity_type": "VEHICLE_VIN",
             "patterns": [
                 r"\b[A-HJ-NPR-Z0-9]{17}\b",
-                r"\bVIN:\s*[A-HJ-NPR-Z0-9]{17}\b",
-                r"\bVehicle Identification Number:\s*[A-HJ-NPR-Z0-9]{17}\b"
             ],
             "context": ["vin", "vehicle", "identification", "number", "chassis"],
             "name": "Vehicle Identification Number"
@@ -69,8 +65,8 @@ def get_insurance_pattern_definitions():
         {
             "entity_type": "INCIDENT_DATE",
             "patterns": [
-                r"\bon\s+\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
-                r"\bDate of (?:incident|accident|loss|event):\s*\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b"
+                r"(?i)\bon\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b",
+                r"(?i)\bDate of (?:incident|accident|loss|event):\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b"
             ],
             "context": ["date", "occurred", "happened", "incident", "accident"],
             "name": "Incident Date"

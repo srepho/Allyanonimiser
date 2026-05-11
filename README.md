@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.4.0-blue)](https://pypi.org/project/allyanonimiser/3.4.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.5.0-blue)](https://pypi.org/project/allyanonimiser/3.5.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,25 +12,30 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
 
-## Version 3.4.0 — Pattern Precision + Benchmarks
+## Version 3.5.0 — International PII + Precision Overhaul
 
-Surfaced by head-to-head eval vs `openai/privacy-filter` on three datasets (see [Benchmarks](#benchmarks) below).
+Adds out-of-the-box detection for international PII shapes that show up in AU-insurance data (expat customers, business travellers, system audit logs), and overhauls the conflict resolver so permissive patterns can no longer silently drop valid runner-ups. Beats `openai/privacy-filter` on 5 of 6 categories of the enriched AU bench. See [Benchmarks](#benchmarks).
 
 ### What's New
-- **Tightened AU_ADDRESS** — dropped two loose fallback patterns that absorbed narrative prose ("2007 the Court decided..." was producing 74-char false-positive spans). New patterns are anchored by state+postcode; case-tolerant variant accepts lowercase/mixed-case (e.g. "sydney NSW 2000")
-- **Tightened AU_POSTCODE** — removed bare 4-digit matching that was firing on years ("2023") and amounts ("8500"). Now requires a state abbrev or `postcode`/`post code`/`postal code` label
-- **Expanded DATE validator** — recognizes spaCy's natural-language DATE outputs (`March 2024`, `next Monday`, `Q1 2024`, `yesterday`, `the 1990s`, times, etc.); rejects phone-fragment false positives first
-- **Widened INSURANCE_CLAIM_NUMBER** — now accepts `CLM` prefix alongside `CL`/`C`
-- **Benchmark suite** — new `bench/` directory with eval scripts vs `openai/privacy-filter`; installable via `pip install "allyanonimiser[bench]"`
+- **5 new entity types loaded by default** — `PHONE_INTL` (with `+CC`, `00` IDD prefix, and parenthesised area-code variants), `US_SSN` (with SSA reservation rules), `CREDIT_CARD` (Luhn-validated 13-19 digits), `ISO_DATETIME` (`2024-05-22T14:32:00`), `TIME` (12/24h, with/without seconds). All anchored on structural features that don't collide with AU patterns. See `docs/patterns/international.md`.
+- **Validate-then-pick conflict resolution** — when multiple patterns match the same span, the resolver now walks candidates from highest priority down and returns the first that passes per-type validation. Previously a permissive pattern (e.g. CREDIT_CARD on a 13-digit phone) could win by priority, fail its checksum, and silently drop the valid runner-up.
+- **PERSON precision overhauled** — added city/state-postcode/date-shape/acronym/label-word rejection, iterative trim of trailing label tokens (`Joe Smith\nDOB` → `Joe Smith`), and applied the FP check to single-candidate spans (previously bypassed). AU bench PERSON F1 0.836 → 0.954.
+- **CREDIT_CARD Luhn validator** wired into `EntityValidator.validate_credit_card`.
+- **VEHICLE_REGISTRATION tightened** — added SSN/TIN/NIN to the label deny-list plus an `SSN-shape` negative lookahead so `bad SSN 999-04-7100` no longer absorbs `SSN 999-04` as a plate.
+- **DATE_OF_BIRTH / INCIDENT_DATE no longer eat their prefix** — capture-group rewrite so spans equal just the date (was `'DOB: 04/01/1959'`, now `'04/01/1959'`).
+- **`common_formats.py` identifier patterns require a digit** — prevents `Claim Note` → `Note`, `Policy Number` → `Number`, `claim-mail` → `mail` false positives.
+- **Enriched AU bench** — `bench/data/au_insurance.jsonl` extended from 100 to 160 docs with three new templates (expat claim, payment record, business travel claim) covering international shapes.
+- **40 new regression tests** in `tests/test_general_intl_patterns.py` covering PHONE_INTL / US_SSN / CREDIT_CARD / ISO_DATETIME / TIME and the SSN/VR collision regression.
+- **CI fix** — pyright workflow step had an invalid `--level basic` flag making it a no-op; now reads strictness from `[tool.pyright]` in `pyproject.toml`.
 
 ## Installation
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.4.0
+pip install allyanonimiser==3.5.0
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.4.0"
+pip install "allyanonimiser[stream]==3.5.0"
 ```
 
 **Prerequisites:**

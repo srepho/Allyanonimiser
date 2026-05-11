@@ -16,12 +16,14 @@ DEFAULT_ENTITY_PRIORITY: dict[str, int] = {
     "AU_TFN": 100,
     "AU_ABN": 100,
     "AU_ACN": 100,
+    "US_SSN": 100,
     # Insurance identifiers
     "INSURANCE_POLICY_NUMBER": 95,
     "INSURANCE_CLAIM_NUMBER": 95,
     # Contact info
     "EMAIL_ADDRESS": 90,
     "AU_PHONE": 85,
+    "PHONE_INTL": 85,
     "CREDIT_CARD": 85,
     # Identity documents
     "AU_DRIVERS_LICENSE": 80,
@@ -31,15 +33,17 @@ DEFAULT_ENTITY_PRIORITY: dict[str, int] = {
     "PERSON": 70,
     "AU_ADDRESS": 60,
     "ADDRESS": 60,
+    "ISO_DATETIME": 55,   # Specific T-separated form, ranks above bare DATE
     "LOCATION": 50,
+    "INCIDENT_DATE": 45,
     "DATE": 40,
+    "TIME": 35,
     "AU_POSTCODE": 30,
     "NUMBER": 20,
     # Low-priority / generic
     "VEHICLE_REGISTRATION": 15,
     "FACILITY": 10,
     "PRODUCT": 10,
-    "INCIDENT_DATE": 10,
 }
 
 

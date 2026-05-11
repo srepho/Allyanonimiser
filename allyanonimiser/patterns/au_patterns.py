@@ -140,10 +140,15 @@ def get_au_pattern_definitions():
         {
             "entity_type": "VEHICLE_REGISTRATION",
             "patterns": [
-                r"\b(?!AU-\d+\b)(?!NSW|VIC|QLD|WA|SA|TAS|NT|ACT\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{2,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must have at least 2 parts with numbers, exclude states
+                # The broad standalone form must contain a digit. Pure-letter
+                # tokens like "ABCDEF" are too ambiguous and commonly occur as
+                # non-plate IDs after labels such as "Claim Number".
+                # Plus a guard against SSN-shape spans ("SSN 999-04-7100"):
+                # if the upcoming text looks like a US SSN segment we abort.
+                r"\b(?!AU-\d+\b)(?!NSW|VIC|QLD|WA|SA|TAS|NT|ACT\b)(?!(?:DOB|PLC|LLC|ABN|ACN|TFN|VIN|REF|POL|CRN|BSB|GST|SSN|TIN|NIN)(?:\b|\d))(?![A-Z]{1,3}\s+\d{3}-\d{2}-\d{4}\b)(?=[A-Z0-9-\s]*\d\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{2,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must have digits, exclude states & label tokens & SSN shape
                 r"\b(?:Registration|Rego)(?:\.|\:|\s)+\s*([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",  # Match after the word Registration/Rego with capturing group
                 r"\brego\s+([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",   # Match after lowercase "rego" with capturing group
-                r"\b[A-Z]{2,3}\d{2,3}[A-Z]?\b",  # Common format like ABC123 or AB123C
+                r"\b(?!(?:DOB|PLC|LLC|ABN|ACN|TFN|VIN|REF|POL|CRN|BSB|GST)\d)[A-Z]{2,3}\d{2,3}[A-Z]?\b",  # Common format like ABC123 or AB123C
                 r"\b\d{1,3}[A-Z]{2,3}\b"  # Common format like 123ABC
             ],
             "context": ["registration", "rego", "vehicle", "car", "plate", "number plate"],

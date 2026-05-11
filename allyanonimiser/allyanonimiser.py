@@ -168,6 +168,7 @@ class Allyanonimiser:
 
     def _load_default_patterns(self) -> None:
         from .patterns.au_patterns import get_au_pattern_definitions
+        from .patterns.general_intl_patterns import get_general_intl_pattern_definitions
         from .patterns.general_patterns import get_general_pattern_definitions
         from .patterns.insurance_patterns import get_insurance_pattern_definitions
 
@@ -175,6 +176,7 @@ class Allyanonimiser:
             get_au_pattern_definitions,
             get_insurance_pattern_definitions,
             get_general_pattern_definitions,
+            get_general_intl_pattern_definitions,
         ):
             for pdef in getter():
                 self.analyzer.add_pattern(CustomPatternDefinition(**pdef))

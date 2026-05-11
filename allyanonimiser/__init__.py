@@ -19,6 +19,7 @@ from .io.dataframe_processor import DataFrameProcessor
 
 # Pre-defined patterns
 from .patterns.au_patterns import get_au_pattern_definitions
+from .patterns.general_intl_patterns import get_general_intl_pattern_definitions
 from .patterns.general_patterns import get_general_pattern_definitions
 from .patterns.insurance_patterns import get_insurance_pattern_definitions
 
@@ -63,7 +64,7 @@ from .utils.spacy_helpers import (
     detect_common_format,
 )
 
-__version__ = "3.4.0"
+__version__ = "3.5.0"
 
 # Named spaCy model presets — use these instead of the bare strings to make
 # the deployment-vs-accuracy tradeoff explicit at call sites.
@@ -86,7 +87,7 @@ __all__ = [
     "DataFrameProcessor", "StreamProcessor", "POLARS_AVAILABLE",
     # Patterns
     "get_au_pattern_definitions", "get_insurance_pattern_definitions",
-    "get_general_pattern_definitions",
+    "get_general_pattern_definitions", "get_general_intl_pattern_definitions",
     # Validators
     "validate_regex", "validate_spacy_pattern", "validate_context_list",
     "validate_entity_type", "validate_pattern_definition",
@@ -119,6 +120,7 @@ def create_analyzer() -> EnhancedAnalyzer:
         get_au_pattern_definitions,
         get_insurance_pattern_definitions,
         get_general_pattern_definitions,
+        get_general_intl_pattern_definitions,
     ):
         for pdef in getter():
             analyzer.add_pattern(CustomPatternDefinition(**pdef))

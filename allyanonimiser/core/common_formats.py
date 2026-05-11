@@ -25,18 +25,21 @@ _PHONE_PATTERNS: dict[str, list[str]] = {
     ],
 }
 
+# Identifier captures require at least one digit so the pattern can't grab a
+# stray word after the trigger (e.g. "Claim Note" → "Note", "Policy Number" →
+# "Number"). Real claim/policy/rego IDs always contain digits.
 _ID_PATTERNS: dict[str, list[str]] = {
     "INSURANCE_CLAIM_NUMBER": [
-        r"(?:Claim|CL|CLM)[#:\-\s]+([A-Z0-9-]+)",
-        r"(?:Claim\s+(?:Number|Reference|ID|#))[#:\-\s]+([A-Z0-9-]+)",
+        r"(?:Claim|CL|CLM)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
+        r"(?:Claim\s+(?:Number|Reference|ID|#))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
     ],
     "INSURANCE_POLICY_NUMBER": [
-        r"(?:Policy|POL)[#:\-\s]+([A-Z0-9-]+)",
-        r"(?:Policy\s+(?:Number|ID|#))[#:\-\s]+([A-Z0-9-]+)",
+        r"(?:Policy|POL)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
+        r"(?:Policy\s+(?:Number|ID|#))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
     ],
     "VEHICLE_REGISTRATION": [
-        r"(?:Registration|Rego|REG)[#:\-\s]+([A-Z0-9-]+)",
-        r"(?:Vehicle\s+(?:Registration|Rego|REG))[#:\-\s]+([A-Z0-9-]+)",
+        r"(?:Registration|Rego|REG)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
+        r"(?:Vehicle\s+(?:Registration|Rego|REG))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
     ],
     "VEHICLE_VIN": [
         r"(?:VIN|Vehicle\s+Identification\s+Number)[#:\-\s]+([A-Z0-9]{17})",

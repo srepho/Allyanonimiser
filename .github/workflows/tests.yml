@@ -37,7 +37,10 @@ jobs:
       run: ruff check allyanonimiser/
 
     - name: Type check with pyright
-      run: pyright allyanonimiser/ --level basic
+      # Strictness comes from [tool.pyright] in pyproject.toml
+      # (typeCheckingMode = "basic"). The previous `--level basic` flag
+      # is not valid pyright CLI syntax and made this step a no-op.
+      run: pyright allyanonimiser/
       continue-on-error: true  # advisory until types are fully annotated
 
     - name: Run tests

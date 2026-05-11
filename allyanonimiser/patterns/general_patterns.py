@@ -30,9 +30,9 @@ def get_general_pattern_definitions():
         {
             "entity_type": "DATE_OF_BIRTH",
             "patterns": [
-                r"\bDOB:\s*\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
-                r"\bDate of Birth:\s*\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b",
-                r"\bBirth Date:\s*\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b"
+                r"\bDOB:\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b",
+                r"\bDate of Birth:\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b",
+                r"\bBirth Date:\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b"
             ],
             "context": ["dob", "birth", "date", "born"],
             "name": "Date of Birth"

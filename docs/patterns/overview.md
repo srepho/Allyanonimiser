@@ -4,11 +4,15 @@ Allyanonimiser provides a comprehensive set of built-in patterns for detecting P
 
 ## Pattern Categories
 
-The patterns in Allyanonimiser are organized into three main categories:
+The patterns in Allyanonimiser are organized into four categories:
 
 1. **Australian Patterns** - Patterns specific to Australian identifiers and formats
 2. **General Patterns** - Universal PII patterns that apply across regions
 3. **Insurance Patterns** - Patterns specific to the insurance industry
+4. **General International Patterns** - Non-AU PII shapes that show up in
+   AU-insurance data when the customer or counterparty is overseas
+   (expats, business travellers) or when system audit logs leak ISO
+   timestamps into claim notes — see [International PII](international.md)
 
 ## Pattern Structure
 
@@ -46,6 +50,9 @@ You can access the built-in patterns programmatically:
 ```python
 from allyanonimiser.patterns.au_patterns import get_au_pattern_definitions
 from allyanonimiser.patterns.general_patterns import get_general_pattern_definitions
+from allyanonimiser.patterns.general_intl_patterns import (
+    get_general_intl_pattern_definitions,
+)
 from allyanonimiser.patterns.insurance_patterns import get_insurance_pattern_definitions
 
 # Get Australian patterns
@@ -53,6 +60,10 @@ au_patterns = get_au_pattern_definitions()
 
 # Get general patterns
 general_patterns = get_general_pattern_definitions()
+
+# Get general international patterns (PHONE_INTL, US_SSN, CREDIT_CARD,
+# ISO_DATETIME, TIME — loaded by default; see International PII page)
+general_intl_patterns = get_general_intl_pattern_definitions()
 
 # Get insurance patterns
 insurance_patterns = get_insurance_pattern_definitions()
@@ -65,6 +76,7 @@ for pattern in au_patterns:
 ## Pattern categories in detail
 
 - [Australian Patterns](australian.md) — TFN, ABN, Medicare, AU_PHONE, driver's license, Centrelink CRN, passport, postcode, addresses
+- [International PII](international.md) — TIME, ISO_DATETIME, PHONE_INTL, US_SSN, CREDIT_CARD
 - [Custom Patterns](custom.md) — how to register your own entity types
 
 General and insurance-specific patterns (EMAIL_ADDRESS, INSURANCE_POLICY_NUMBER, INSURANCE_CLAIM_NUMBER, VEHICLE_REGISTRATION, VEHICLE_VIN, etc.) are included in the built-in pattern set automatically. See the [README's entity reference](https://github.com/srepho/Allyanonimiser#entity-reference) for the complete list of detected types across all categories.

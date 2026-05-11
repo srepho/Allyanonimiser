@@ -688,24 +688,39 @@ class EnhancedAnalyzer:
                 if any(word in false_positive_words for word in words):
                     continue
 
-                # Check for boundary issues - words that shouldn't be part of names
-                stop_words = ["subject", "matter", "issue", "claim", "policy", "number",
-                              "date", "time", "amount", "status", "type", "category"]
+                # Check for boundary issues - words that shouldn't be part of names.
+                # spaCy NER occasionally absorbs an adjacent label token
+                # (e.g. "Joe Smith\nDOB", "Kristin Rodriguez\nClaims") because
+                # the newline doesn't reset entity tagging. Trim them off.
+                stop_words = {
+                    "subject", "matter", "issue", "claim", "claims", "policy",
+                    "number", "date", "time", "amount", "status", "type",
+                    "category", "dob", "doi", "phone", "mobile", "email",
+                    "address", "tel", "fax", "ref", "reference",
+                }
 
-                # If person name ends with a stop word, trim it
+                # Iteratively pop trailing stop-word tokens. spaCy's split()
+                # handles \n as a separator, so we can match newline-absorbed
+                # labels with the same single rule.
                 text_parts = ent.text.split()
-                if len(text_parts) > 1 and text_parts[-1].lower() in stop_words:
-                    # Recalculate the text without the stop word
-                    trimmed_text = " ".join(text_parts[:-1])
-                    # Calculate new end position based on original start
-                    new_end = ent.start_char + len(trimmed_text)
-                    # Create a new result with corrected boundaries
+                trimmed_changed = False
+                while len(text_parts) > 1 and text_parts[-1].lower() in stop_words:
+                    text_parts.pop()
+                    trimmed_changed = True
+
+                if trimmed_changed:
+                    # Re-locate the trimmed text inside the original span so the
+                    # offsets stay anchored to the start. The last surviving
+                    # token always appears as a prefix of ent.text after a
+                    # split/join, so end = start + position of (last token end)
+                    # in the original text.
+                    new_end = ent.start_char + ent.text.find(text_parts[-1]) + len(text_parts[-1])
                     result = RecognizerResult(
                         entity_type=entity_type,
                         start=ent.start_char,
                         end=new_end,
                         score=0.9,
-                        text=trimmed_text
+                        text=ent.text[:new_end - ent.start_char],
                     )
                     results.append(result)
                     continue
@@ -714,7 +729,11 @@ class EnhancedAnalyzer:
             if entity_type == "ORGANIZATION":
                 lc_text = ent.text.lower()
                 # Common abbreviations that shouldn't be organizations
-                if lc_text in ["dob", "doi", "medicare", "abn", "tfn", "acn"]:
+                if lc_text in {
+                    "dob", "doi", "medicare", "abn", "tfn", "acn",
+                    "ssn", "tin", "nin", "vin", "crn", "bsb", "gst",
+                    "pol", "ref", "id",
+                }:
                     continue
 
             # Skip LOCATION false positives

@@ -54,6 +54,7 @@ nav:
   - Patterns:
     - Overview: patterns/overview.md
     - Australian Patterns: patterns/australian.md
+    - International PII: patterns/international.md
     - Custom Patterns: patterns/custom.md
   - Advanced:
     - Anonymization Operators: advanced/anonymization-operators.md

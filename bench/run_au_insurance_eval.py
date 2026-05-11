@@ -23,7 +23,10 @@ GOLD_TO_CAT = {
     "AU_ADDRESS": "ADDRESS",
     "EMAIL_ADDRESS": "EMAIL",
     "AU_PHONE": "PHONE",
+    "PHONE_INTL": "PHONE",
     "DATE": "DATE",
+    "ISO_DATETIME": "DATE",
+    "TIME": "DATE",
     "AU_TFN": "ACCOUNT_LIKE",
     "AU_MEDICARE": "ACCOUNT_LIKE",
     "AU_ABN": "ACCOUNT_LIKE",
@@ -32,6 +35,8 @@ GOLD_TO_CAT = {
     "INSURANCE_CLAIM_NUMBER": "ACCOUNT_LIKE",
     "VEHICLE_REGISTRATION": "ACCOUNT_LIKE",
     "VIN": "ACCOUNT_LIKE",
+    "US_SSN": "ACCOUNT_LIKE",
+    "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
 }
 
 OPENAI_TO_CAT = {
@@ -49,7 +54,9 @@ ALLY_TO_CAT = {
     "LOCATION": "ADDRESS",
     "EMAIL_ADDRESS": "EMAIL",
     "AU_PHONE": "PHONE",
+    "PHONE_INTL": "PHONE", "PHONE_NUMBER": "PHONE",
     "DATE": "DATE", "DATE_OF_BIRTH": "DATE", "INCIDENT_DATE": "DATE",
+    "ISO_DATETIME": "DATE", "TIME": "DATE",
     "AU_TFN": "ACCOUNT_LIKE",
     "AU_MEDICARE": "ACCOUNT_LIKE",
     "AU_ABN": "ACCOUNT_LIKE",
@@ -60,9 +67,65 @@ ALLY_TO_CAT = {
     "VEHICLE_REGISTRATION": "ACCOUNT_LIKE",
     "VEHICLE_VIN": "ACCOUNT_LIKE",
     "AU_POSTCODE": "ADDRESS",
+    "US_SSN": "ACCOUNT_LIKE",
+    "CREDIT_CARD": "ACCOUNT_LIKE",
+    "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
 }
 
 CATEGORIES = ["PERSON", "ADDRESS", "EMAIL", "PHONE", "DATE", "ACCOUNT_LIKE"]
+
+
+def mask_runs(mask):
+    """Return contiguous true regions from a boolean mask."""
+    runs = []
+    start = None
+    for i, value in enumerate(mask):
+        if value and start is None:
+            start = i
+        elif not value and start is not None:
+            runs.append((start, i))
+            start = None
+    if start is not None:
+        runs.append((start, len(mask)))
+    return runs
+
+
+def snippet(text, start, end, window=48):
+    before = max(0, start - window)
+    after = min(len(text), end + window)
+    prefix = "..." if before else ""
+    suffix = "..." if after < len(text) else ""
+    return prefix + text[before:after] + suffix
+
+
+def collect_examples(examples, tool, cat, kind, text, mask, row_idx):
+    for start, end in mask_runs(mask):
+        examples[tool][cat][kind].append({
+            "row": row_idx,
+            "start": start,
+            "end": end,
+            "length": end - start,
+            "text": text[start:end],
+            "context": snippet(text, start, end),
+        })
+
+
+def trim_examples(examples, limit):
+    if limit <= 0:
+        return {}
+
+    out = {}
+    for tool, tool_examples in examples.items():
+        out[tool] = {}
+        for cat, cat_examples in tool_examples.items():
+            out[tool][cat] = {}
+            for kind, values in cat_examples.items():
+                out[tool][cat][kind] = sorted(
+                    values,
+                    key=lambda item: item["length"],
+                    reverse=True,
+                )[:limit]
+    return out
 
 
 def decode_bioes(labels, offsets):
@@ -101,6 +164,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="bench/data/au_insurance.jsonl")
     ap.add_argument("--out", default="bench/results_au_insurance.json")
+    ap.add_argument(
+        "--examples",
+        type=int,
+        default=5,
+        help="number of longest FP/FN examples to include per tool/category",
+    )
     args = ap.parse_args()
 
     rows = [json.loads(line) for line in open(args.data)]
@@ -123,6 +192,13 @@ def main():
     totals = {"openai": defaultdict(lambda: [0, 0, 0]),
               "ally":   defaultdict(lambda: [0, 0, 0])}
     timings = {"openai": 0.0, "ally": 0.0}
+    examples = {
+        tool: {
+            cat: {"false_positives": [], "false_negatives": []}
+            for cat in CATEGORIES + ["ANY"]
+        }
+        for tool in ("openai", "ally")
+    }
 
     for i, row in enumerate(rows):
         text = row["text"]
@@ -147,12 +223,17 @@ def main():
 
         for cat in CATEGORIES + ["ANY"]:
             for name, mask in [("openai", oai_mask[cat]), ("ally", ally_mask[cat])]:
+                fp_mask = ~gold[cat] & mask
+                fn_mask = gold[cat] & ~mask
                 tp = int((gold[cat] & mask).sum())
-                fp = int((~gold[cat] & mask).sum())
-                fn = int((gold[cat] & ~mask).sum())
+                fp = int(fp_mask.sum())
+                fn = int(fn_mask.sum())
                 totals[name][cat][0] += tp
                 totals[name][cat][1] += fp
                 totals[name][cat][2] += fn
+                if args.examples:
+                    collect_examples(examples, name, cat, "false_positives", text, fp_mask, i)
+                    collect_examples(examples, name, cat, "false_negatives", text, fn_mask, i)
 
         if (i + 1) % 25 == 0 or i == len(rows) - 1:
             print(f"  {i+1}/{len(rows)}  (openai {timings['openai']:.0f}s, ally {timings['ally']:.0f}s)")
@@ -181,6 +262,7 @@ def main():
         "n": len(rows),
         "timings": timings,
         "summary": summary,
+        "examples": trim_examples(examples, args.examples),
     }, indent=2))
     print(f"Wrote {args.out}")
 

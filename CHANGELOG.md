@@ -1,5 +1,68 @@
 # Changelog
 
+## 3.5.0 (2026-05-11)
+
+International PII coverage added to the default pipeline (PHONE_INTL, US_SSN, CREDIT_CARD with Luhn, ISO_DATETIME, TIME), PERSON precision overhauled, and the conflict resolver no longer silently drops valid runner-ups when a permissive pattern wins by priority and then fails validation. Bench performance: on the enriched AU bench (160 docs, 1340 spans, including expat/payment/business-travel templates) Ally now beats `openai/privacy-filter` on 5 of 6 categories. On AI4Privacy English (1000 docs) Ally matches openai overall (ANY F1 0.782 vs 0.781) — up from 0.728.
+
+### New — international entity types (loaded by default)
+
+- **`PHONE_INTL`** — three variants: `+CC` anchored (`+44 7700 900123`, `+1-415-555-1234`), `00`-prefix IDD form (`0013 408-555-2222`), and parenthesised area code with 3-4 digits (`(415) 555-1234`, `(664)-9573546`). AU 2-digit area codes (`(03) 9876 5432`) stay with `AU_PHONE`.
+- **`US_SSN`** — `\d{3}-\d{2}-\d{4}` with the SSA reservation rules (area ≠ 000/666/9xx, group ≠ 00, serial ≠ 0000).
+- **`CREDIT_CARD`** — 13-19 digit blocks with optional 4-digit grouping, Luhn-validated via the new `EntityValidator.validate_credit_card`. Random multi-digit blocks fail the checksum and are dropped.
+- **`ISO_DATETIME`** — `YYYY-MM-DDThh:mm[:ss][.f][Z|±hh:mm]`. Ranks above bare `DATE` (priority 55 vs 40).
+- **`TIME`** — 12/24h with optional seconds and AM/PM. Lookbehind blocks DD/MM/YYYY date fragments from being read as times.
+
+New `docs/patterns/international.md` documents the precedence rules and tuning options. New module `allyanonimiser/patterns/general_intl_patterns.py`.
+
+### Fixes — conflict resolver
+
+- **Validate-then-pick**: `resolve_entity_conflicts` now walks candidates from highest priority down and returns the first that passes per-type validation. Previously a permissive pattern (e.g. CREDIT_CARD matching a 13-digit phone) could win by priority, fail its checksum, and silently drop the valid runner-up.
+- **PERSON FP check applied to single-candidate spans**: spaCy NER PERSON spans that don't co-occur with another entity at the exact same span now also go through `_is_false_positive_person`. Without this, address fragments and label words slipped through when nothing else competed for the span.
+- **`ORGANIZATION` deny-list** widened to include label acronyms: `SSN`, `TIN`, `NIN`, `VIN`, `CRN`, `BSB`, `GST`, `POL`, `REF`, `ID` (parallel to existing `DOB`/`DOI`/`Medicare`/`ABN`/`TFN`/`ACN`).
+- **Date-shaped LOCATION rejected**: spaCy occasionally tags dates like `14/07/2023` as `LOCATION`. Now dropped before priority resolution so the legitimate `DATE`/`INCIDENT_DATE` detection wins.
+
+### Fixes — PERSON precision (AU bench PERSON F1 0.836 → 0.954)
+
+- **City rejection**: AU capitals (`Sydney`, `Melbourne`, `Brisbane`, `Hobart`, `Darwin`, `Adelaide`, `Perth`, `Canberra`) and a handful of major cities are no longer accepted as PERSON when they appear alone.
+- **State+postcode line rejection**: spans containing `(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{3,4}` (e.g. `Darwin NT 6000`, `Sydney NSW 2000`) are always address fragments.
+- **Date-shape rejection**: spaCy occasionally tags dates as PERSON when a name precedes them; date-shaped spans are now dropped.
+- **Acronym + label-word rejection**: `VIN`/`ABN`/`PLC`/`LLC`/etc., and spans whose leading token is `Email`/`Phone`/`Vehicle`/`Residential`/etc.
+- **Iterative trim of trailing label tokens**: `Joseph Schaefer\nDOB` → `Joseph Schaefer`, `Kristin Rodriguez\nClaims` → `Kristin Rodriguez`. The trim loops so multi-label tails like `\nClaim Number` get fully stripped.
+
+### Fixes — VEHICLE_REGISTRATION false positives
+
+- **SSN-shape collision fixed**: `bad SSN 999-04-7100` no longer absorbs `SSN 999-04` as a plate. Added `SSN/TIN/NIN` to the label deny-list plus a negative lookahead `(?![A-Z]{1,3}\s+\d{3}-\d{2}-\d{4}\b)`.
+- **`DOB NN`, `PLC ABN` collisions fixed**: the loose `[A-Z]{1,3}[-\s]?[A-Z0-9]{2,3}[-\s]?[A-Z0-9]{1,3}` plate pattern was structurally matching label+number pairs. Now requires a digit anywhere in the upcoming match (`(?=[A-Z0-9-\s]*\d\b)`) and rejects the common label tokens.
+
+### Fixes — `common_formats.py` identifier patterns
+
+- Capture groups for `INSURANCE_CLAIM_NUMBER`, `INSURANCE_POLICY_NUMBER`, `VEHICLE_REGISTRATION` now require at least one digit in the identifier (`[A-Z0-9-]*\d[A-Z0-9-]*`). Stops `Claim Note` → `Note`, `Policy Number` → `Number`, `claim-mail.net` → `mail` matches.
+
+### Fixes — date span boundaries
+
+- **`DATE_OF_BIRTH` and `INCIDENT_DATE`** patterns rewritten with capture groups so the matched span equals just the date, not the trigger prefix. Was `'DOB: 04/01/1959'` (15 chars), now `'04/01/1959'` (10 chars). 380 FP chars eliminated on the AU bench.
+- **`insurance_patterns.py` prefix-including patterns deleted**: the redundant `\bClaim:\s*[A-Za-z0-9-]{6,15}\b` / `\bPolicy Number:\s*...` / `\bVIN:\s*...` patterns are gone. `common_formats.py` already emits clean (capture-grouped) spans for the same shapes.
+
+### Tests
+
+- **40 new regression tests** in `tests/test_general_intl_patterns.py` covering: each new pattern's canonical inputs, SSA reservation rules for `US_SSN`, Luhn validation for `CREDIT_CARD` (valid + invalid), AU-phone precedence over PHONE_INTL on AU 2-digit area codes, ISO-vs-DATE-vs-TIME overlap precedence, and the SSN/VEHICLE_REGISTRATION collision regression.
+- **Suite total: 268 passed, 8 skipped, 0 regressions.**
+
+### Bench
+
+- `bench/data/au_insurance.jsonl` extended from 100 → 160 docs with three new templates (expat claim, payment record, business travel claim) covering international shapes.
+- `bench/make_au_insurance_eval.py` extended with international value generators (UK/US phones, US SSN, Luhn-valid credit card, ISO datetime, 12/24h time).
+- `bench/run_au_insurance_eval.py` and `bench/run_ai4privacy_eval.py` label mappings extended for the new entity types.
+
+### CI / infra
+
+- `.github/workflows/tests.yml`: pyright was invoked with an invalid `--level basic` CLI flag making it a no-op. Now reads strictness from `[tool.pyright]` in `pyproject.toml` (kept `continue-on-error: true` while type debt is paid down).
+
+### Performance
+
+- Enriched AU bench (160 docs): Ally 2.3s vs `openai/privacy-filter` 55s on a 2019 Intel Mac (~24× faster).
+- AI4Privacy English (1000 docs): Ally 8.3s vs openai 215s (~26× faster).
+
 ## 3.4.0 (2026-04-24)
 
 Pattern precision fixes and a new benchmark suite. Surfaced by head-to-head evaluation against [`openai/privacy-filter`](https://huggingface.co/openai/privacy-filter) on three datasets (TAB, AI4Privacy open-pii-500k, synthetic AU insurance). See the README *Benchmarks* section and `bench/README.md` for methodology and full results.

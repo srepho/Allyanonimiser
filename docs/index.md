@@ -2,7 +2,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.4.0-blue)](https://pypi.org/project/allyanonimiser/3.4.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.5.0-blue)](https://pypi.org/project/allyanonimiser/3.5.0/)
 [![Python Versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Release Check](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml)

@@ -243,6 +243,52 @@ class TestRobustDetection:
             dates = [r for r in results if r.entity_type in ("DATE", "DATE_OF_BIRTH")]
             assert dates, f"DATE missed in {text!r}"
 
+    def test_labelled_ids_do_not_fall_through_to_vehicle_registration(self, analyzer):
+        """Labelled IDs with invalid values must not be rescued by the broad
+        vehicle-registration recognizer. This preserves the precision gain from
+        requiring claim/policy IDs to contain at least one digit."""
+        negatives = [
+            "Claim Number: ABCDEF",
+            "Claim Number: Note",
+            "Policy Number: Number",
+            "Vehicle DOB30 recorded",
+            "DOB30 noted in the claim diary",
+        ]
+        for text in negatives:
+            results = analyzer.analyze(text)
+            vehicle_regs = [r for r in results if r.entity_type == "VEHICLE_REGISTRATION"]
+            assert not vehicle_regs, (
+                f"VEHICLE_REGISTRATION false positive in {text!r}: "
+                f"{[(r.start, r.end, text[r.start:r.end]) for r in vehicle_regs]}"
+            )
+
+        positives = [
+            ("Claim Number: ABC123", "INSURANCE_CLAIM_NUMBER"),
+            ("Policy Number: P12345", "INSURANCE_POLICY_NUMBER"),
+            ("Rego: ABC123", "VEHICLE_REGISTRATION"),
+            ("Registration: DOB30", "VEHICLE_REGISTRATION"),
+        ]
+        for text, expected_type in positives:
+            results = analyzer.analyze(text)
+            entity_types = [r.entity_type for r in results]
+            assert expected_type in entity_types, (
+                f"{expected_type} missed in {text!r}. Found: {entity_types}"
+            )
+
+    def test_incident_date_is_case_tolerant_and_specific(self, analyzer):
+        """Incident-date labels are often lower or mixed case; keep their more
+        specific entity type rather than falling back to generic DATE."""
+        positives = [
+            "Date of incident: 15/01/2023",
+            "date of loss: 15/01/2023",
+            "DATE OF ACCIDENT: 15/01/2023",
+            "The crash happened on 15/01/2023.",
+        ]
+        for text in positives:
+            results = analyzer.analyze(text)
+            incident_dates = [r for r in results if r.entity_type == "INCIDENT_DATE"]
+            assert incident_dates, f"INCIDENT_DATE missed in {text!r}: {results}"
+
     def test_australian_specific_patterns(self, analyzer):
         """Test Australian-specific pattern improvements."""
         test_cases = [
