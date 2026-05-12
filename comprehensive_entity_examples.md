@@ -1,6 +1,6 @@
 # Comprehensive Entity Type Examples
 
-## All Supported Entity Types (38 Total)
+## All Supported Entity Types (43 Total)
 
 ### 1. Australian-Specific Entities (13 types)
 
@@ -80,7 +80,28 @@ Contact Details:
 results = ally.analyze(general_text)
 ```
 
-### 4. Additional spaCy NER Entities (9 types)
+### 4. International / System PII Entities (5 types, added in v3.5)
+
+```python
+# International PII shapes loaded by default — for AU-insurance data with
+# overseas customers, business travellers, or system audit logs.
+intl_text = """
+Overseas Customer File:
+- International phone: +44 7700 900123 (UK), +1-415-555-1234 (US)
+- Parenthesised area code: (415) 555-1234
+- US SSN on file: 818-04-7100
+- Credit card (Luhn-validated): 4111 1111 1111 1111
+- ISO timestamp: Logged at 2024-05-22T14:32:00Z
+- Time of day: Meeting at 14:32 sharp, follow-up at 6:52 PM
+"""
+
+results = ally.analyze(intl_text)
+```
+
+See `docs/patterns/international.md` for the full reference, anti-collision
+rationale, priority table, and tuning instructions.
+
+### 5. Additional spaCy NER Entities (9 types)
 
 ```python
 # Example text with spaCy entities
@@ -136,6 +157,12 @@ results = ally.analyze(spacy_text)
 | DATE | General Date | 15/03/2024, March 15, 2024 |
 | MONEY_AMOUNT | Money Amount | $1,234.56 |
 | ORGANIZATION | Organization | ABC Pty Ltd, XYZ Limited |
+| **International / System (v3.5)** | | |
+| PHONE_INTL | International phone | +44 7700 900123, (415) 555-1234 |
+| US_SSN | US Social Security Number | 818-04-7100 |
+| ISO_DATETIME | ISO 8601 datetime | 2024-05-22T14:32:00Z |
+| TIME | Time of day (12/24h) | 14:32, 6:52 PM |
+| *(CREDIT_CARD upgraded with Luhn validation)* | | |
 | **Additional spaCy** | | |
 | NUMBER | Numeric Value | 42, 1234 |
 | TIME | Time Expression | 3:30 PM, 14:45 |

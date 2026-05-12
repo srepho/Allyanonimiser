@@ -195,12 +195,25 @@ for result in results:
 | Entity Type | Description | Example Pattern | Pattern File |
 |-------------|-------------|----------------|-------------|
 | INSURANCE_POLICY_NUMBER | Insurance Policy Number | `\b(?:POL\|P\|Policy)[- ]?\d{6,9}\b` | insurance_patterns.py |
-| INSURANCE_CLAIM_NUMBER | Insurance Claim Number | `\b(?:CL\|C)[- ]?\d{6,9}\b` | insurance_patterns.py |
-| INSURANCE_MEMBER_NUMBER | Insurance Member Number | Member ID patterns | insurance_patterns.py |
-| INSURANCE_GROUP_NUMBER | Group Policy Number | Group policy patterns | insurance_patterns.py |
-| VEHICLE_IDENTIFIER | Vehicle ID (VIN, plates) | `\b[A-HJ-NPR-Z0-9]{17}\b` | insurance_patterns.py |
-| CASE_REFERENCE | Case Reference Numbers | Case ID patterns | insurance_patterns.py |
-| VEHICLE_DETAILS | Vehicle Details | Make/model patterns | insurance_patterns.py |
+| INSURANCE_CLAIM_NUMBER | Insurance Claim Number | `\b(?:CLM\|CL\|C)[- ]?\d{6,9}\b` | insurance_patterns.py |
+| VEHICLE_VIN | Vehicle Identification Number | `\b[A-HJ-NPR-Z0-9]{17}\b` | insurance_patterns.py |
+| INVOICE_NUMBER | Invoice / Quote Number | `\bINV-\d{4,10}\b`, `\bQ-\d{4}\b` | insurance_patterns.py |
+| BROKER_CODE | Broker Code | `\bBRK-\d{4}\b` | insurance_patterns.py |
+| VEHICLE_DETAILS | Make / model patterns | `(?:Toyota\|Honda\|...) <model> <year>` | insurance_patterns.py |
+| INCIDENT_DATE | Date of Incident | `\bon\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})\b` | insurance_patterns.py |
+| NAME_CONSULTANT | Assigned consultant / agent | `Assigned\s+To\s*:\s*<Name>` | insurance_patterns.py |
+
+### International / System Patterns (new in v3.5)
+
+Non-AU PII shapes loaded by default — anchored on structural features that don't collide with AU patterns. See [docs/patterns/international.md](https://srepho.github.io/Allyanonimiser/patterns/international/).
+
+| Entity Type | Description | Example Pattern | Pattern File |
+|-------------|-------------|----------------|-------------|
+| PHONE_INTL | International phone (+CC, 00 IDD, or parenthesised 3-4 digit area) | `(?<!\d)\+\d{1,3}[\s.\-()]*\d[\d\s.\-()]{6,18}\d(?!\d)` | general_intl_patterns.py |
+| US_SSN | US Social Security Number (SSA reservation rules enforced) | `\b(?!000\|666\|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b` | general_intl_patterns.py |
+| CREDIT_CARD | Luhn-validated 13-19 digit card | `\b(?:\d[ -]?){12,18}\d\b` + `validate_credit_card` | general_intl_patterns.py |
+| ISO_DATETIME | ISO 8601 datetime (T-separated) | `\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z\|[+-]\d{2}:?\d{2})?\b` | general_intl_patterns.py |
+| TIME | 12/24h time | `(?<![/\d])\b(?:[01]?\d\|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s*[AaPp]\.?[Mm]\.?)?\b` | general_intl_patterns.py |
 
 ## Features
 
@@ -373,7 +386,7 @@ anonymizer = EnhancedAnonymizer(analyzer=analyzer, entity_priority=custom_priori
 
 ## Supported Entity Types
 
-Allyanonimiser supports **38 different entity types** across four categories:
+Allyanonimiser supports **43 different entity types** across five categories:
 
 ### Complete Entity Type Reference
 
@@ -419,7 +432,7 @@ Allyanonimiser supports **38 different entity types** across four categories:
 
 | Entity Type | Description | Example |
 |-------------|-------------|---------|
-| CREDIT_CARD | Credit Card | 4111 1111 1111 1111 |
+| CREDIT_CARD | Credit Card (Luhn-validated 13-19 digits) | 4111 1111 1111 1111 |
 | PERSON | Person Name | John Smith, Dr. Sarah O'Connor |
 | EMAIL_ADDRESS | Email | john@example.com |
 | DATE_OF_BIRTH | Date of Birth | DOB: 01/01/1990 |
@@ -427,6 +440,22 @@ Allyanonimiser supports **38 different entity types** across four categories:
 | DATE | General Date | 15/03/2024, March 15, 2024 |
 | MONEY_AMOUNT | Money Amount | $1,234.56 |
 | ORGANIZATION | Organization | ABC Pty Ltd, XYZ Limited |
+
+</details>
+
+<details>
+<summary><b>🌐 International / System PII Entities (5 types, added in v3.5)</b></summary>
+
+Non-AU shapes that show up in AU-insurance data when the customer or counterparty is overseas (expats, business travellers), or when system audit logs leak ISO timestamps into claim notes. All anchored on structural features that don't collide with AU patterns. See [docs/patterns/international.md](https://srepho.github.io/Allyanonimiser/patterns/international/).
+
+| Entity Type | Description | Example |
+|-------------|-------------|---------|
+| PHONE_INTL | International phone (+CC, 00 IDD, or 3-4 digit parenthesised area code) | +44 7700 900123, +1-415-555-1234, (415) 555-1234 |
+| US_SSN | US Social Security Number (with SSA reservation rules) | 818-04-7100 |
+| ISO_DATETIME | ISO 8601 datetime (T-separated, optional timezone) | 2024-05-22T14:32:00, 2024-05-22T14:32:00Z |
+| TIME | 12/24h time | 14:32, 6:52 PM, 09:15:42 |
+
+`CREDIT_CARD` (in the General section above) was upgraded in v3.5 with Luhn validation so random 16-digit blocks like policy numbers no longer match.
 
 </details>
 

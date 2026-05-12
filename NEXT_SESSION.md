@@ -9,6 +9,21 @@
 - **CI**: all 6 workflows green on Python 3.12 + 3.13 (Tests, Release Check, Test Coverage, Package Checks, Deploy Docs, Graph Update)
 - **PyPI version history**: 3.5.0 (latest), 3.4.0, 3.3.0, 3.1.2 (unyanked fallback), 3.1.1 (yanked — had `expand_acronyms` regression)
 
+## Post-release follow-ups landed (2026-05-12)
+
+- `README.md` Entity Type Reference bumped from 38 → 43, added a new `🌐 International / System PII Entities` collapsed section + a regex-pattern table for the new types. Cleaned up stale Insurance Patterns entries (`INSURANCE_MEMBER_NUMBER`, `INSURANCE_GROUP_NUMBER`, `CASE_REFERENCE` removed — those entity types don't exist in code).
+- `comprehensive_entity_examples.md` updated similarly (header + new example block + reference rows).
+
+## GitHub repo metadata — pending user decision
+
+The repo About sidebar is sparse and doesn't match the project's actual pitch. **Awaiting user approval** before applying:
+
+- **Description** (currently *"A Python tool to help with removing PII and related fields from free text."*) → suggest *"Australian-focused PII detection and anonymization for the insurance industry — fast, regex+spaCy, no GPU. Beats openai/privacy-filter on AU-insurance benches."*
+- **Homepage URL** (currently empty) → `https://srepho.github.io/Allyanonimiser/`
+- **Topics** (currently none) → `pii`, `pii-detection`, `anonymization`, `privacy`, `australia`, `insurance`, `presidio`, `spacy`, `gdpr`
+
+Apply with `gh repo edit srepho/Allyanonimiser --description "..." --homepage "..." --add-topic ...` once approved.
+
 ## Headline changes in v3.5.0
 
 International PII shapes are now detected by default — surfaced by extending the AU synth bench with overseas-customer templates and re-running AI4Privacy with the new patterns. See [Benchmarks](https://srepho.github.io/Allyanonimiser/benchmarks/) and the new [International PII](https://srepho.github.io/Allyanonimiser/patterns/international/) page.
