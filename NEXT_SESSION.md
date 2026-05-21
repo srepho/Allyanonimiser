@@ -14,6 +14,11 @@
 - `README.md` Entity Type Reference bumped from 38 → 43, added a new `🌐 International / System PII Entities` collapsed section + a regex-pattern table for the new types. Cleaned up stale Insurance Patterns entries (`INSURANCE_MEMBER_NUMBER`, `INSURANCE_GROUP_NUMBER`, `CASE_REFERENCE` removed — those entity types don't exist in code).
 - `comprehensive_entity_examples.md` updated similarly (header + new example block + reference rows).
 
+## Post-release follow-ups landed (2026-05-21)
+
+- `docs/index.md` "What's new" section refreshed from v3.4 → v3.5 (international PII entities, validate-then-pick conflict resolver, PERSON precision overhaul, VR/SSN collision fix, DOB/INCIDENT_DATE span fix). v3.4 demoted to the "prior" subsection; the two-versions-back v3.3 block dropped. Committed in `3f39f51` and pushed; `Deploy Docs` workflow re-published GitHub Pages.
+- Verified no other doc files needed bumping — historical annotations ("since v3.2.0", "new in v3.3.0", "Default in v3.3+?") are still accurate and were left alone.
+
 ## GitHub repo metadata — pending user decision
 
 The repo About sidebar is sparse and doesn't match the project's actual pitch. **Awaiting user approval** before applying:
