@@ -12,20 +12,22 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 Allyanonimiser detects and anonymizes personally identifiable information (PII) in text, with first-class support for Australian formats (TFN, ABN, Medicare, AU phone, etc.) and insurance-industry identifiers (policy numbers, claim references, vehicle rego, VIN).
 
-## What's new in v3.4
+## What's new in v3.5
 
-Pattern precision fixes surfaced by head-to-head [benchmarks](benchmarks.md) against `openai/privacy-filter` on three datasets.
+International PII coverage plus a precision overhaul. Beats `openai/privacy-filter` on 5 of 6 categories of the enriched AU bench — see [Benchmarks](benchmarks.md).
 
-- **Tightened AU_ADDRESS** — dropped two loose fallback patterns that were absorbing narrative prose; remaining patterns are anchored by state + postcode. New case-tolerant variant accepts lowercase/mixed case.
-- **Tightened AU_POSTCODE** — no longer matches bare 4-digit numbers (years, amounts). Requires state abbrev or `postcode`/`post code`/`postal code` label.
-- **Expanded DATE validator** — recognizes spaCy's natural-language DATE outputs (`March 2024`, `next Monday`, `Q1 2024`, `yesterday`, etc.).
+- **5 new entity types loaded by default** — `PHONE_INTL` (with `+CC`, `00` IDD prefix, and parenthesised area-code variants), `US_SSN` (with SSA reservation rules), `CREDIT_CARD` (Luhn-validated 13-19 digits), `ISO_DATETIME` (`2024-05-22T14:32:00`), `TIME` (12/24h, with/without seconds). All anchored on structural features that don't collide with AU patterns — see [International Patterns](patterns/international.md).
+- **Validate-then-pick conflict resolution** — when multiple patterns match the same span, the resolver now walks candidates from highest priority down and returns the first that passes per-type validation. Previously a permissive pattern (e.g. CREDIT_CARD on a 13-digit phone) could win by priority, fail its checksum, and silently drop the valid runner-up.
+- **PERSON precision overhauled** — city / state-postcode / date-shape / acronym / label-word rejection, iterative trim of trailing label tokens (`Joe Smith\nDOB` → `Joe Smith`), and the FP check now applied to single-candidate spans. AU bench PERSON F1 0.836 → 0.954.
+- **VEHICLE_REGISTRATION tightened** — SSN/TIN/NIN added to the label deny-list plus an SSN-shape negative lookahead so `bad SSN 999-04-7100` no longer absorbs `SSN 999-04` as a plate.
+- **DATE_OF_BIRTH / INCIDENT_DATE spans no longer eat the prefix** — capture-group rewrite so spans equal just the date (was `'DOB: 04/01/1959'`, now `'04/01/1959'`).
+
+### v3.4 (prior)
+
+- **Tightened AU_ADDRESS / AU_POSTCODE** — dropped loose fallbacks; bare 4-digit numbers (years, amounts) no longer match AU_POSTCODE.
+- **Expanded DATE validator** — accepts spaCy's natural-language DATE outputs (`March 2024`, `next Monday`, `Q1 2024`, `yesterday`).
 - **Widened INSURANCE_CLAIM_NUMBER** — accepts `CLM` prefix alongside `CL`/`C`.
 - **New `[bench]` optional extra** — `pip install "allyanonimiser[bench]"` for the benchmark suite.
-
-### v3.3 (prior)
-
-- **Default spaCy model** is now `en_core_web_sm` (44 MB, fast). Previously `en_core_web_lg` (587 MB). Switch with `spacy_model=SPACY_MODEL_ACCURATE` when accuracy matters.
-- **`SPACY_MODEL_FAST` / `SPACY_MODEL_ACCURATE`** constants exported for clarity.
 
 ## Key Features
 
