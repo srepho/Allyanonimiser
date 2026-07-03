@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+# setuptools >= 77 is required for the PEP 639 string-form `license = "MIT"`
+# below; older versions expect a table and misbuild the metadata.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]

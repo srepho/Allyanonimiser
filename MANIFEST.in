@@ -6,8 +6,13 @@ recursive-include tests/test_data *.csv
 recursive-include allyanonimiser *.py
 include allyanonimiser/*.py
 
+exclude NEXT_SESSION.md
+
 prune .git
 prune .github
+prune bench
+prune docs
+prune site
 prune venv
 prune env
 prune dist

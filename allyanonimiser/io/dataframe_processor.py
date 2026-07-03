@@ -89,17 +89,17 @@ class DataFrameProcessor(BaseProcessor):
         if column not in df.columns:
             raise ValueError(f"Column '{column}' not found in DataFrame")
 
-        if active_entity_types is not None:
-            self.ally.analyzer.set_active_entity_types(active_entity_types)
-        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
-
         records: list = []
         series = df[column].fillna("")
         texts = [str(t) for t in series]
         indices = series.index.tolist()
 
         # Batch analysis: pre-warms spaCy cache via nlp.pipe()
-        batch_results = self.ally.analyzer.analyze_batch(texts)
+        batch_results = self.ally.analyzer.analyze_batch(
+            texts,
+            active_entity_types=active_entity_types,
+            min_score_threshold=min_score_threshold,
+        )
 
         for idx, text_str, entities in zip(indices, texts, batch_results):
             if not text_str:
@@ -139,15 +139,13 @@ class DataFrameProcessor(BaseProcessor):
         output_column = output_column or f"{column}_anonymized"
         result_df = df if inplace else df.copy()
 
-        if active_entity_types is not None:
-            self.ally.analyzer.set_active_entity_types(active_entity_types)
-
         def _anonymize(text):
             if pd.isna(text):
                 return text
             r = self.ally.anonymize(
                 str(text),
                 operators=operators,
+                active_entity_types=active_entity_types,
                 age_bracket_size=age_bracket_size,
                 keep_postcode=keep_postcode,
             )
@@ -194,10 +192,6 @@ class DataFrameProcessor(BaseProcessor):
         if should_use_pyarrow:
             df = _use_arrow_strings(df)
 
-        if active_entity_types is not None:
-            self.ally.analyzer.set_active_entity_types(active_entity_types)
-        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
-
         result_df = df.copy()
         all_entities: list = []
 
@@ -212,7 +206,12 @@ class DataFrameProcessor(BaseProcessor):
 
             for idx, text in iterator:
                 text_str = str(text)
-                entities = self.ally.analyze(text_str, expand_acronyms=expand_acronyms)
+                entities = self.ally.analyze(
+                    text_str,
+                    active_entity_types=active_entity_types,
+                    min_score_threshold=min_score_threshold,
+                    expand_acronyms=expand_acronyms,
+                )
 
                 if save_entities:
                     for e in entities:
@@ -232,6 +231,7 @@ class DataFrameProcessor(BaseProcessor):
                     r = self.ally.anonymize(
                         text_str,
                         operators=operators,
+                        active_entity_types=active_entity_types,
                         age_bracket_size=age_bracket_size,
                         keep_postcode=keep_postcode,
                         expand_acronyms=expand_acronyms,

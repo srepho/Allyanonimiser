@@ -9,6 +9,15 @@ import spacy
 
 from .common_formats import analyze_common_formats
 from .conflict_resolver import deduplicate_and_resolve_conflicts
+from .context_analyzer import ContextAnalyzer
+from .false_positives import (
+    LOCATION_FP_WORDS,
+    NON_LOCATION_PREFIXES,
+    ORG_ABBREVIATIONS,
+    PERSON_FP_WORDS,
+    PERSON_TRAILING_STOP_WORDS,
+    STREET_SUFFIXES,
+)
 from .recognizer_result import RecognizerResult
 
 logger = logging.getLogger(__name__)
@@ -116,6 +125,10 @@ class EnhancedAnalyzer:
                 logger.warning("Could not load spaCy model: %s", e)
                 self.use_spacy = False
                 self.nlp = None
+
+        # Context-aware false-positive filter, built once (constructing it
+        # rebuilds all context pattern/keyword tables).
+        self._context_analyzer = ContextAnalyzer()
 
         # Result caching system
         self.enable_caching = enable_caching
@@ -247,7 +260,14 @@ class EnhancedAnalyzer:
         else:
             raise ValueError("Threshold must be between 0 and 1.0")
 
-    def analyze(self, text, language="en", score_adjustment=None):
+    def analyze(
+        self,
+        text,
+        language="en",
+        score_adjustment=None,
+        active_entity_types=None,
+        min_score_threshold=None,
+    ):
         """
         Analyze text to detect PII entities.
 
@@ -256,6 +276,11 @@ class EnhancedAnalyzer:
             language: The language of the text (default: en)
             score_adjustment: Optional dictionary mapping entity_type to score adjustment value
                 (positive or negative float that will be added to the confidence score)
+            active_entity_types: Optional list of entity types to detect for this
+                call only. Falls back to the instance-level setting
+                (``set_active_entity_types``) when None.
+            min_score_threshold: Optional confidence threshold for this call only.
+                Falls back to the instance-level setting when None.
 
         Returns:
             List of RecognizerResult objects representing detected entities
@@ -266,10 +291,23 @@ class EnhancedAnalyzer:
         if score_adjustment is None:
             score_adjustment = {}
 
+        # Resolve per-call overrides without mutating instance state, so one
+        # call's filters can never leak into the next.
+        if active_entity_types is not None:
+            active_entity_types = set(active_entity_types)
+        else:
+            active_entity_types = self.active_entity_types
+        if min_score_threshold is None:
+            min_score_threshold = self.min_score_threshold
+        elif not 0 <= min_score_threshold <= 1.0:
+            raise ValueError("Threshold must be between 0 and 1.0")
+
         # Check result cache for exact text match if caching is enabled
         if self.enable_caching:
             # Create a cache key that includes active entity types and score adjustment
-            cache_key = self._create_cache_key(text, score_adjustment)
+            cache_key = self._create_cache_key(
+                text, score_adjustment, active_entity_types, min_score_threshold
+            )
 
             # Check if we have a cached result
             if cache_key in self._result_cache:
@@ -288,10 +326,8 @@ class EnhancedAnalyzer:
             pattern_results = self._analyze_with_patterns(text)
             # Cache pattern results if caching is enabled
             if self.enable_caching:
+                self._evict_oldest(self._pattern_result_cache, self.max_cache_size)
                 self._pattern_result_cache[text] = pattern_results.copy()
-                # Limit pattern cache size
-                if len(self._pattern_result_cache) > self.max_cache_size:
-                    self._pattern_result_cache = {}
 
         # Check if we have cached spaCy results
         spacy_results = []
@@ -303,10 +339,8 @@ class EnhancedAnalyzer:
                 spacy_results = self._analyze_with_spacy(text)
                 # Cache spaCy results if caching is enabled
                 if self.enable_caching:
+                    self._evict_oldest(self._spacy_result_cache, self.max_cache_size)
                     self._spacy_result_cache[text] = spacy_results.copy()
-                    # Limit spaCy cache size
-                    if len(self._spacy_result_cache) > self.max_cache_size:
-                        self._spacy_result_cache = {}
 
         # Add entity-specific extraction for common formats
         format_results = analyze_common_formats(text)
@@ -322,11 +356,11 @@ class EnhancedAnalyzer:
                 result.score = min(1.0, result.score)
 
         # Filter by active entity types, if specified
-        if self.active_entity_types:
-            combined_results = [r for r in combined_results if r.entity_type in self.active_entity_types]
+        if active_entity_types:
+            combined_results = [r for r in combined_results if r.entity_type in active_entity_types]
 
         # Filter by score threshold
-        combined_results = [r for r in combined_results if r.score >= self.min_score_threshold]
+        combined_results = [r for r in combined_results if r.score >= min_score_threshold]
 
         # De-duplicate results and resolve entity conflicts
         deduplicated_results = deduplicate_and_resolve_conflicts(
@@ -334,8 +368,7 @@ class EnhancedAnalyzer:
         )
 
         # Apply context-aware filtering
-        from .context_analyzer import ContextAnalyzer
-        context_analyzer = ContextAnalyzer()
+        context_analyzer = self._context_analyzer
 
         filtered_results = []
         for result in deduplicated_results:
@@ -352,10 +385,7 @@ class EnhancedAnalyzer:
 
         # Cache the final result if caching is enabled
         if self.enable_caching:
-            # Manage cache size
-            if len(self._result_cache) >= self.max_cache_size:
-                # Simple LRU implementation: clear half the cache when full
-                self._result_cache = {}
+            self._evict_oldest(self._result_cache, self.max_cache_size)
 
             # Store a copy of the results
             self._result_cache[cache_key] = filtered_results.copy()
@@ -367,51 +397,70 @@ class EnhancedAnalyzer:
         texts: list[str],
         language: str = "en",
         score_adjustment=None,
+        active_entity_types=None,
+        min_score_threshold=None,
     ) -> list[list["RecognizerResult"]]:
         """Analyze a batch of texts. Returns a list of result lists.
 
         Uses spaCy's ``nlp.pipe()`` for efficient batch NER when available,
-        while still leveraging the per-text cache.
+        while still leveraging the per-text cache. Results are identical to
+        calling :meth:`analyze` on each text individually.
         """
-        # Pre-warm spaCy NER cache for uncached texts in one pipe() call
-        if self.use_spacy:
+        # Pre-warm spaCy NER cache for uncached texts in one pipe() call.
+        # Only useful when caching is on — analyze() reads spaCy results from
+        # the cache, so without it the pipe() work would just be redone.
+        if self.use_spacy and self.enable_caching:
             uncached = [
-                (i, t) for i, t in enumerate(texts)
+                t for t in dict.fromkeys(texts)
                 if t and t not in self._spacy_result_cache
             ]
             if uncached:
-                indices, raw_texts = zip(*uncached)
-                docs = self.nlp.pipe(raw_texts, batch_size=min(256, len(raw_texts)))
-                for idx, doc in zip(indices, docs):
-                    spacy_results = self._doc_to_results(doc)
-                    self._spacy_result_cache[raw_texts[indices.index(idx)]] = spacy_results
+                docs = self.nlp.pipe(uncached, batch_size=min(256, len(uncached)))
+                for raw_text, doc in zip(uncached, docs):
+                    self._evict_oldest(self._spacy_result_cache, self.max_cache_size)
+                    self._spacy_result_cache[raw_text] = self._doc_to_results(doc)
 
-        return [self.analyze(t, language, score_adjustment) for t in texts]
+        return [
+            self.analyze(
+                t, language, score_adjustment,
+                active_entity_types=active_entity_types,
+                min_score_threshold=min_score_threshold,
+            )
+            for t in texts
+        ]
 
-    def _doc_to_results(self, doc) -> list["RecognizerResult"]:
-        """Convert a spaCy Doc to RecognizerResult list (same logic as _analyze_with_spacy)."""
-        results = []
-        for ent in doc.ents:
-            results.append(RecognizerResult(
-                entity_type=ent.label_,
-                start=ent.start_char,
-                end=ent.end_char,
-                score=0.9 if ent.label_ in ("PERSON", "ORG", "GPE", "LOC") else 0.7,
-                text=ent.text,
-            ))
-        return results
+    @staticmethod
+    def _evict_oldest(cache: dict, max_size: int) -> None:
+        """Evict the oldest half of *cache* once it reaches *max_size*.
 
-    def _create_cache_key(self, text, score_adjustment=None):
+        Dicts preserve insertion order, so the first keys are the oldest
+        entries. Evicting half (rather than clearing everything) keeps the
+        most recent results warm.
+        """
+        if len(cache) >= max_size:
+            for key in list(cache)[: max_size // 2]:
+                del cache[key]
+
+    def _create_cache_key(
+        self, text, score_adjustment=None, active_entity_types=None,
+        min_score_threshold=None,
+    ):
         """
         Create a unique cache key for the given text and parameters.
 
         Args:
             text: The text to analyze
             score_adjustment: Optional score adjustment dictionary
+            active_entity_types: Effective entity-type filter for this call
+            min_score_threshold: Effective score threshold for this call
 
         Returns:
             A hashable cache key
         """
+        if active_entity_types is None:
+            active_entity_types = self.active_entity_types
+        if min_score_threshold is None:
+            min_score_threshold = self.min_score_threshold
         # For very long texts, use a truncated version + hash to save memory
         if len(text) > 200:
             import hashlib
@@ -422,14 +471,14 @@ class EnhancedAnalyzer:
             text_key = text
 
         # Include active entity types in the key
-        entity_types_key = tuple(sorted(self.active_entity_types)) if self.active_entity_types else "all"
+        entity_types_key = tuple(sorted(active_entity_types)) if active_entity_types else "all"
 
         # Include score adjustment in the key if provided
         if score_adjustment:
             adj_items = tuple(sorted(score_adjustment.items()))
-            return (text_key, entity_types_key, adj_items, self.min_score_threshold)
+            return (text_key, entity_types_key, adj_items, min_score_threshold)
 
-        return (text_key, entity_types_key, None, self.min_score_threshold)
+        return (text_key, entity_types_key, None, min_score_threshold)
 
     def get_cache_statistics(self):
         """
@@ -606,10 +655,16 @@ class EnhancedAnalyzer:
         Returns:
             List of RecognizerResult objects
         """
-        results = []
+        return self._doc_to_results(self.nlp(text))
 
-        # Process text with spaCy
-        doc = self.nlp(text)
+    def _doc_to_results(self, doc) -> list["RecognizerResult"]:
+        """Convert a spaCy Doc to a filtered RecognizerResult list.
+
+        Shared by the single-text path (:meth:`_analyze_with_spacy`) and the
+        batch path (:meth:`analyze_batch`) so both apply identical entity-type
+        mapping and false-positive suppression.
+        """
+        results = []
 
         # Extract entities detected by spaCy
         for ent in doc.ents:
@@ -631,80 +686,25 @@ class EnhancedAnalyzer:
                     continue
 
                 # Check for street/place suffixes
-                if any(ent.text.lower().endswith(suffix) for suffix in [" st", " street", " rd", " road",
-                                                                        " ave", " avenue", " dr", " drive",
-                                                                        " ln", " lane", " pl", " place",
-                                                                        " ct", " court", " cr", " crescent"]):
+                if any(ent.text.lower().endswith(suffix) for suffix in STREET_SUFFIXES):
                     continue
 
-                # Check for common false positive words
-                false_positive_words = [
-                    # Status and state words
-                    "balance", "outstanding", "await", "awaiting", "pending", "completed",
-                    "processed", "received", "submitted", "approved", "declined", "rejected",
-                    "cancelled", "closed", "open", "active", "inactive", "suspended",
-                    "terminated", "expired", "current", "previous", "ongoing", "finished",
-
-                    # Action words often misdetected
-                    "review", "update", "check", "verify", "confirm", "validate", "process",
-                    "submit", "approve", "decline", "reject", "cancel", "close", "complete",
-                    "advised", "notify", "inform", "contact", "follow", "proceed", "continue",
-
-                    # Business/Insurance specific terms
-                    "excess", "premium", "deductible", "coverage", "liability", "claim",
-                    "policy", "payment", "invoice", "receipt", "refund", "credit", "debit",
-                    "assessment", "evaluation", "inspection", "investigation", "settlement",
-
-                    # Service/Repair terms
-                    "repairer", "repairs", "service", "maintenance", "workshop", "garage",
-                    "parts", "replacement", "installation", "removal", "diagnostic", "estimate",
-
-                    # Communication status
-                    "unreachable", "unavailable", "contactable", "available", "busy", "engaged",
-
-                    # Common single words that aren't names
-                    "drop", "pickup", "delivery", "collection", "dispatch", "arrival",
-                    "departure", "transfer", "forward", "return", "exchange", "replace",
-
-                    # Document/Form related
-                    "form", "document", "report", "statement", "declaration", "certificate",
-                    "authorization", "approval", "confirmation", "acknowledgment", "notice",
-
-                    # Time-related terms
-                    "today", "tomorrow", "yesterday", "daily", "weekly", "monthly", "yearly",
-                    "immediate", "urgent", "routine", "scheduled", "overdue", "expired",
-
-                    # Quality/Condition terms
-                    "new", "used", "damaged", "repaired", "replaced", "original", "genuine",
-                    "aftermarket", "compatible", "suitable", "adequate", "insufficient"
-                ]
-
                 # Check if entire text is a false positive
-                if lc_text in false_positive_words:
+                if lc_text in PERSON_FP_WORDS:
                     continue
 
                 # Check if text contains multiple false positive words
                 words = lc_text.split()
-                if any(word in false_positive_words for word in words):
+                if any(word in PERSON_FP_WORDS for word in words):
                     continue
 
-                # Check for boundary issues - words that shouldn't be part of names.
-                # spaCy NER occasionally absorbs an adjacent label token
-                # (e.g. "Joe Smith\nDOB", "Kristin Rodriguez\nClaims") because
-                # the newline doesn't reset entity tagging. Trim them off.
-                stop_words = {
-                    "subject", "matter", "issue", "claim", "claims", "policy",
-                    "number", "date", "time", "amount", "status", "type",
-                    "category", "dob", "doi", "phone", "mobile", "email",
-                    "address", "tel", "fax", "ref", "reference",
-                }
-
-                # Iteratively pop trailing stop-word tokens. spaCy's split()
-                # handles \n as a separator, so we can match newline-absorbed
-                # labels with the same single rule.
+                # Check for boundary issues - words that shouldn't be part of
+                # names. Iteratively pop trailing stop-word tokens (spaCy's
+                # split() handles \n as a separator, so newline-absorbed labels
+                # match with the same single rule).
                 text_parts = ent.text.split()
                 trimmed_changed = False
-                while len(text_parts) > 1 and text_parts[-1].lower() in stop_words:
+                while len(text_parts) > 1 and text_parts[-1].lower() in PERSON_TRAILING_STOP_WORDS:
                     text_parts.pop()
                     trimmed_changed = True
 
@@ -729,64 +729,25 @@ class EnhancedAnalyzer:
             if entity_type == "ORGANIZATION":
                 lc_text = ent.text.lower()
                 # Common abbreviations that shouldn't be organizations
-                if lc_text in {
-                    "dob", "doi", "medicare", "abn", "tfn", "acn",
-                    "ssn", "tin", "nin", "vin", "crn", "bsb", "gst",
-                    "pol", "ref", "id",
-                }:
+                if lc_text in ORG_ABBREVIATIONS:
                     continue
 
             # Skip LOCATION false positives
             if entity_type == "LOCATION":
                 lc_text = ent.text.lower()
 
-                # Common words that are NOT locations
-                location_false_positives = [
-                    # Action words
-                    "await", "awaiting", "awaits", "awaited",
-                    "repair", "repairs", "repairing", "repaired",
-                    "service", "services", "servicing", "serviced",
-                    "process", "processing", "processed",
-                    "update", "updates", "updating", "updated",
-                    "review", "reviews", "reviewing", "reviewed",
-                    "submit", "submits", "submitting", "submitted",
-                    "pending", "complete", "completed", "completing",
-
-                    # Status words
-                    "open", "closed", "active", "inactive",
-                    "approved", "declined", "rejected", "cancelled",
-                    "available", "unavailable", "occupied", "vacant",
-
-                    # Business/Insurance terms
-                    "claim", "claims", "policy", "policies",
-                    "coverage", "liability", "excess", "premium",
-                    "payment", "balance", "outstanding", "overdue",
-
-                    # Department/Service terms
-                    "workshop", "workshops", "garage", "garages",
-                    "parts", "spares", "supplies", "inventory",
-                    "storage", "warehouse", "facility", "facilities",
-
-                    # Common misdetections
-                    "drop", "drops", "pickup", "delivery",
-                    "arrival", "departure", "transit", "shipping"
-                ]
-
                 # Check if the entire text is a false positive
-                if lc_text in location_false_positives:
+                if lc_text in LOCATION_FP_WORDS:
                     continue
 
                 # Check if it's a single word that's clearly not a location
                 if len(lc_text.split()) == 1:
-                    # Single words that start with these are usually not locations
-                    non_location_prefixes = ["await", "repair", "serv", "proc", "updat", "review",
-                                           "submit", "pend", "complet", "approv", "declin", "reject"]
-                    if any(lc_text.startswith(prefix) for prefix in non_location_prefixes):
+                    if any(lc_text.startswith(prefix) for prefix in NON_LOCATION_PREFIXES):
                         continue
 
                 # Check for patterns that indicate it's not a location
                 # e.g., "Repairs in progress" - "Repairs" is not a location
-                if lc_text.endswith("s") and lc_text[:-1] in location_false_positives:
+                if lc_text.endswith("s") and lc_text[:-1] in LOCATION_FP_WORDS:
                     continue
 
             # Create result

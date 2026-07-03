@@ -69,6 +69,7 @@ class EnhancedAnonymizer:
         language: str = "en",
         age_bracket_size: int = 5,
         keep_postcode: bool = True,
+        active_entity_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """Anonymize PII entities in *text*.
 
@@ -85,7 +86,9 @@ class EnhancedAnonymizer:
         if not self.analyzer:
             return {"text": text, "items": []}
 
-        results = self.analyzer.analyze(text, language)
+        results = self.analyzer.analyze(
+            text, language, active_entity_types=active_entity_types
+        )
         operators = operators or {}
 
         # Collect postcode / address info for postcode preservation

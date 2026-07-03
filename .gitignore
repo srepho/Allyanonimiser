@@ -197,3 +197,7 @@ cache/
 bench/results_*.json
 bench/data/echr_dev.zip
 bench/data/echr_dev/
+
+# Internal dev/session files (never publish)
+NEXT_SESSION.md
+SESSION_HISTORY.md

@@ -8,21 +8,24 @@ consumes them.
 
 import re
 
+from ..patterns.shared_regex import (
+    AU_ABN_LABELLED,
+    AU_ACN_LABELLED,
+    AU_CENTRELINK_CRN_LABELLED,
+    AU_MEDICARE_LABELLED,
+    AU_PASSPORT_LABELLED,
+    AU_PHONE_PATTERNS,
+    AU_TFN_LABELLED,
+    EMAIL_ADDRESS_PATTERN,
+)
 from .recognizer_result import RecognizerResult
 
 _EMAIL_PATTERNS: dict[str, str] = {
-    "EMAIL_ADDRESS": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+    "EMAIL_ADDRESS": EMAIL_ADDRESS_PATTERN,
 }
 
 _PHONE_PATTERNS: dict[str, list[str]] = {
-    "AU_PHONE": [
-        r"\b(?:\+61|0)4\d{2}[\s-]?\d{3}[\s-]?\d{3}\b",  # Mobile
-        r"\b(?:\+61|0)[2378][\s-]?\d{4}[\s-]?\d{4}\b",  # Landline
-        r"\(\d{2}\)\s*\d{4}[\s-]?\d{4}\b",              # (02) 1234 5678
-        r"\b13\d{2}\s*\d{2}\b",                          # 13xx xx
-        r"\b1300\s+\d{3}\s+\d{3}\b",                     # 1300 xxx xxx
-        r"\b1800\s*\d{3}\s*\d{3}\b",                     # 1800 xxx xxx
-    ],
+    "AU_PHONE": AU_PHONE_PATTERNS,
 }
 
 # Identifier captures require at least one digit so the pattern can't grab a
@@ -47,28 +50,19 @@ _ID_PATTERNS: dict[str, list[str]] = {
 }
 
 _AU_PATTERNS: dict[str, list[str]] = {
-    "AU_TFN": [
-        r"(?:TFN|Tax\s+File\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b",
-    ],
-    "AU_MEDICARE": [
-        r"(?:Medicare|Medicare\s+Number)[:\s]*([2-6]\d{3}\s*\d{5}\s*\d{1})\b",
-    ],
-    "AU_ABN": [
-        r"(?:ABN|Australian\s+Business\s+Number)[:\s]*(\d{2}\s*\d{3}\s*\d{3}\s*\d{3})\b",
-    ],
-    "AU_ACN": [
-        r"(?:ACN|Australian\s+Company\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3})\b",
-    ],
+    "AU_TFN": [AU_TFN_LABELLED],
+    "AU_MEDICARE": [AU_MEDICARE_LABELLED],
+    "AU_ABN": [AU_ABN_LABELLED],
+    "AU_ACN": [AU_ACN_LABELLED],
+    # Drivers-license forms are NOT shared with patterns/au_patterns.py: the
+    # labelled forms here are deliberately stricter than the standalone forms
+    # loaded as analyzer patterns.
     "AU_DRIVERS_LICENSE": [
         r"(?:Driver\'?s?\s+License|Licence|DL)[:\s#]*([A-Z0-9]{6,10})\b",
         r"(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+License[:\s]*(\d{6,10})\b",
     ],
-    "AU_PASSPORT": [
-        r"(?:Passport|Passport\s+Number)[:\s]*([A-Z][0-9]{7})\b",
-    ],
-    "AU_CENTRELINK_CRN": [
-        r"(?:CRN|Centrelink\s+Reference\s+Number)[:\s]*(\d{3}\s*\d{3}\s*\d{3}[A-Z]?)\b",
-    ],
+    "AU_PASSPORT": [AU_PASSPORT_LABELLED],
+    "AU_CENTRELINK_CRN": [AU_CENTRELINK_CRN_LABELLED],
 }
 
 

@@ -143,4 +143,5 @@ def test_custom_anonymization_operator(mocker):
         "en",
         age_bracket_size=5,
         keep_postcode=True,
+        active_entity_types=None,
     )

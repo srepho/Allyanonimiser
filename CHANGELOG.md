@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Fixed — per-call options no longer leak into later calls
+
+- **`analyze()` / `anonymize()` state leakage**: passing `active_entity_types` or `min_score_threshold` used to call sticky setters on the shared `EnhancedAnalyzer`, silently restricting every subsequent call (e.g. one `analyze(text, active_entity_types=["PERSON"])` made all later `anonymize()` calls PERSON-only). Per-call options are now threaded through as parameters and never mutate instance state. The explicit `set_active_entity_types()` / `set_min_score_threshold()` methods remain the documented persistent knobs. The same fix applies to `DataFrameProcessor` and `StreamProcessor`, which previously also stomped analyzer state (including unconditionally resetting the score threshold to their own default). New regression suite: `tests/test_state_isolation.py`.
+- **`analyze_batch()` now produces identical results to per-text `analyze()`**: the batch fast-path previously cached spaCy entities without the PERSON/LOCATION/ORGANIZATION false-positive filtering and without entity-type mapping (raw `GPE`/`ORG` labels), so batch users missed the v3.5.0 precision improvements. Both paths now share one `_doc_to_results()` conversion. Also removed an O(n²) index lookup in the batch pre-warm loop.
+
+### Changed — internal consolidation (no behavior change; AU bench verified identical)
+
+- New `patterns/shared_regex.py`: single source for the AU identifier regexes (TFN/Medicare/ABN/ACN/passport/CRN labelled forms, the 6 AU_PHONE variants, EMAIL) that were previously duplicated — and already drifting (`1300\s+` vs `1300\s*`) — between `patterns/au_patterns.py` and `core/common_formats.py`.
+- New `core/false_positives.py`: single source for the PERSON/LOCATION/ORGANIZATION false-positive word lists and span-shape checks previously duplicated between `core/analyzer.py` (inline lists) and `core/conflict_resolver.py` (frozensets). Moves ~140 lines of word lists out of `core/analyzer.py`.
+- Removed the duplicate loose `CREDIT_CARD` pattern from `general_patterns.py`; the Luhn-validated 13-19-digit pattern in `general_intl_patterns.py` is a strict superset.
+
+### Performance
+
+- `ContextAnalyzer` is built once per analyzer instead of once per `analyze()` call.
+- Result caches now evict the oldest half when full instead of clearing entirely (the old code cleared 100% of entries at the "LRU" comment).
+- `analyze_batch` pre-warm deduplicates repeated texts before the `nlp.pipe()` call.
+
+### Packaging / CI
+
+- `build-system` now requires `setuptools>=77` (needed for the PEP 639 string-form `license = "MIT"`; the old `>=42` pin could misbuild metadata).
+- Coverage upload folded into the main Tests workflow using the full suite; the stale `coverage.yml` (which reported coverage from only 4 test files) is deleted. `codecov-action` bumped v3 → v5, remaining `checkout`/`setup-python` pins bumped to v4/v5.
+- `NEXT_SESSION.md` (internal session log) untracked from the public repo and gitignored; `MANIFEST.in` now also prunes `bench/`, `docs/`, `site/` from the sdist.
+
 ## 3.5.0 (2026-05-11)
 
 International PII coverage added to the default pipeline (PHONE_INTL, US_SSN, CREDIT_CARD with Luhn, ISO_DATETIME, TIME), PERSON precision overhauled, and the conflict resolver no longer silently drops valid runner-ups when a permissive pattern wins by priority and then fails validation. Bench performance: on the enriched AU bench (160 docs, 1340 spans, including expat/payment/business-travel templates) Ally now beats `openai/privacy-filter` on 5 of 6 categories. On AI4Privacy English (1000 docs) Ally matches openai overall (ANY F1 0.782 vs 0.781) — up from 0.728.

@@ -11,56 +11,13 @@ later-registered entries can override built-in defaults.
 """
 
 
-import re
-
+from .false_positives import (
+    DATE_SHAPE_RE,
+    LABEL_SUFFIXES,
+    is_false_positive_person,
+)
 from .recognizer_result import RecognizerResult
 from .validators import EntityValidator
-
-# spaCy NER occasionally mislabels date strings as ORGANIZATION. We drop
-# those candidates before priority resolution so the legitimate
-# DATE / DATE_OF_BIRTH / INCIDENT_DATE detection wins.
-_DATE_SHAPE = re.compile(r"^\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}$")
-
-# Known false-positive span-text patterns. If the span text ends in one of
-# these, all results for the span are discarded (the span is a label, not PII).
-_LABEL_SUFFIXES = ("number", "ref", "#", "id", "identifier")
-
-# Street/place suffixes that cause spaCy to misfire on PERSON.
-_STREET_SUFFIXES = (
-    " st", " street", " rd", " road", " ave", " avenue",
-    " dr", " drive", " ln", " lane", " pl", " place",
-    " ct", " court", " cr", " crescent", " mall",
-)
-
-# AU capitals + major cities that spaCy frequently mislabels as PERSON when
-# they appear alone (no surrounding sentence context to reveal "place").
-_AU_CITIES = frozenset({
-    "sydney", "melbourne", "brisbane", "perth", "adelaide",
-    "hobart", "canberra", "darwin", "newcastle", "wollongong",
-    "geelong", "cairns", "townsville",
-})
-
-# Acronyms / labels that spaCy sometimes tags as PERSON.
-_PERSON_ACRONYMS = frozenset({
-    "vin", "abn", "acn", "tfn", "plc", "llc", "gst", "bsb",
-    "crn", "dob", "doi", "ref", "pol", "id",
-})
-
-# Common label / non-name words that spaCy occasionally tags as PERSON
-# alone or as the leading token of a multi-word span.
-_PERSON_LABEL_WORDS = frozenset({
-    "email", "phone", "mobile", "address", "subject", "tel", "fax",
-    "claim", "claims", "policy", "vehicle", "residential", "patient",
-    "customer", "insured", "director", "policyholder", "contact",
-    "ref", "reference", "number", "date", "time", "dob", "doi",
-    "medicare", "matter", "issue", "category", "type", "status",
-})
-
-# A span containing an AU state abbreviation followed by a 3-4 digit
-# postcode is an address line, never a person.
-_STATE_POSTCODE_RE = re.compile(
-    r"\b(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{3,4}\b"
-)
 
 # When a DATE result fails validation, drop it only if the validator flagged
 # it as one of these specific false-positive shapes. Other validation failures
@@ -101,40 +58,6 @@ def _is_valid_single(result: RecognizerResult) -> bool:
             return True
 
 
-def _is_false_positive_person(text: str) -> bool:
-    """Detect span text that spaCy is likely to have miscategorised as PERSON."""
-    lower = text.lower().strip()
-    upper = text.upper()
-    return (
-        lower.startswith("policy")
-        or lower.startswith("ref")
-        or lower.startswith("claim")
-        or upper.startswith("POL-")
-        or upper.startswith("CL-")
-        or upper.startswith("CLM-")
-        or "number" in lower
-        or any(lower.endswith(sfx) for sfx in _STREET_SUFFIXES)
-        or lower in {"medicare"}
-        # AU capital alone is almost always a place, not a person.
-        or lower in _AU_CITIES
-        # Three-letter acronyms / labels frequently misfired as PERSON.
-        or lower in _PERSON_ACRONYMS
-        # Date-shaped spans labelled PERSON (e.g. spaCy occasionally tags
-        # "04/07/1999" as PERSON when a name precedes it).
-        or _DATE_SHAPE.match(lower) is not None
-        # State+postcode line absorbed into a PERSON span: "Darwin NT 6000",
-        # "Sydney NSW 2000". Always an address fragment.
-        or _STATE_POSTCODE_RE.search(text) is not None
-        # Street numbers absorbed: "460 Rundle Mall", "123 Queen St". The
-        # _STREET_SUFFIXES branch catches the common ones; this catches
-        # spans that BEGIN with a digit (street number).
-        or (text and text[0].isdigit() and " " in text)
-        # First (or only) token is a label word ("Email", "vehicle AU-4321",
-        # "Residential ..."). Real names don't start with these.
-        or (bool(lower.split()) and lower.split()[0] in _PERSON_LABEL_WORDS)
-    )
-
-
 def resolve_entity_conflicts(
     results: list[RecognizerResult],
     text: str,
@@ -152,15 +75,15 @@ def resolve_entity_conflicts(
     Returns:
         The winning result, or ``None`` if the span should be dropped.
     """
-    if any(text.lower().endswith(sfx) for sfx in _LABEL_SUFFIXES):
+    if any(text.lower().endswith(sfx) for sfx in LABEL_SUFFIXES):
         return None
 
-    if _DATE_SHAPE.match(text):
+    if DATE_SHAPE_RE.match(text):
         results = [r for r in results if r.entity_type not in ("ORGANIZATION", "LOCATION")]
         if not results:
             return None
 
-    if any(r.entity_type == "PERSON" for r in results) and _is_false_positive_person(text):
+    if any(r.entity_type == "PERSON" for r in results) and is_false_positive_person(text):
         filtered = [r for r in results if r.entity_type != "PERSON"]
         return filtered[0] if filtered else None
 
@@ -218,7 +141,7 @@ def deduplicate_and_resolve_conflicts(
             # apply the FP check here too. Without this, spaCy NER PERSON
             # mislabels (cities, address fragments, label words) slip through
             # whenever they don't co-occur with another competing entity.
-            if winner.entity_type == "PERSON" and _is_false_positive_person(span_text):
+            if winner.entity_type == "PERSON" and is_false_positive_person(span_text):
                 continue
         else:
             winner = resolve_entity_conflicts(span_results, span_text, patterns)

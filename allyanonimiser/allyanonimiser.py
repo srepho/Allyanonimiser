@@ -300,13 +300,14 @@ class Allyanonimiser:
             min_score_threshold = config.min_score_threshold
             expand_acronyms = config.expand_acronyms
 
-        if active_entity_types is not None:
-            self.analyzer.set_active_entity_types(active_entity_types)
-        if min_score_threshold is not None:
-            self.analyzer.set_min_score_threshold(min_score_threshold)
-
         processed_text, _ = self._preprocess(text, expand_acronyms)
-        return self.analyzer.analyze(processed_text, language, score_adjustment)
+        return self.analyzer.analyze(
+            processed_text,
+            language,
+            score_adjustment,
+            active_entity_types=active_entity_types,
+            min_score_threshold=min_score_threshold,
+        )
 
     def get_available_entity_types(self) -> dict[str, Any]:
         """Return metadata about all registered entity types."""
@@ -355,9 +356,6 @@ class Allyanonimiser:
             age_bracket_size = config.age_bracket_size
             keep_postcode = config.keep_postcode
 
-        if active_entity_types is not None:
-            self.analyzer.set_active_entity_types(active_entity_types)
-
         processed_text, _ = self._preprocess(text, expand_acronyms)
 
         result = self.anonymizer.anonymize(
@@ -366,6 +364,7 @@ class Allyanonimiser:
             language,
             age_bracket_size=age_bracket_size,
             keep_postcode=keep_postcode,
+            active_entity_types=active_entity_types,
         )
 
         processing_time = time.time() - start_time

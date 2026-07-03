@@ -1,16 +1,17 @@
 """
 General patterns for detecting common PII.
+
+CREDIT_CARD is intentionally absent: the Luhn-validated 13-19-digit pattern
+in :mod:`allyanonimiser.patterns.general_intl_patterns` is a strict superset
+of the old 4x4-groups form that used to live here.
 """
+
+from .shared_regex import EMAIL_ADDRESS_PATTERN
+
 
 def get_general_pattern_definitions():
     """Return patterns for common PII detection."""
     return [
-        {
-            "entity_type": "CREDIT_CARD",
-            "patterns": [r"\b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}\b"],
-            "context": ["credit", "card", "visa", "mastercard", "payment"],
-            "name": "Credit Card Number"
-        },
         {
             "entity_type": "PERSON",
             "patterns": [
@@ -23,7 +24,7 @@ def get_general_pattern_definitions():
         },
         {
             "entity_type": "EMAIL_ADDRESS",
-            "patterns": [r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"],
+            "patterns": [EMAIL_ADDRESS_PATTERN],
             "context": ["email", "contact", "mail", "@"],
             "name": "Email Address"
         },

@@ -45,4 +45,13 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest tests/ --cov=allyanonimiser --cov-report=term-missing
+        pytest tests/ --cov=allyanonimiser --cov-report=term-missing --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      # Upload once per run; full-suite coverage (replaces the old
+      # coverage.yml, which only measured 4 test files).
+      if: matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v5
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: false

@@ -126,12 +126,6 @@ class StreamProcessor(BaseProcessor):
                 "low_memory": True
             }
 
-        # Configure analyzer settings
-        if active_entity_types is not None:
-            self.ally.analyzer.set_active_entity_types(active_entity_types)
-
-        self.ally.analyzer.set_min_score_threshold(min_score_threshold)
-
         # Handle single column case
         if isinstance(text_columns, str):
             text_columns = [text_columns]
@@ -275,14 +269,11 @@ class StreamProcessor(BaseProcessor):
 
             texts = chunk[column].to_list()
 
-            # Analyze in batch
-            if active_entity_types is not None:
-                self.ally.analyzer.set_active_entity_types(active_entity_types)
-            self.ally.analyzer.set_min_score_threshold(min_score_threshold)
-
             # Use batch analysis to pre-warm spaCy cache
             batch_results = self.ally.analyzer.analyze_batch(
-                [str(t) if t is not None else "" for t in texts]
+                [str(t) if t is not None else "" for t in texts],
+                active_entity_types=active_entity_types,
+                min_score_threshold=min_score_threshold,
             )
 
             anonymized_texts: list = []
@@ -307,6 +298,7 @@ class StreamProcessor(BaseProcessor):
                     r = self.ally.anonymize(
                         text_str,
                         operators=operators,
+                        active_entity_types=active_entity_types,
                         age_bracket_size=age_bracket_size,
                         keep_postcode=keep_postcode,
                     )
