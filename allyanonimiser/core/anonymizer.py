@@ -31,6 +31,11 @@ DEFAULT_ENTITY_PRIORITY: dict[str, int] = {
     "AU_CENTRELINK_CRN": 80,
     # Named entities
     "PERSON": 70,
+    # DATE_OF_BIRTH matches the resolver's default-for-unlisted priority (75)
+    # so listing it here changes nothing on the resolution side, while giving
+    # the anonymizer's overlap pass a real value — previously it fell back to
+    # 0 there, letting a plain DATE fragment (40) beat a DOB span.
+    "DATE_OF_BIRTH": 75,
     "AU_ADDRESS": 60,
     "ADDRESS": 60,
     "ISO_DATETIME": 55,   # Specific T-separated form, ranks above bare DATE

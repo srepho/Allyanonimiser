@@ -364,7 +364,7 @@ class EnhancedAnalyzer:
 
         # De-duplicate results and resolve entity conflicts
         deduplicated_results = deduplicate_and_resolve_conflicts(
-            combined_results, self.patterns,
+            combined_results, self.patterns, full_text=text,
         )
 
         # Apply context-aware filtering

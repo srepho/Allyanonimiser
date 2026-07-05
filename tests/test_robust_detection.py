@@ -66,7 +66,10 @@ class TestRobustDetection:
             # Invalid Medicare numbers
             ("Medicare: 1123 45678 1", False),  # Starts with 1
             ("Medicare: 7123 45678 1", False),  # Starts with 7
-            ("Medicare: 2123 45678 0", False),  # IRN is 0
+            # IRN 0 fails validation, but the explicit "Medicare:" label
+            # overrides it (label-context rule): a mistyped real Medicare
+            # number must still be masked. Leaking beats over-masking here.
+            ("Medicare: 2123 45678 0", True),
         ]
         
         for text, should_be_valid in test_cases:
