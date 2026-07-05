@@ -7,6 +7,12 @@
 - **`process()` runs detection once** instead of 2 + N times per document: the anonymization step and every PII-rich segment now reuse the single whole-text analysis (`EnhancedAnonymizer.anonymize` accepts precomputed `analysis_results`). Also fixes a latent double-acronym-expansion bug — segments cut from already-expanded text were re-expanded when `expand_acronyms=True`.
 - **Regexes compiled once at registration**: `CustomPatternDefinition.compiled_patterns` caches compiled forms (invalid regexes are logged once and skipped instead of raising on every call); the analyzer, `PatternManager.apply_patterns`, and `common_formats` all use pre-compiled patterns instead of re-feeding strings to `re.finditer` per call.
 
+### Docs
+
+- README cut from 1,364 to 140 lines: intro, install, quick start, feature summary, current benchmark table, and links into the docs site. The deep content (usage examples, entity tables, operators, migration guide) lives only in the docs now — the README's benchmark tables had already drifted stale against `docs/benchmarks.md`.
+- New docs page: [Migrating from v2.x](https://srepho.github.io/Allyanonimiser/getting-started/migration/) (content moved from the README, wired into the nav).
+- GitHub repo About metadata set: description, homepage → docs site, topics (pii, pii-detection, anonymization, privacy, australia, insurance, presidio, spacy).
+
 ### Internal
 
 - `utils/spacy_helpers.py` slimmed from 882 to 72 lines: the regex-from-examples engine moved to the new spaCy-free `utils/pattern_generation.py` (old import paths keep working via re-exports); five never-used spaCy matcher/context helpers and a duplicate `load_spacy_model` shim deleted.
