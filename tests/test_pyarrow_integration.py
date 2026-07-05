@@ -7,11 +7,12 @@ to ``string[pyarrow]`` via ``_use_arrow_strings`` before processing. These tests
 exercise that current behavior.
 """
 
+import hypothesis.extra.pandas as hpd
 import numpy as np
 import pandas as pd
 import pytest
-from hypothesis import given, strategies as st
-import hypothesis.extra.pandas as hpd
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allyanonimiser import create_allyanonimiser
 from allyanonimiser.io.dataframe_processor import (

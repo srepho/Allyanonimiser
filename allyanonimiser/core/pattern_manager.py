@@ -2,8 +2,11 @@
 Pattern manager for handling custom PII detection patterns.
 """
 
+import logging
 import re
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class CustomPatternDefinition:
@@ -27,6 +30,32 @@ class CustomPatternDefinition:
         self.score = kwargs.get('score', 0.85)
         self.language = kwargs.get('language', 'en')
         self.description = kwargs.get('description', f"Custom pattern for {self.entity_type}")
+        self._compiled: list[re.Pattern] = []
+        self._compiled_snapshot: tuple[str, ...] | None = None
+
+    @property
+    def compiled_patterns(self) -> list[re.Pattern]:
+        """Compiled forms of the string regexes in ``patterns``.
+
+        Compiled once and cached (recompiled only if ``patterns`` is mutated).
+        Invalid regexes are logged once at compile time and skipped, instead
+        of raising ``re.error`` on every analyze() call. Non-string entries
+        (spaCy token patterns) are ignored.
+        """
+        snapshot = tuple(p for p in self.patterns if isinstance(p, str))
+        if snapshot != self._compiled_snapshot:
+            compiled = []
+            for pat in snapshot:
+                try:
+                    compiled.append(re.compile(pat))
+                except re.error as e:
+                    logger.warning(
+                        "Skipping invalid regex for %s (%s): %s",
+                        self.entity_type, pat[:60], e,
+                    )
+            self._compiled = compiled
+            self._compiled_snapshot = snapshot
+        return self._compiled
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -112,36 +141,29 @@ class PatternManager:
             entity_type = pattern_def.entity_type
             score = pattern_def.score
 
-            for pattern in pattern_def.patterns:
-                if isinstance(pattern, str):
-                    # It's a regex pattern
-                    try:
-                        for match in re.finditer(pattern, text):
-                            # Check if the pattern has capturing groups
-                            if match.lastindex and match.lastindex > 0:
-                                # Use the first capturing group
-                                start = match.start(1)
-                                end = match.end(1)
-                                matched_text = match.group(1)
-                            else:
-                                # Use the entire match
-                                start = match.start()
-                                end = match.end()
-                                matched_text = match.group()
+            # compiled_patterns covers the string regexes only; spaCy token
+            # patterns need a spaCy model and are skipped here.
+            for compiled in pattern_def.compiled_patterns:
+                for match in compiled.finditer(text):
+                    # Check if the pattern has capturing groups
+                    if match.lastindex and match.lastindex > 0:
+                        # Use the first capturing group
+                        start = match.start(1)
+                        end = match.end(1)
+                        matched_text = match.group(1)
+                    else:
+                        # Use the entire match
+                        start = match.start()
+                        end = match.end()
+                        matched_text = match.group()
 
-                            results.append({
-                                'entity_type': entity_type,
-                                'start': start,
-                                'end': end,
-                                'text': matched_text,
-                                'score': score
-                            })
-                    except re.error:
-                        # Skip invalid regex patterns
-                        continue
-                else:
-                    # Skip non-regex patterns for now (spaCy patterns need spaCy model)
-                    continue
+                    results.append({
+                        'entity_type': entity_type,
+                        'start': start,
+                        'end': end,
+                        'text': matched_text,
+                        'score': score
+                    })
 
         return results
 

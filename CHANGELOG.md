@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Performance
+
+- **`process()` runs detection once** instead of 2 + N times per document: the anonymization step and every PII-rich segment now reuse the single whole-text analysis (`EnhancedAnonymizer.anonymize` accepts precomputed `analysis_results`). Also fixes a latent double-acronym-expansion bug — segments cut from already-expanded text were re-expanded when `expand_acronyms=True`.
+- **Regexes compiled once at registration**: `CustomPatternDefinition.compiled_patterns` caches compiled forms (invalid regexes are logged once and skipped instead of raising on every call); the analyzer, `PatternManager.apply_patterns`, and `common_formats` all use pre-compiled patterns instead of re-feeding strings to `re.finditer` per call.
+
+### Internal
+
+- `utils/spacy_helpers.py` slimmed from 882 to 72 lines: the regex-from-examples engine moved to the new spaCy-free `utils/pattern_generation.py` (old import paths keep working via re-exports); five never-used spaCy matcher/context helpers and a duplicate `load_spacy_model` shim deleted.
+- `tests/` is now ruff-clean and linted in CI alongside the package.
+- CI installs the `stream` extra, so the polars/pyarrow suites (15 tests) actually run instead of silently skipping.
+- `StreamProcessor` uses `LazyFrame.collect_schema().names()`, silencing a polars `PerformanceWarning`.
+
 ## 3.5.1 (2026-07-05)
 
 ### Fixed — fresh installs broken by upstream typer 0.26.8

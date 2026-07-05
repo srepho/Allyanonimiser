@@ -25,7 +25,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        # stream extra included so test_stream_processor.py and
+        # test_pyarrow_integration.py actually run instead of silently
+        # skipping on missing polars/pyarrow.
+        pip install -e ".[dev,stream]"
         # Install BOTH models. The library defaults to en_core_web_sm
         # (so we must install it for the default code path to be tested),
         # and tests that need higher NER recall opt into en_core_web_lg
@@ -34,7 +37,7 @@ jobs:
         python -m spacy download en_core_web_lg
 
     - name: Lint with ruff
-      run: ruff check allyanonimiser/
+      run: ruff check allyanonimiser/ tests/
 
     - name: Type check with pyright
       # Strictness comes from [tool.pyright] in pyproject.toml

@@ -5,14 +5,12 @@ These tests verify that the key functions and interfaces in the package
 work correctly when called with valid inputs.
 """
 
-import pytest
 from allyanonimiser import (
-    create_allyanonimiser,
-    create_analyzer,
     Allyanonimiser,
     EnhancedAnalyzer,
-    EnhancedAnonymizer,
     analyze_claim_notes,
+    create_allyanonimiser,
+    create_analyzer,
 )
 
 

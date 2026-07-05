@@ -340,8 +340,14 @@ class Allyanonimiser:
         config: AnonymizationConfig | None = None,
         document_id: str | None = None,
         report: bool = True,
+        analysis_results: list[RecognizerResult] | None = None,
     ) -> dict[str, Any]:
         """Anonymize PII entities in *text*.
+
+        Args:
+            analysis_results: Optional precomputed results for this exact
+                *text*. When provided, detection AND acronym preprocessing
+                are skipped (the results are tied to the text as passed).
 
         Returns a dict with keys ``text``, ``items``, ``processing_time``,
         ``document_id``, and ``original_text``.
@@ -356,7 +362,10 @@ class Allyanonimiser:
             age_bracket_size = config.age_bracket_size
             keep_postcode = config.keep_postcode
 
-        processed_text, _ = self._preprocess(text, expand_acronyms)
+        if analysis_results is not None:
+            processed_text = text
+        else:
+            processed_text, _ = self._preprocess(text, expand_acronyms)
 
         result = self.anonymizer.anonymize(
             processed_text,
@@ -365,6 +374,7 @@ class Allyanonimiser:
             age_bracket_size=age_bracket_size,
             keep_postcode=keep_postcode,
             active_entity_types=active_entity_types,
+            analysis_results=analysis_results,
         )
 
         processing_time = time.time() - start_time
@@ -450,17 +460,49 @@ class Allyanonimiser:
         )
 
         analysis_results = self.analyze(processed_text, config=analysis_config)
+        # Reuse the analysis for anonymization instead of re-running detection.
         anonymized_results = self.anonymize(
             processed_text,
             config=anonymization_config,
             document_id=document_id,
             report=report,
+            analysis_results=analysis_results,
         )
 
-        # PII-rich segments
+        # PII-rich segments: map the whole-text entities onto each segment
+        # rather than re-analyzing every segment (which cost one full
+        # detection pass per segment, and could double-expand acronyms
+        # because segments are cut from already-expanded text).
         segments = extract_pii_rich_segments(processed_text)
+        search_from = 0
         for segment in segments:
-            anon = self.anonymize(segment["text"], config=anonymization_config, report=False)
+            seg_text = segment["text"]
+            seg_pos = processed_text.find(seg_text, search_from)
+            if seg_pos < 0:
+                # Couldn't locate the (stripped) segment — fall back to a
+                # standalone anonymization pass for it.
+                anon = self.anonymize(seg_text, config=anonymization_config, report=False)
+                segment["anonymized"] = anon["text"]
+                continue
+            search_from = seg_pos
+            seg_end = seg_pos + len(seg_text)
+            seg_results = [
+                RecognizerResult(
+                    entity_type=r.entity_type,
+                    start=r.start - seg_pos,
+                    end=r.end - seg_pos,
+                    score=r.score,
+                    text=r.text,
+                )
+                for r in analysis_results
+                if r.start >= seg_pos and r.end <= seg_end
+            ]
+            anon = self.anonymize(
+                seg_text,
+                config=anonymization_config,
+                report=False,
+                analysis_results=seg_results,
+            )
             segment["anonymized"] = anon["text"]
 
         structured_data = self._extract_structured_data(analysis_results)
@@ -533,7 +575,7 @@ class Allyanonimiser:
         generalization_level: str = "medium",
     ) -> CustomPatternDefinition:
         """Generate a regex pattern from *examples* and register it."""
-        from .utils.spacy_helpers import create_regex_from_examples
+        from .utils.pattern_generation import create_regex_from_examples
 
         regex = create_regex_from_examples(
             examples, generalization_level=generalization_level

@@ -591,11 +591,22 @@ class EnhancedAnalyzer:
             if entity_type == "PERSON" and self.use_spacy:
                 continue
 
-            # Go through each regex pattern
-            for regex_pattern in pattern.patterns:
+            # Use pre-compiled regexes when the pattern object provides them
+            # (CustomPatternDefinition does); fall back to raw strings for
+            # foreign pattern objects.
+            regexes = getattr(pattern, 'compiled_patterns', None)
+            if regexes is None:
+                regexes = [p for p in pattern.patterns if isinstance(p, str)]
+
+            for regex_pattern in regexes:
                 try:
+                    finditer = (
+                        regex_pattern.finditer(text)
+                        if isinstance(regex_pattern, re.Pattern)
+                        else re.finditer(regex_pattern, text)
+                    )
                     # Find all matches
-                    for match in re.finditer(regex_pattern, text):
+                    for match in finditer:
                         # Check if the pattern has capturing groups
                         if match.lastindex and match.lastindex > 0:
                             # Use the first capturing group to get the actual value

@@ -140,7 +140,8 @@ class StreamProcessor(BaseProcessor):
         lf = pl.scan_csv(file_path, **csv_options)
 
         # Validate columns are in the file
-        available_columns = lf.columns
+        # collect_schema() avoids polars' PerformanceWarning on lf.columns
+        available_columns = lf.collect_schema().names()
         for column in text_columns:
             if column not in available_columns:
                 raise ValueError(f"Column '{column}' not found in CSV file")

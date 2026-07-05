@@ -3,8 +3,7 @@ Tests for the API: configuration objects, acronym management,
 pattern management, DataFrame processing, and custom operators.
 """
 
-import pytest
-from allyanonimiser import create_allyanonimiser, AnalysisConfig, AnonymizationConfig
+from allyanonimiser import AnalysisConfig, AnonymizationConfig, create_allyanonimiser
 
 
 def test_configuration_objects():
@@ -144,4 +143,5 @@ def test_custom_anonymization_operator(mocker):
         age_bracket_size=5,
         keep_postcode=True,
         active_entity_types=None,
+        analysis_results=None,
     )

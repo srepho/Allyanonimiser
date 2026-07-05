@@ -66,47 +66,36 @@ _AU_PATTERNS: dict[str, list[str]] = {
 }
 
 
-def _emit(entity_type: str, pattern: str, text: str, score: float,
-          flags: int = 0) -> list[RecognizerResult]:
-    """Run ``pattern`` against ``text`` and emit one result per match.
-
-    If the pattern defines a capturing group, the result spans the group
-    rather than the full match.
-    """
-    out: list[RecognizerResult] = []
-    for match in re.finditer(pattern, text, flags):
-        if match.lastindex and match.lastindex > 0:
-            start, end = match.start(1), match.end(1)
-            matched = match.group(1)
-        else:
-            start, end = match.start(), match.end()
-            matched = match.group()
-        out.append(RecognizerResult(
-            entity_type=entity_type, start=start, end=end,
-            score=score, text=matched,
-        ))
-    return out
+# All recognizers compiled once at import: (entity_type, compiled, score).
+_COMPILED_RECOGNIZERS: list[tuple[str, re.Pattern, float]] = [
+    *((etype, re.compile(pat), 0.95)
+      for etype, pat in _EMAIL_PATTERNS.items()),
+    *((etype, re.compile(pat), 0.92)
+      for etype, pats in _PHONE_PATTERNS.items() for pat in pats),
+    *((etype, re.compile(pat, re.IGNORECASE), 0.9)
+      for etype, pats in _ID_PATTERNS.items() for pat in pats),
+    *((etype, re.compile(pat, re.IGNORECASE), 0.93)
+      for etype, pats in _AU_PATTERNS.items() for pat in pats),
+]
 
 
 def analyze_common_formats(text: str) -> list[RecognizerResult]:
-    """Run high-precision regex recognizers for common PII formats."""
+    """Run high-precision regex recognizers for common PII formats.
+
+    If a pattern defines a capturing group, the result spans the group
+    rather than the full match.
+    """
     results: list[RecognizerResult] = []
-
-    for entity_type, pattern in _EMAIL_PATTERNS.items():
-        results.extend(_emit(entity_type, pattern, text, score=0.95))
-
-    for entity_type, patterns_list in _PHONE_PATTERNS.items():
-        for pattern in patterns_list:
-            results.extend(_emit(entity_type, pattern, text, score=0.92))
-
-    for entity_type, patterns_list in _ID_PATTERNS.items():
-        for pattern in patterns_list:
-            results.extend(_emit(entity_type, pattern, text, score=0.9,
-                                 flags=re.IGNORECASE))
-
-    for entity_type, patterns_list in _AU_PATTERNS.items():
-        for pattern in patterns_list:
-            results.extend(_emit(entity_type, pattern, text, score=0.93,
-                                 flags=re.IGNORECASE))
-
+    for entity_type, compiled, score in _COMPILED_RECOGNIZERS:
+        for match in compiled.finditer(text):
+            if match.lastindex and match.lastindex > 0:
+                start, end = match.start(1), match.end(1)
+                matched = match.group(1)
+            else:
+                start, end = match.start(), match.end()
+                matched = match.group()
+            results.append(RecognizerResult(
+                entity_type=entity_type, start=start, end=end,
+                score=score, text=matched,
+            ))
     return results

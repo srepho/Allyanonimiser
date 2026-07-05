@@ -2,19 +2,19 @@
 Property-based tests for CSV import functionality.
 """
 
-import os
-import pytest
-import tempfile
 import csv
+import os
 import string
+import tempfile
+
 import pandas as pd
-from hypothesis import given, strategies as st, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
+from allyanonimiser import create_allyanonimiser
 from allyanonimiser.utils.settings_manager import (
     SettingsManager,
-    import_acronyms_from_csv,
-    import_patterns_from_csv
 )
-from allyanonimiser import create_allyanonimiser
 
 # Define strategies for generating test data
 # Acronyms: at least 2 uppercase letters; expansions: words separated by spaces
@@ -93,26 +93,26 @@ def test_property_pattern_import(pattern_data):
     # Create a temporary CSV with generated data
     headers = ['entity_type', 'pattern', 'context', 'name', 'score']
     temp_file = create_temp_csv(pattern_data, headers)
-    
+
     try:
         # Test import
         manager = SettingsManager()
         success, count, imported_patterns = manager.import_patterns_from_csv(temp_file)
-        
+
         # Should import successfully
         assert success
         assert count == len(pattern_data)
-        
+
         # Verify patterns were imported correctly
         for entity_type, pattern, context, name, score in pattern_data:
             # Find the corresponding pattern in imported patterns
-            matching = [p for p in manager.settings.get('patterns', []) 
-                       if p.get('entity_type') == entity_type and 
+            matching = [p for p in manager.settings.get('patterns', [])
+                       if p.get('entity_type') == entity_type and
                           p.get('name') == name]
-            
+
             assert len(matching) > 0
             imported = matching[0]
-            
+
             # Check that pattern was imported correctly
             assert pattern in imported['patterns']
             if context:  # Only verify if context is not empty
@@ -121,7 +121,7 @@ def test_property_pattern_import(pattern_data):
                     # Only verify if there are valid context words after splitting
                     for ctx in context_list:
                         assert ctx in imported.get('context', [])
-            
+
             # Score may be converted to float, so check approximately
             if 'score' in imported:
                 assert abs(imported['score'] - score) < 0.001
@@ -146,31 +146,31 @@ def test_allyanonimiser_integration(mixed_data):
     # Create a temporary CSV with generated data
     headers = ['acronym', 'expansion']
     temp_file = create_temp_csv(mixed_data, headers)
-    
+
     try:
         # Create Allyanonimiser instance
         ally = create_allyanonimiser()
-        
+
         # Import acronyms
         count = ally.import_acronyms_from_csv(temp_file)
         assert count == len(mixed_data)
-        
+
         # Verify all acronyms were imported correctly
         acronyms_dict = ally.get_acronyms()
         for acronym, expansion in mixed_data:
             assert acronym in acronyms_dict
             assert acronyms_dict[acronym] == expansion
-            
+
         # Create text with acronyms for testing
         acronym_str = mixed_data[0][0]
         text = f"This text contains the acronym {acronym_str}."
-        
+
         # Process with acronym expansion
         result = ally.process(text, expand_acronyms=True)
-        
+
         # Should have preprocessing metadata
         assert "preprocessing" in result
-        
+
         # The expansion should have happened
         expanded_acronyms = result["preprocessing"].get("expanded_acronyms", [])
         found = False
@@ -179,7 +179,7 @@ def test_allyanonimiser_integration(mixed_data):
                 found = True
                 assert item["expansion"] == mixed_data[0][1]
                 break
-                
+
         assert found, f"Acronym {acronym_str} was not expanded"
     finally:
         # Clean up
@@ -188,25 +188,25 @@ def test_allyanonimiser_integration(mixed_data):
 def test_with_pandas():
     """Test integration with pandas DataFrames."""
     # Create acronyms DataFrame
-    acronym_data = [("GST", "Goods and Services Tax"), 
+    acronym_data = [("GST", "Goods and Services Tax"),
                    ("CEO", "Chief Executive Officer"),
                    ("IT", "Information Technology")]
-    
+
     df = pd.DataFrame(acronym_data, columns=['acronym', 'expansion'])
-    
+
     # Save to temporary CSV
     temp_file = None
     try:
         temp_file = tempfile.NamedTemporaryFile(suffix='.csv', delete=False).name
         df.to_csv(temp_file, index=False)
-        
+
         # Import using the manager
         manager = SettingsManager()
         success, count = manager.import_acronyms_from_csv(temp_file)
-        
+
         assert success
         assert count == len(acronym_data)
-        
+
         # Verify import
         acronyms_dict = manager.get_acronyms()
         for acronym, expansion in acronym_data:
@@ -224,43 +224,43 @@ def test_invalid_files():
         temp_file = tempfile.NamedTemporaryFile(suffix='.csv', delete=False).name
         with open(temp_file, 'w') as f:
             pass  # Create empty file
-            
+
         manager = SettingsManager()
         success, count = manager.import_acronyms_from_csv(temp_file)
-        
+
         # Should fail gracefully
         assert not success
         assert count == 0
     finally:
         if temp_file and os.path.exists(temp_file):
             os.unlink(temp_file)
-            
+
     # Test with header-only file
     try:
         temp_file = tempfile.NamedTemporaryFile(suffix='.csv', delete=False).name
         with open(temp_file, 'w') as f:
             f.write("acronym,expansion\n")
-            
+
         manager = SettingsManager()
         success, count = manager.import_acronyms_from_csv(temp_file)
-        
+
         # May either succeed with no acronyms or fail gracefully
         # Just check that count is 0
         assert count == 0
     finally:
         if temp_file and os.path.exists(temp_file):
             os.unlink(temp_file)
-            
+
     # Test with corrupted file
     try:
         temp_file = tempfile.NamedTemporaryFile(suffix='.csv', delete=False).name
         with open(temp_file, 'w') as f:
             f.write("acronym,expansion\n")
             f.write("this,is,not,valid,csv\n")
-            
+
         manager = SettingsManager()
         success, count = manager.import_acronyms_from_csv(temp_file)
-        
+
         # Depending on the CSV parser implementation, this might
         # be handled differently (might extract "this" as a valid acronym)
         # So we just check that it doesn't crash

@@ -3,7 +3,6 @@ Tests to validate the examples in the README.md file.
 This ensures that the documented examples actually work as expected.
 """
 
-import pytest
 
 
 def test_quick_start_example():

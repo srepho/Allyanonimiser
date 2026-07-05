@@ -6,11 +6,9 @@ import pytest
 
 from allyanonimiser import (
     Allyanonimiser,
-    EnhancedAnalyzer,
     EnhancedAnonymizer,
     create_allyanonimiser,
 )
-
 
 # These are function-scoped because tests mutate analyzer state
 # (set_active_entity_types, add_pattern, etc.).

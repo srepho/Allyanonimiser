@@ -1,10 +1,12 @@
 """
 Performance tests for DataFrame processing in Allyanonimiser.
 """
-import pytest
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import pytest
+
 from allyanonimiser import create_allyanonimiser
 from allyanonimiser.io.dataframe_processor import DataFrameProcessor
 
@@ -28,7 +30,7 @@ def large_df():
         "Case referred to Team Leader Sarah Johnson for review.",
         "Vehicle registration ABC123 involved in incident on 10/03/2023."
     ] * 100  # Repeat to get 1000 rows
-    
+
     # Create a large DataFrame with these texts
     return pd.DataFrame({
         'id': range(len(texts)),
@@ -51,23 +53,23 @@ def test_batch_size_performance(large_df, ally):
     """Test performance with different batch sizes."""
     print("\nBatch Size Performance Test")
     print("==========================")
-    
+
     batch_sizes = [10, 50, 100, 200, 500, 1000]
     times = []
-    
+
     for batch_size in batch_sizes:
         processor = DataFrameProcessor(ally,batch_size=batch_size)
-        
+
         _, duration = measure_time(
             processor.detect_pii,
             large_df,
             'text',
             min_score_threshold=0.8
         )
-        
+
         times.append(duration)
         print(f"Batch size {batch_size}: {duration:.2f} seconds")
-    
+
     # Find the optimal batch size
     optimal_index = np.argmin(times)
     print(f"\nOptimal batch size: {batch_sizes[optimal_index]} ({times[optimal_index]:.2f} seconds)")
@@ -76,25 +78,25 @@ def test_worker_performance(large_df, ally):
     """Test performance with different numbers of workers."""
     print("\nWorker Count Performance Test")
     print("===========================")
-    
+
     worker_counts = [None, 1, 2, 4, 8]  # None means sequential processing
     times = []
-    
+
     for workers in worker_counts:
         processor = DataFrameProcessor(ally,n_workers=workers, batch_size=100)
-        
+
         worker_desc = "Sequential" if workers is None else f"{workers} workers"
-        
+
         _, duration = measure_time(
             processor.detect_pii,
             large_df,
             'text',
             min_score_threshold=0.8
         )
-        
+
         times.append(duration)
         print(f"{worker_desc}: {duration:.2f} seconds")
-    
+
     # Find the optimal worker count
     optimal_index = np.argmin(times)
     workers = worker_counts[optimal_index]
@@ -105,7 +107,7 @@ def test_acronym_expansion_overhead(large_df, ally):
     """Test performance overhead of acronym expansion."""
     print("\nAcronym Expansion Overhead Test")
     print("=============================")
-    
+
     # Set up acronyms
     acronyms = {
         "TP": "Third Party",
@@ -117,7 +119,7 @@ def test_acronym_expansion_overhead(large_df, ally):
         "PII": "Personally Identifiable Information"
     }
     ally.set_acronym_dictionary(acronyms)
-    
+
     processor = DataFrameProcessor(ally, batch_size=100)
     _, no_expansion_time = measure_time(
         processor.process_dataframe, large_df, 'text', expand_acronyms=False
@@ -125,10 +127,10 @@ def test_acronym_expansion_overhead(large_df, ally):
     _, with_expansion_time = measure_time(
         processor.process_dataframe, large_df, 'text', expand_acronyms=True
     )
-    
+
     overhead = with_expansion_time - no_expansion_time
     percentage = (overhead / no_expansion_time) * 100
-    
+
     print(f"Without expansion: {no_expansion_time:.2f} seconds")
     print(f"With expansion: {with_expansion_time:.2f} seconds")
     print(f"Overhead: {overhead:.2f} seconds ({percentage:.1f}%)")
@@ -137,9 +139,9 @@ def test_detect_vs_process_vs_anonymize(large_df, ally):
     """Compare performance of different operations."""
     print("\nOperation Performance Comparison")
     print("==============================")
-    
+
     processor = DataFrameProcessor(ally,batch_size=100)
-    
+
     # Test detect_pii
     _, detect_time = measure_time(
         processor.detect_pii,
@@ -147,21 +149,21 @@ def test_detect_vs_process_vs_anonymize(large_df, ally):
         'text',
         min_score_threshold=0.8
     )
-    
+
     # Test anonymize_column
     _, anonymize_time = measure_time(
         processor.anonymize_column,
         large_df,
         'text'
     )
-    
+
     # Test process_dataframe
     _, process_time = measure_time(
         processor.process_dataframe,
         large_df,
         'text'
     )
-    
+
     print(f"detect_pii: {detect_time:.2f} seconds")
     print(f"anonymize_column: {anonymize_time:.2f} seconds")
     print(f"process_dataframe: {process_time:.2f} seconds")
@@ -170,30 +172,30 @@ def test_row_count_scaling(ally):
     """Test how performance scales with the number of rows."""
     print("\nRow Count Scaling Test")
     print("====================")
-    
+
     row_counts = [100, 500, 1000, 5000, 10000]
     times = []
-    
+
     base_text = "Customer John Smith called about policy POL123456 on 15/04/2023."
-    
+
     for count in row_counts:
         # Create DataFrame with specified number of rows
         df = pd.DataFrame({
             'id': range(count),
             'text': [base_text] * count
         })
-        
+
         processor = DataFrameProcessor(ally,batch_size=100)
-        
+
         _, duration = measure_time(
             processor.detect_pii,
             df,
             'text'
         )
-        
+
         times.append(duration)
         print(f"{count} rows: {duration:.2f} seconds")
-    
+
     # Calculate rows per second for each test
     for i, count in enumerate(row_counts):
         rows_per_second = count / times[i]

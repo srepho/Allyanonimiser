@@ -45,8 +45,8 @@ def test_core_imports():
 def test_pattern_imports():
     """Test that pattern modules are importable."""
     from allyanonimiser.patterns.au_patterns import get_au_pattern_definitions
-    from allyanonimiser.patterns.insurance_patterns import get_insurance_pattern_definitions
     from allyanonimiser.patterns.general_patterns import get_general_pattern_definitions
+    from allyanonimiser.patterns.insurance_patterns import get_insurance_pattern_definitions
 
     assert len(get_au_pattern_definitions()) > 0
     assert len(get_insurance_pattern_definitions()) > 0

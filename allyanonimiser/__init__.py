@@ -49,6 +49,12 @@ from .utils.long_text_processor import (
     extract_pii_rich_segments,
     segment_long_text,
 )
+
+# Pattern helpers
+from .utils.pattern_generation import (
+    create_regex_from_examples,
+    detect_common_format,
+)
 from .utils.presidio_helpers import (
     create_pattern_from_regex,
     create_pattern_recognizer,
@@ -56,13 +62,7 @@ from .utils.presidio_helpers import (
     filter_results_by_score,
     results_to_dict,
 )
-
-# Pattern helpers
-from .utils.spacy_helpers import (
-    create_regex_from_examples,
-    create_spacy_pattern_from_examples,
-    detect_common_format,
-)
+from .utils.spacy_helpers import create_spacy_pattern_from_examples
 
 __version__ = "3.5.1"
 
@@ -169,7 +169,7 @@ def create_pattern_from_examples(
 ) -> CustomPatternDefinition:
     """Create a pattern definition from example strings."""
     if pattern_type == "regex":
-        from .utils.spacy_helpers import create_regex_from_examples as _create_regex
+        from .utils.pattern_generation import create_regex_from_examples as _create_regex
         pattern = _create_regex(examples, generalization_level=generalization_level)
         patterns = [pattern]
     else:
