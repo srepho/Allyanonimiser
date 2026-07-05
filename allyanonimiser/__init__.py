@@ -64,7 +64,7 @@ from .utils.spacy_helpers import (
     detect_common_format,
 )
 
-__version__ = "3.5.0"
+__version__ = "3.5.1"
 
 # Named spaCy model presets — use these instead of the bare strings to make
 # the deployment-vs-accuracy tradeoff explicit at call sites.

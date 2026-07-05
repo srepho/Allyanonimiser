@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## 3.5.1 (2026-07-05)
+
+### Fixed — fresh installs broken by upstream typer 0.26.8
+
+- Added an explicit `click>=8.0` runtime dependency. spaCy's CLI imports `click` directly but relies on typer to provide it, and typer >= 0.26.8 dropped its click dependency — so `import allyanonimiser` crashed with `ModuleNotFoundError: No module named 'click'` in any freshly resolved environment. Shield stays until spaCy declares click itself.
+
+### Added — label-context disambiguation
+
+- **Explicit labels beat bare-shape priority and validation**: when the text immediately before a span names an identifier type ("TFN is 123 456 789", "Medicare number: ..."), `resolve_entity_conflicts` now prefers that type over any bare-shape competitor — previously the bare 9-digit CRN pattern won the span and a labelled TFN came back as `AU_CENTRELINK_CRN`. The label also overrides per-type checksum validation: a labelled-but-mistyped TFN/Medicare is still masked under the right type instead of being dropped or mislabeled. Covers TFN, CRN, ABN, ACN, Medicare, and US SSN labels.
+- **Filler-tolerant labelled regexes**: the label-anchored patterns for TFN/Medicare/ABN/ACN/CRN/Passport now accept up to two connective tokens between trigger and value (`TFN is`, `ABN number:`, `Medicare card no.`). Previously only `TFN: <digits>` / `TFN <digits>` matched.
+- **Behavior change**: `"Medicare: 2123 45678 0"` (invalid IRN check digit) is now detected as `AU_MEDICARE` rather than dropped — leaking a mistyped real Medicare number is worse than masking a non-number.
+
+### Added — span-containment absorption
+
+- New `_absorb_contained` pass in the conflict resolver: a winner fully contained in a wider winner's span is absorbed when the container is a trusted pattern-derived type and the contained type doesn't outrank it. Fixes three fragment classes: the spaCy `lg` model splitting the date inside a `DOB:` span into multiple DATE entities (the long-skipped `test_age_bracket_recent_dates` is now unskipped and passes on both `sm` and `lg`), stray NUMBER triplets inside TFN/CRN/Medicare spans, and the bare 9-digit CRN pattern matching the tail of an 11-digit ABN.
+- spaCy NER types cannot act as absorbing containers (a junk `ORGANIZATION('DOB 30/06/1944')` span must not eat the real DATE inside it), and `AU_POSTCODE` is never absorbed (the `keep_postcode` feature depends on contained postcodes).
+- `DATE_OF_BIRTH` added to `DEFAULT_ENTITY_PRIORITY` at 75 (identical to the resolver's default-for-unlisted, so resolution is unchanged) — the anonymizer's overlap pass previously defaulted it to 0, letting a plain DATE fragment (40) beat a DOB span.
 
 ### Fixed — per-call options no longer leak into later calls
 

@@ -12,7 +12,7 @@ Allyanonimiser can be installed using pip with various installation options depe
 Install the core package from PyPI:
 
 ```bash
-pip install allyanonimiser==3.5.0
+pip install allyanonimiser==3.5.1
 ```
 
 ## Installation Options
@@ -24,7 +24,7 @@ Allyanonimiser offers several installation options to meet different needs:
 For processing very large files with memory-efficient streaming:
 
 ```bash
-pip install "allyanonimiser[stream]==3.5.0"
+pip install "allyanonimiser[stream]==3.5.1"
 ```
 
 ### With LLM Integration
@@ -32,7 +32,7 @@ pip install "allyanonimiser[stream]==3.5.0"
 For advanced pattern generation using language models:
 
 ```bash
-pip install "allyanonimiser[llm]==3.5.0"
+pip install "allyanonimiser[llm]==3.5.1"
 ```
 
 ### Complete Installation
@@ -40,7 +40,7 @@ pip install "allyanonimiser[llm]==3.5.0"
 To install all optional dependencies:
 
 ```bash
-pip install "allyanonimiser[stream,llm]==3.5.0"
+pip install "allyanonimiser[stream,llm]==3.5.1"
 ```
 
 ## Installing a spaCy Language Model
@@ -115,4 +115,4 @@ import allyanonimiser
 print(allyanonimiser.__version__)
 ```
 
-This should print the current version of Allyanonimiser (e.g., `3.5.0`).
+This should print the current version of Allyanonimiser (e.g., `3.5.1`).

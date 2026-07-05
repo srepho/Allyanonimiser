@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.5.0-blue)](https://pypi.org/project/allyanonimiser/3.5.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.5.1-blue)](https://pypi.org/project/allyanonimiser/3.5.1/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -11,6 +11,17 @@
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
 📖 **[Read the full documentation](https://srepho.github.io/Allyanonimiser/)**
+
+## Version 3.5.1 — Label-Context Disambiguation + Per-Call Option Fixes
+
+Bug-fix and precision release. AU bench unchanged from v3.5.0 (still beats `openai/privacy-filter` on 5 of 6 categories).
+
+### What's New
+- **Per-call options no longer leak** — `analyze(active_entity_types=...)` / `min_score_threshold=...` used to permanently restrict the shared analyzer; they are now true per-call parameters (also fixed in `DataFrameProcessor` and `StreamProcessor`). The explicit `set_active_entity_types()` / `set_min_score_threshold()` methods remain the persistent knobs.
+- **`analyze_batch()` now matches `analyze()` exactly** — the batch path previously skipped PERSON/LOCATION/ORG false-positive filtering and entity-type mapping, so DataFrame/CSV processing missed the v3.5.0 precision work.
+- **Label-context disambiguation** — an explicit label immediately before a value ("TFN is 123 456 789", "Medicare number: ...") now beats bare-shape competitors and checksum validation, so labelled identifiers resolve to the labelled type instead of whatever 9-digit pattern also fired. Labelled regexes tolerate filler words (`TFN is`, `ABN number:`).
+- **Span-containment absorption** — fragments fully contained in a wider, pattern-derived span are absorbed (lg-model DATE fragments inside DOB spans, stray NUMBER triplets inside TFNs, the bare CRN pattern matching the tail of an ABN). Postcodes inside addresses are never absorbed (`keep_postcode` depends on them).
+- **Internal consolidation** — AU identifier regexes and false-positive word lists each now live in one module (`patterns/shared_regex.py`, `core/false_positives.py`) instead of two drifting copies.
 
 ## Version 3.5.0 — International PII + Precision Overhaul
 
@@ -32,10 +43,10 @@ Adds out-of-the-box detection for international PII shapes that show up in AU-in
 
 ```bash
 # Basic installation
-pip install allyanonimiser==3.5.0
+pip install allyanonimiser==3.5.1
 
 # With stream processing support for large files
-pip install "allyanonimiser[stream]==3.5.0"
+pip install "allyanonimiser[stream]==3.5.1"
 ```
 
 **Prerequisites:**

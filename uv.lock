@@ -82,9 +82,10 @@ wheels = [
 
 [[package]]
 name = "allyanonimiser"
-version = "3.3.0"
+version = "3.5.1"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "pandas" },
     { name = "presidio-analyzer" },
     { name = "presidio-anonymizer" },
@@ -121,6 +122,7 @@ stream = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'llm'", specifier = ">=0.3.0" },
+    { name = "click", specifier = ">=8.0" },
     { name = "datasets", marker = "extra == 'bench'", specifier = ">=2.0.0" },
     { name = "faker", marker = "extra == 'bench'", specifier = ">=22.0.0" },
     { name = "huggingface-hub", marker = "extra == 'bench'", specifier = ">=0.20.0" },
