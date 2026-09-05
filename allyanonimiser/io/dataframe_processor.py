@@ -205,12 +205,12 @@ class DataFrameProcessor(BaseProcessor):
             ) if progress_bar else col_series.items()
 
             for idx, text in iterator:
-                text_str = str(text)
+                text_str, _ = self.ally._preprocess(str(text), expand_acronyms)
                 entities = self.ally.analyze(
                     text_str,
                     active_entity_types=active_entity_types,
                     min_score_threshold=min_score_threshold,
-                    expand_acronyms=expand_acronyms,
+                    expand_acronyms=False,
                 )
 
                 if save_entities:
@@ -234,7 +234,7 @@ class DataFrameProcessor(BaseProcessor):
                         active_entity_types=active_entity_types,
                         age_bracket_size=age_bracket_size,
                         keep_postcode=keep_postcode,
-                        expand_acronyms=expand_acronyms,
+                        analysis_results=entities,
                     )
                     result_df.at[idx, output_column] = r["text"]
 

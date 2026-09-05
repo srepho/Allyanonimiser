@@ -211,3 +211,29 @@ Useful as a first pass before deciding what to anonymize.
 - [Custom Patterns](../patterns/custom.md) — teach the analyzer a new
   entity type before running over your DataFrame
 - [Main API](../api/main.md) — full method reference
+
+### Streaming behavior
+
+The stream extra requires Polars 1.37 or newer. CSV columns are read as strings
+by default so identifiers such as `00123` survive unchanged. Pass
+`csv_options={"infer_schema_length": 100}` to request type inference, or use
+Polars `schema_overrides` for explicit types.
+
+`StreamProcessor.stream_from_file()` yields `row_count` and `entity_count` for
+every batch, including batches without detections. It includes `entities` when
+present, and a Polars `dataframe` when no `output_path` is supplied. Entity
+`row_index` values are zero-based positions across the processed rows, not
+positions within each chunk. `process_large_file()` counts all detections even
+when `save_entities=False`, and writes entity records incrementally when enabled.
+
+Streaming disables per-document session reports to avoid retaining the whole
+run. Analyzer caches remain bounded by their configured entry count; unusually
+large documents still affect memory. Output files retain original columns
+alongside anonymized columns, and entity exports contain detected source text.
+
+A processing error can leave partial output files. Input, output, and entity
+paths must be distinct. If stopping iteration early, close the generator with
+`contextlib.closing()` to release output handles promptly.
+
+For a reproducible memory measurement, run
+`python bench/check_stream_memory.py` from a checkout with the stream extra.

@@ -8,6 +8,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  stream-minimum:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install minimum supported Polars
+      run: pip install -e ".[dev,stream]" "polars==1.37.0"
+    - name: Exercise real CSV processing without NER models
+      run: pytest tests/test_stream_processor.py tests/test_processor_parity.py -q
+
   test:
     runs-on: ubuntu-latest
     strategy:

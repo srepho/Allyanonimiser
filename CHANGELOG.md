@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fixed — streaming and replacement consistency
+
+- Stream CSVs through ordered row batches instead of collecting a DataFrame and iterating its columns. Correct row/entity counts, absolute row indices, header-only output, and relative output filenames; reject invalid chunk sizes and colliding input/output paths.
+- Write entity CSVs incrementally and disable per-document report accumulation in streaming. Source columns remain in the output; report-free streaming does not make the output free of original PII.
+- DataFrame and stream replacement reuse the same detections used for entity reporting, honoring per-call thresholds and prepared-text offsets.
+- Replace fabricated streaming tests with real file regressions. Add `bench/check_stream_memory.py` for subprocess memory measurements.
+
+### Compatibility
+
+- The `stream` extra now requires Polars >= 1.37.0 for `collect_batches()`.
+- Streaming reads CSV columns as strings by default to preserve leading zeroes; supply `csv_options` to request schema inference or explicit types. File-output batches now always include `row_count` and `entity_count`; `entities` remains present only when detections exist. Empty entity exports contain a header.
+
 ### Performance
 
 - **`process()` runs detection once** instead of 2 + N times per document: the anonymization step and every PII-rich segment now reuse the single whole-text analysis (`EnhancedAnonymizer.anonymize` accepts precomputed `analysis_results`). Also fixes a latent double-acronym-expansion bug — segments cut from already-expanded text were re-expanded when `expand_acronyms=True`.

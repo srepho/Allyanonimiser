@@ -8,6 +8,8 @@ using Polars for maximum efficiency and minimal memory usage.
 import logging
 import os
 from collections.abc import Generator
+from contextlib import ExitStack, closing
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -58,11 +60,23 @@ class StreamProcessor(BaseProcessor):
         else:
             self.n_workers = n_workers or os.cpu_count()
 
-        # Use chunk size from settings or default
-        if chunk_size is None and hasattr(self.ally, 'chunk_size'):
-            self.chunk_size = self.ally.chunk_size
-        else:
-            self.chunk_size = chunk_size or 10000
+        if chunk_size is None:
+            chunk_size = getattr(self.ally, "chunk_size", 10000)
+        self._validate_chunk_size(chunk_size)
+        self.chunk_size = chunk_size
+
+    @staticmethod
+    def _validate_chunk_size(size):
+        if isinstance(size, bool) or not isinstance(size, int) or size <= 0:
+            raise ValueError("chunk_size must be a positive integer")
+
+    @staticmethod
+    def _validate_paths(*paths):
+        paths = [Path(p).resolve() for p in paths if p is not None]
+        for i, path in enumerate(paths):
+            for other in paths[:i]:
+                if path == other or (path.exists() and other.exists() and path.samefile(other)):
+                    raise ValueError("Input, output and entity paths must be distinct")
 
     def _check_polars_available(self):
         """Check if Polars is available and raise an error if not."""
@@ -86,7 +100,7 @@ class StreamProcessor(BaseProcessor):
         csv_options: dict[str, Any] | None = None,
         age_bracket_size: int = 5,
         keep_postcode: bool = True
-    ) -> Generator[dict[str, pd.DataFrame | list], None, None]:
+    ) -> Generator[dict[str, Any], None, None]:
         """
         Stream process a large CSV file with minimal memory usage.
 
@@ -105,143 +119,80 @@ class StreamProcessor(BaseProcessor):
             keep_postcode: Whether to keep postcodes when anonymizing addresses
 
         Yields:
-            Dict with processed chunk as DataFrame and entity DataFrame
+            Dict with row_count and entity_count for every batch, entities
+            when detected, and a Polars dataframe when output_path is omitted.
 
-        Note: For true streaming with minimal memory impact, provide output_path
-        parameter so each processed chunk is written to disk immediately.
+        Notes:
+            Requires Polars >= 1.37. CSV columns default to strings to preserve
+            identifiers; csv_options can explicitly enable type inference.
+            Per-document reports are disabled for this bounded streaming path.
+            Files may contain partial results if processing fails. Consumers
+            stopping early should close the generator (e.g. contextlib.closing).
         """
         self._check_polars_available()
 
-        # Import polars here to ensure it's available in this function scope
         import polars as pl
+        from tqdm import tqdm
 
-        # Use instance chunk_size if not provided
-        chunk_size = chunk_size or self.chunk_size
-
-        # Default CSV options
-        if csv_options is None:
-            csv_options = {
-                "infer_schema_length": chunk_size,
-                "n_rows": None,  # Process all rows
-                "low_memory": True
-            }
-
-        # Handle single column case
+        chunk_size = self.chunk_size if chunk_size is None else chunk_size
+        self._validate_chunk_size(chunk_size)
+        self._validate_paths(file_path, output_path)
         if isinstance(text_columns, str):
             text_columns = [text_columns]
+        if not text_columns:
+            raise ValueError("text_columns must contain at least one column")
 
-        # Configure Polars streaming chunk size
-        try:
-            pl.Config.set_streaming_chunk_size(chunk_size)
-        except Exception as e:
-            logger.warning(f"Failed to set Polars streaming chunk size: {e}")
-
-        # Create LazyFrame for streaming
-        lf = pl.scan_csv(file_path, **csv_options)
-
-        # Validate columns are in the file
-        # collect_schema() avoids polars' PerformanceWarning on lf.columns
-        available_columns = lf.collect_schema().names()
+        # Read strings by default so identifiers retain leading zeroes and
+        # later rows cannot invalidate a schema inferred from the first batch.
+        options = {"infer_schema_length": 0, "low_memory": True, "glob": False}
+        options.update(csv_options or {})
+        lf = pl.scan_csv(file_path, **options)
+        schema = lf.collect_schema()
         for column in text_columns:
-            if column not in available_columns:
+            if column not in schema:
                 raise ValueError(f"Column '{column}' not found in CSV file")
 
-        # Create output directories if needed
-        if output_path and not os.path.exists(os.path.dirname(output_path)):
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with ExitStack() as stack:
+            output = None
+            if output_path is not None:
+                Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+                output = stack.enter_context(open(output_path, "w", encoding="utf-8", newline=""))
+            progress = stack.enter_context(tqdm(desc="Processing rows", unit="rows",
+                                                disable=not progress_bar))
+            batches = lf.collect_batches(chunk_size=chunk_size, maintain_order=True, lazy=True)
+            row_offset = 0
+            wrote_header = False
+            for chunk in batches:
+                result = self._process_chunk(
+                    chunk, text_columns, active_entity_types, operators,
+                    min_score_threshold, anonymize, age_bracket_size, keep_postcode,
+                )
+                entities = result["entities"]
+                for entity in entities:
+                    entity["row_index"] += row_offset
+                frame = result["dataframe"]
+                if output is not None:
+                    frame.write_csv(output, include_header=not wrote_header)
+                    output.flush()
+                    wrote_header = True
+                chunk_result = {"row_count": len(frame), "entity_count": len(entities)}
+                if output is None:
+                    chunk_result["dataframe"] = frame
+                if entities:
+                    chunk_result["entities"] = pd.DataFrame(entities)
+                row_offset += len(frame)
+                progress.update(len(frame))
+                yield chunk_result
 
-        # Process in chunks
-        chunk_counter = 0
-        entities_buffer = []
-
-        # Setup progress tracking if enabled
-        if progress_bar:
-            try:
-                from tqdm import tqdm
-            except ImportError:
-                logger.warning("tqdm not installed, progress bar disabled")
-                progress_bar = False
-
-        # Determine total number of chunks for progress bar
-        if progress_bar:
-            # Get file size and estimate number of chunks
-            file_size = os.path.getsize(file_path)
-            # Check for header to estimate rows
-            with open(file_path) as f:
-                header = f.readline()
-            avg_row_size = len(header)  # Use header as initial estimate
-            est_rows = max(10, file_size // max(1, avg_row_size))
-            est_chunks = (est_rows + chunk_size - 1) // chunk_size
-
-            progress = tqdm(total=est_chunks, desc="Processing chunks")
-
-        # Stream through the file with lazy evaluation
-        # Configure Polars streaming chunk size
-        try:
-            import polars as pl
-            pl.Config.set_streaming_chunk_size(chunk_size)
-        except Exception as e:
-            logger.warning(f"Failed to set Polars streaming chunk size: {e}")
-
-        # Use streaming mode without explicit chunk_size parameter
-        for chunk in lf.collect(streaming=True):
-            # Process this chunk
-            result = self._process_chunk(
-                chunk=chunk,
-                text_columns=text_columns,
-                active_entity_types=active_entity_types,
-                operators=operators,
-                min_score_threshold=min_score_threshold,
-                anonymize=anonymize,
-                age_bracket_size=age_bracket_size,
-                keep_postcode=keep_postcode
-            )
-
-            # Extract entities and processed data
-            processed_chunk = result['dataframe']
-            if result.get('entities'):
-                entities_buffer.extend(result['entities'])
-
-            # Write to output file if path provided (streaming mode)
-            if output_path:
-                # Write Polars DataFrame directly to CSV
-                if chunk_counter == 0:
-                    processed_chunk.write_csv(output_path)
-                else:
-                    # Append by writing without header
-                    with open(output_path, "a") as f:
-                        f.write(processed_chunk.write_csv(include_header=False))
-
-                # Only yield entities if they exist
-                if entities_buffer:
-                    yield {
-                        'entities': pd.DataFrame(entities_buffer)
-                    }
-                    entities_buffer = []  # Clear buffer after yielding
-            else:
-                # If not streaming to file, yield the processed chunk
-                yield_result = {'dataframe': processed_chunk}
-
-                # Include entities if they exist
-                if entities_buffer:
-                    yield_result['entities'] = pd.DataFrame(entities_buffer)
-                    entities_buffer = []  # Clear buffer after yielding
-
-                yield yield_result
-
-            # Update progress
-            if progress_bar:
-                progress.update(1)
-
-            chunk_counter += 1
-
-        # Close progress bar
-        if progress_bar:
-            progress.close()
-
-        # Yield any remaining entities
-        if entities_buffer:
-            yield {'entities': pd.DataFrame(entities_buffer)}
+            # A header-only input still produces a usable output file.
+            if output is not None and not wrote_header:
+                empty = pl.DataFrame(schema=schema)
+                if anonymize:
+                    empty = empty.with_columns([
+                        pl.Series(f"{column}_anonymized", [], dtype=pl.String)
+                        for column in text_columns
+                    ])
+                empty.write_csv(output)
 
     def _process_chunk(
         self,
@@ -302,6 +253,8 @@ class StreamProcessor(BaseProcessor):
                         active_entity_types=active_entity_types,
                         age_bracket_size=age_bracket_size,
                         keep_postcode=keep_postcode,
+                        analysis_results=entities,
+                        report=False,
                     )
                     anonymized_texts.append(r["text"])
                 else:
@@ -309,7 +262,7 @@ class StreamProcessor(BaseProcessor):
 
             if anonymize:
                 result = result.with_columns(
-                    pl.Series(f"{column}_anonymized", anonymized_texts)
+                    pl.Series(f"{column}_anonymized", anonymized_texts, dtype=pl.String)
                 )
 
         return {
@@ -367,39 +320,40 @@ class StreamProcessor(BaseProcessor):
             base_name = os.path.splitext(os.path.basename(output_path))[0]
             entities_output_path = os.path.join(base_dir, f"{base_name}_entities.csv")
 
-        # Stream process the file
+        self._validate_paths(file_path, output_path,
+                             entities_output_path if save_entities else None)
         total_rows = 0
         total_entities = 0
-        entities_buffer = []
+        entity_columns = ["row_index", "column", "entity_type", "start", "end", "text", "score"]
 
-        for chunk_result in self.stream_from_file(
-            file_path=file_path,
-            text_columns=text_columns,
-            active_entity_types=active_entity_types,
-            operators=operators,
-            min_score_threshold=min_score_threshold,
-            anonymize=anonymize,
-            chunk_size=chunk_size,
-            output_path=output_path,
-            progress_bar=progress_bar,
-            csv_options=csv_options,
-            age_bracket_size=age_bracket_size,
-            keep_postcode=keep_postcode
-        ):
-            # Update statistics
-            if 'dataframe' in chunk_result:
-                total_rows += len(chunk_result['dataframe'])
-
-            # Collect entities if saving
-            if save_entities and 'entities' in chunk_result:
-                entities_df = chunk_result['entities']
-                entities_buffer.extend(entities_df.to_dict('records'))
-                total_entities += len(entities_df)
-
-        # Save collected entities if requested
-        if save_entities and entities_output_path and entities_buffer:
-            entities_df = pd.DataFrame(entities_buffer)
-            entities_df.to_csv(entities_output_path, index=False)
+        with ExitStack() as stack:
+            entity_output = None
+            # Open entity output only after the first successful batch, so
+            # invalid input does not truncate an existing entity file.
+            chunks = stack.enter_context(closing(self.stream_from_file(
+                file_path=file_path, text_columns=text_columns,
+                active_entity_types=active_entity_types, operators=operators,
+                min_score_threshold=min_score_threshold, anonymize=anonymize,
+                chunk_size=chunk_size, output_path=output_path,
+                progress_bar=progress_bar, csv_options=csv_options,
+                age_bracket_size=age_bracket_size, keep_postcode=keep_postcode,
+            )))
+            for chunk_result in chunks:
+                total_rows += chunk_result["row_count"]
+                total_entities += chunk_result["entity_count"]
+                if save_entities and entities_output_path is not None:
+                    if entity_output is None:
+                        Path(entities_output_path).parent.mkdir(parents=True, exist_ok=True)
+                        entity_output = stack.enter_context(open(
+                            entities_output_path, "w", encoding="utf-8", newline=""
+                        ))
+                        pd.DataFrame(columns=entity_columns).to_csv(entity_output, index=False)
+                    if "entities" in chunk_result:
+                        chunk_result["entities"].to_csv(entity_output, index=False, header=False)
+                        entity_output.flush()
+            if save_entities and entities_output_path is not None and entity_output is None:
+                Path(entities_output_path).parent.mkdir(parents=True, exist_ok=True)
+                pd.DataFrame(columns=entity_columns).to_csv(entities_output_path, index=False)
 
         return {
             'total_rows_processed': total_rows,

@@ -131,7 +131,7 @@ requires-dist = [
     { name = "onnxruntime", marker = "extra == 'bench'", specifier = ">=1.16.0" },
     { name = "openai", marker = "extra == 'llm'", specifier = ">=0.27.0" },
     { name = "pandas", specifier = ">=1.0.0" },
-    { name = "polars", marker = "extra == 'stream'", specifier = ">=0.20.0" },
+    { name = "polars", marker = "extra == 'stream'", specifier = ">=1.37.0" },
     { name = "presidio-analyzer", specifier = ">=2.2.0" },
     { name = "presidio-anonymizer", specifier = ">=2.2.0" },
     { name = "pyarrow", marker = "extra == 'stream'", specifier = ">=14.0.0" },
