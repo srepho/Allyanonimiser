@@ -4,7 +4,9 @@ Main interface for the Allyanonimiser package.
 
 import logging
 import time
+from copy import deepcopy
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 import pandas as pd
@@ -67,44 +69,49 @@ class AnalysisConfig:
 # Factory
 # ---------------------------------------------------------------------------
 
+class _DefaultModel(StrEnum):
+    SMALL = "en_core_web_sm"
+
+
 def create_allyanonimiser(
     pattern_filepath: str | None = None,
     settings_path: str | None = None,
-    enable_caching: bool = True,
-    max_cache_size: int = 10_000,
-    spacy_model: str | None = "en_core_web_sm",
+    enable_caching: bool | None = None,
+    max_cache_size: int | None = None,
+    spacy_model: str | None = _DefaultModel.SMALL,
 ) -> "Allyanonimiser":
     """Create a pre-configured Allyanonimiser instance.
 
     Args:
         pattern_filepath: Path to a JSON file with extra pattern definitions.
         settings_path: Path to a settings file (JSON / YAML).
-        enable_caching: Enable result caching in the analyzer.
-        max_cache_size: Maximum cached entries.
-        spacy_model: spaCy model name. Defaults to ``"en_core_web_sm"`` (~44 MB,
+        enable_caching: Override saved caching; defaults to True without a config.
+        max_cache_size: Override saved cache size; defaults to 10,000 without a config.
+        spacy_model: Override the saved model. Without a config defaults to ``"en_core_web_sm"`` (~44 MB,
             fast). Use ``"en_core_web_lg"`` (~587 MB) for higher NER recall on
             ``PERSON``, ``LOCATION``, and ``ORG`` entities — pattern-based
             detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is identical
             either way. Pass ``None`` to disable spaCy entirely (pattern-only).
     """
     if settings_path:
-        settings_manager = SettingsManager(settings_path=settings_path)
+        settings_manager = SettingsManager()
+        if not settings_manager.load_settings(settings_path):
+            raise ValueError(f"Could not load settings from {settings_path}")
     else:
         settings_manager = SettingsManager(settings=create_default_settings())
 
-    analyzer = EnhancedAnalyzer(
-        enable_caching=enable_caching,
-        spacy_model=spacy_model,
-    )
-
-    ally = Allyanonimiser(
-        analyzer=analyzer,
-        settings_manager=settings_manager,
-        enable_caching=enable_caching,
-    )
-
-    if max_cache_size and hasattr(ally.analyzer, "max_cache_size"):
-        ally.analyzer.max_cache_size = max_cache_size
+    analyzer_options = deepcopy(settings_manager.get_section("analyzer"))
+    if spacy_model is not _DefaultModel.SMALL:
+        analyzer_options["spacy_model"] = spacy_model
+    if enable_caching is not None:
+        analyzer_options["enable_caching"] = enable_caching
+    if max_cache_size is not None:
+        analyzer_options["max_cache_size"] = max_cache_size
+    analyzer = EnhancedAnalyzer(**analyzer_options)
+    # Keep explicit factory overrides when configuring the instance.
+    if "analyzer" in settings_manager.settings:
+        settings_manager.settings["analyzer"] = analyzer_options
+    ally = Allyanonimiser(analyzer=analyzer, settings_manager=settings_manager)
 
     if pattern_filepath:
         ally.load_patterns(pattern_filepath)
@@ -148,8 +155,8 @@ class Allyanonimiser:
         else:
             self.text_preprocessor = TextPreprocessor()
 
-        self._configure_from_settings()
         self._load_default_patterns()
+        self._configure_from_settings()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -157,7 +164,7 @@ class Allyanonimiser:
 
     def _configure_from_settings(self) -> None:
         entity_types = self.settings_manager.get_entity_types()
-        if entity_types:
+        if "active" in self.settings_manager.get_section("entity_types"):
             self.analyzer.set_active_entity_types(entity_types)
 
         self.batch_size = self.settings_manager.get_batch_size()
@@ -165,6 +172,33 @@ class Allyanonimiser:
         self.use_pyarrow = self.settings_manager.get_value(
             "processing.use_pyarrow", True
         )
+
+        options = self.settings_manager.get_section("analyzer")
+        if options:
+            if options.get("spacy_model", self.analyzer.spacy_model_requested) != self.analyzer.spacy_model_requested:
+                replacement = EnhancedAnalyzer(**options)
+                replacement.patterns = self.analyzer.patterns.copy()
+                replacement.entity_type_metadata.update(self.analyzer.entity_type_metadata)
+                self.analyzer = replacement
+                self.anonymizer.analyzer = replacement
+                self.analyzer.set_active_entity_types(entity_types)
+            if "min_score_threshold" in options:
+                self.analyzer.set_min_score_threshold(options["min_score_threshold"])
+            for key in ("enable_caching", "max_cache_size"):
+                if key in options:
+                    setattr(self.analyzer, key, options[key])
+        patterns = self.settings_manager.settings.get("patterns", [])
+        if self.settings_manager.get_value("patterns_mode") == "replace":
+            self.analyzer.patterns = []
+            self.pattern_registry.clear()
+        for definition in patterns:
+            pattern = CustomPatternDefinition(**definition)
+            if pattern.to_dict() not in [p.to_dict() for p in self.analyzer.patterns]:
+                self.add_pattern(pattern)
+        priority = self.settings_manager.get_value("anonymization.entity_priority")
+        if priority is not None:
+            self.anonymizer.entity_priority = deepcopy(priority)
+        self.analyzer.clear_cache()
 
     def _load_default_patterns(self) -> None:
         from .patterns.au_patterns import get_au_pattern_definitions
@@ -212,11 +246,31 @@ class Allyanonimiser:
 
     def export_config(self, config_path: str, include_metadata: bool = True) -> bool:
         """Export a shareable config file (.json / .yaml)."""
-        self.settings_manager.set_acronyms(
-            self.text_preprocessor.acronym_dict,
-            self.text_preprocessor.case_sensitive,
-        )
-        return self.settings_manager.export_config(config_path, include_metadata)
+        if type(self.analyzer) is not EnhancedAnalyzer or type(self.anonymizer) is not EnhancedAnonymizer or any(
+            type(pattern) is not CustomPatternDefinition for pattern in self.analyzer.patterns
+        ):
+            logger.error("Configuration export supports the standard analyzer and regex patterns only")
+            return False
+        snapshot = deepcopy(self.settings_manager.settings)
+        snapshot["acronyms"] = {
+            "dictionary": deepcopy(self.text_preprocessor.acronym_dict),
+            "case_sensitive": self.text_preprocessor.case_sensitive,
+        }
+        snapshot.setdefault("entity_types", {})["active"] = sorted(self.analyzer.active_entity_types)
+        snapshot["analyzer"] = {
+            "spacy_model": self.analyzer.spacy_model_requested,
+            "min_score_threshold": self.analyzer.min_score_threshold,
+            "enable_caching": self.analyzer.enable_caching,
+            "max_cache_size": self.analyzer.max_cache_size,
+        }
+        snapshot.setdefault("anonymization", {})["entity_priority"] = deepcopy(self.anonymizer.entity_priority)
+        snapshot["patterns_mode"] = "replace"
+        snapshot["patterns"] = [pattern.to_dict() for pattern in self.analyzer.patterns]
+        snapshot.setdefault("processing", {}).update({
+            "batch_size": self.batch_size, "worker_count": self.worker_count,
+            "use_pyarrow": self.use_pyarrow,
+        })
+        return SettingsManager(snapshot).export_config(config_path, include_metadata)
 
     # ------------------------------------------------------------------
     # Acronym management  (explicit methods, replaces manage_acronyms)

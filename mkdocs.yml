@@ -52,6 +52,7 @@ nav:
     - Analyzing Text: usage/analyzing-text.md
     - Anonymizing Text: usage/anonymizing-text.md
     - Working with DataFrames: usage/dataframes.md
+    - Configuration: usage/configuration.md
   - Patterns:
     - Overview: patterns/overview.md
     - Australian Patterns: patterns/australian.md

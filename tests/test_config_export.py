@@ -101,7 +101,7 @@ def test_allyanonimiser_export_config():
         'DOB': 'Date of Birth'
     })
 
-    ally.settings_manager.set_entity_types(['PERSON', 'EMAIL_ADDRESS'])
+    ally.analyzer.set_active_entity_types(['PERSON', 'EMAIL_ADDRESS'])
 
     with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmp:
         temp_path = tmp.name

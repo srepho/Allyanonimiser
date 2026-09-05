@@ -8,7 +8,10 @@ import csv
 import json
 import logging
 import os
+from copy import deepcopy
 from typing import Any
+
+from .config_validation import validate_settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +69,11 @@ class SettingsManager:
                 logger.error(f"Unsupported settings file format: {file_ext}")
                 return False
 
-            # Update settings
-            self.settings.update(new_settings)
+            # Validate before mutating the currently active settings.
+            validate_settings(new_settings)
+            candidate = {**self.settings, **new_settings}
+            validate_settings(candidate)
+            self.settings = candidate
             logger.info(f"Settings loaded from {settings_path}")
             return True
 
@@ -476,55 +482,28 @@ class SettingsManager:
             Boolean indicating success
         """
         try:
-            # Create a simplified version of the settings
-            config = {
-                'version': self.settings.get('version', '1.0.0'),
-                'description': 'Allyanonimiser configuration file for sharing'
-            }
-
-            # Include active entity types if specified
-            entity_types = self.get_entity_types()
-            if entity_types:
-                config['entity_types'] = {'active': entity_types}
-
-            # Include anonymization operators if present
-            operators = self.get_anonymization_operators()
-            if operators:
-                config['anonymization'] = {'operators': operators}
-
-            # Include processing settings
-            config['processing'] = {
-                'batch_size': self.get_batch_size(),
-                'worker_count': self.get_worker_count(),
-                'expand_acronyms': self.get_value('processing.expand_acronyms', True),
-                'use_pyarrow': self.get_value('processing.use_pyarrow', True)
-            }
-
-            # Include acronyms if present (but limit to 10 examples in metadata)
-            acronyms = self.get_acronyms()
-            if acronyms:
-                config['acronyms'] = {
-                    'case_sensitive': self.get_acronym_case_sensitive(),
-                    'dictionary': acronyms
+            config = deepcopy(self.settings)
+            config["schema_version"] = 1
+            config.setdefault("version", "1.0.0")
+            config.setdefault("description", "Allyanonimiser configuration file for sharing")
+            config.setdefault("processing", {})
+            config["processing"].setdefault("batch_size", self.get_batch_size())
+            config["processing"].setdefault("worker_count", self.get_worker_count())
+            config["processing"].setdefault("expand_acronyms", True)
+            config["processing"].setdefault("use_pyarrow", True)
+            config.pop("metadata", None)
+            if include_metadata:
+                patterns = config.get("patterns", [])
+                acronyms = self.get_acronyms()
+                config["metadata"] = {
+                    "patterns": {"count": len(patterns),
+                                 "types": sorted({p["entity_type"] for p in patterns})},
+                    "acronyms": {"count": len(acronyms),
+                                 "examples": dict(list(acronyms.items())[:10])},
                 }
-
-                if include_metadata:
-                    acronym_count = len(acronyms)
-                    acronym_examples = list(acronyms.items())[:10]
-                    config['metadata'] = config.get('metadata', {})
-                    config['metadata']['acronyms'] = {
-                        'count': acronym_count,
-                        'examples': dict(acronym_examples) if acronym_count > 0 else {}
-                    }
-
-            # Include patterns count if present
-            patterns = self.settings.get('patterns', [])
-            if patterns and include_metadata:
-                config['metadata'] = config.get('metadata', {})
-                config['metadata']['patterns'] = {
-                    'count': len(patterns),
-                    'types': list(set(p['entity_type'] for p in patterns if 'entity_type' in p))
-                }
+            validate_settings(config)
+            # Fail before opening the destination if behavior cannot be serialized.
+            serialized = json.dumps(config, indent=2, allow_nan=False)
 
             # Save based on file extension
             file_ext = os.path.splitext(config_path)[1].lower()
@@ -534,7 +513,7 @@ class SettingsManager:
 
             if file_ext == '.json':
                 with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config, f, indent=2)
+                    f.write(serialized)
             elif file_ext in ['.yaml', '.yml']:
                 try:
                     import yaml
@@ -543,7 +522,7 @@ class SettingsManager:
                     return False
 
                 with open(config_path, 'w', encoding='utf-8') as f:
-                    yaml.dump(config, f, default_flow_style=False)
+                    yaml.safe_dump(json.loads(serialized), f, sort_keys=False)
             else:
                 logger.error(f"Unsupported config file format: {file_ext}")
                 return False

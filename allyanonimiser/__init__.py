@@ -8,6 +8,7 @@ from .allyanonimiser import (
     Allyanonimiser,
     AnalysisConfig,
     AnonymizationConfig,
+    _DefaultModel,
 )
 from .core.analyzer import EnhancedAnalyzer
 from .core.anonymizer import EnhancedAnonymizer
@@ -134,9 +135,9 @@ create_unified_analyzer = create_analyzer
 def create_allyanonimiser(
     pattern_filepath: str | None = None,
     settings_path: str | None = None,
-    enable_caching: bool = True,
-    max_cache_size: int = 10_000,
-    spacy_model: str | None = SPACY_MODEL_FAST,
+    enable_caching: bool | None = None,
+    max_cache_size: int | None = None,
+    spacy_model: str | None = _DefaultModel.SMALL,
 ) -> Allyanonimiser:
     """Create a fully configured Allyanonimiser instance.
 

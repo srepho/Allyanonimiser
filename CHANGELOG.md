@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed — configuration export and reload
+
+- Export complete live regex pattern snapshots, analyzer threshold/model/cache settings, active entities, acronym and processing settings, and anonymizer priorities. Preserve stored operator maps and score adjustments, with their existing per-call semantics.
+- Load custom patterns from settings; replace the pattern set when reloading a snapshot and clear detection caches. Explicit factory model/cache arguments override saved values; omitted arguments inherit them.
+- Add `schema_version: 1` and validate before applying settings. Legacy unversioned files still load. The factory now raises `ValueError` when its requested settings file cannot be loaded.
+- Reject unsupported/nonserializable configuration before opening an export destination. Add JSON/YAML behavior round-trip tests and configuration documentation.
+
 ### Fixed — streaming and replacement consistency
 
 - Stream CSVs through ordered row batches instead of collecting a DataFrame and iterating its columns. Correct row/entity counts, absolute row indices, header-only output, and relative output filenames; reject invalid chunk sizes and colliding input/output paths.

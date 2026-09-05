@@ -5,14 +5,16 @@ Scope: implementation planning; no runtime changes or release actions.
 
 ## Implementation progress — 2026-09-05
 
-The first correctness batch is implemented locally; no release or push yet.
+The first correctness batch was pushed as `ce337c8`; all five GitHub workflows passed. No package release was made.
 
 - Item 1: replaced collection with ordered Polars batches, corrected counts and absolute row indices, incrementally wrote entity output, handled header-only files and relative paths, validated chunk sizes and path collisions, and disabled unbounded session-report accumulation. Real CSV tests replace fabricated streaming tests.
 - Item 2: stream and DataFrame anonymization now reuse detections with the same prepared text and per-call threshold. DataFrame batching remains a later performance improvement.
 - Compatibility: stream extra now requires Polars >= 1.37.0; CSV columns default to strings. Documentation and changelog explain the output contract and partial-file behavior.
 - Validation: 318 default tests passed, 7 opt-in tests deselected; Ruff clean. The targeted streaming/parity tests also pass with Polars 1.37.0. A CI job now exercises that minimum version without NER models.
 - Memory observation using `bench/check_stream_memory.py`, pattern-only mode, default caches, chunk size 500: 2,000 rows / 1.75 MiB input used 285.64 MiB peak RSS (3.15 s); 20,000 rows / 17.51 MiB input used 337.06 MiB (31.02 s). Both runs had exact row/entity counts. This is a local measurement, not a universal memory bound; larger-scale and NER measurements remain useful follow-up.
-- Next batch: configuration export/reload fidelity (item 3). Items 3–6 are not implemented by this batch.
+- Configuration batch (item 3): implemented complete live regex snapshots, analyzer settings, priorities, version validation, safe serialization checks, and JSON/YAML behavior round trips. Existing per-call operator/score-adjustment semantics are retained and documented. Factory arguments explicitly override saved model/cache settings. Legacy unversioned files still load, and patterns in them now register correctly.
+- Configuration validation: 333 default tests passed, 7 deselected; Ruff and strict documentation build passed. Pyright remains advisory (55 errors in the local check); this batch does not undertake the type backlog.
+- Remaining: optional DataFrame batching, larger/NER memory measurements, and items 4–6.
 
 ## Verified baseline
 

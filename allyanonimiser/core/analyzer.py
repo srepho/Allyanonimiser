@@ -98,6 +98,7 @@ class EnhancedAnalyzer:
         max_cache_size: int = 10_000,
         spacy_model: str | None = "en_core_web_sm",
     ):
+        self.spacy_model_requested = spacy_model
         self.patterns: list = []
         self.active_entity_types: set = set()
         self.min_score_threshold = min_score_threshold
