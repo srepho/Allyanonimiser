@@ -1,6 +1,6 @@
 {
   "receipt_schema": 1,
-  "created": "2026-10-22T00:21:07+1100",
+  "created": "2026-10-22T00:25:33+1100",
   "corpus": {
     "path": "bench/data/au_challenge_dev.jsonl",
     "sha256": "8285ae9adee77b96dbecc1711d0506c6312335bf2e60e56b68492cedb1c4522f",
@@ -26,7 +26,7 @@
     "enable_caching": false
   },
   "source": {
-    "revision": "58fb15f0f52628439fde8de043315818b8492bc3",
+    "revision": "8c54d244b99673ad0f1d16240a2819494de632be",
     "package_dirty": false
   },
   "environment": {
@@ -46,23 +46,23 @@
   },
   "timing": {
     "init_seconds": 0.001,
-    "warm_pass_seconds_median": 1.353,
+    "warm_pass_seconds_median": 1.552,
     "passes": 3,
-    "docs_per_second": 236.5,
-    "chars_per_second": 92064
+    "docs_per_second": 206.1,
+    "chars_per_second": 80260
   },
   "metrics": {
     "entities": {
       "total": 2840,
-      "covered": 2046,
+      "covered": 2330,
       "partial": 201,
-      "missed": 593,
-      "covered_correct_type": 2019,
-      "full_coverage_rate": 0.7204
+      "missed": 309,
+      "covered_correct_type": 2303,
+      "full_coverage_rate": 0.8204
     },
     "documents": {
       "total": 320,
-      "with_exposed_pii": 296
+      "with_exposed_pii": 261
     },
     "overmasking": {
       "chars": 7306,
@@ -187,12 +187,12 @@
       },
       "DATE": {
         "total": 520,
-        "covered": 220,
+        "covered": 504,
         "partial": 0,
-        "missed": 300,
-        "covered_correct_type": 220,
-        "exposed_chars": 4079,
-        "full_coverage_rate": 0.4231
+        "missed": 16,
+        "covered_correct_type": 504,
+        "exposed_chars": 187,
+        "full_coverage_rate": 0.9692
       },
       "EMAIL_ADDRESS": {
         "total": 200,
@@ -589,11 +589,11 @@
       },
       "DATE/dmonY": {
         "total": 65,
-        "covered": 0,
+        "covered": 63,
         "partial": 0,
-        "missed": 65,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "missed": 2,
+        "covered_correct_type": 63,
+        "full_coverage_rate": 0.9692
       },
       "DATE/dmy_dot": {
         "total": 87,
@@ -621,27 +621,27 @@
       },
       "DATE/iso": {
         "total": 78,
-        "covered": 0,
+        "covered": 76,
         "partial": 0,
-        "missed": 78,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "missed": 2,
+        "covered_correct_type": 76,
+        "full_coverage_rate": 0.9744
       },
       "DATE/long": {
         "total": 80,
-        "covered": 0,
+        "covered": 78,
         "partial": 0,
-        "missed": 80,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "missed": 2,
+        "covered_correct_type": 78,
+        "full_coverage_rate": 0.975
       },
       "DATE/ordinal": {
         "total": 70,
-        "covered": 0,
+        "covered": 67,
         "partial": 0,
-        "missed": 70,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "missed": 3,
+        "covered_correct_type": 67,
+        "full_coverage_rate": 0.9571
       },
       "EMAIL_ADDRESS/email": {
         "total": 200,
@@ -847,51 +847,51 @@
     "by_noise": {
       "clean": {
         "total": 1399,
-        "covered": 1063,
+        "covered": 1202,
         "partial": 90,
-        "missed": 246,
-        "covered_correct_type": 1054,
-        "full_coverage_rate": 0.7598
+        "missed": 107,
+        "covered_correct_type": 1193,
+        "full_coverage_rate": 0.8592
       },
       "doc:lowercase": {
         "total": 265,
-        "covered": 138,
+        "covered": 184,
         "partial": 1,
-        "missed": 126,
-        "covered_correct_type": 138,
-        "full_coverage_rate": 0.5208
+        "missed": 80,
+        "covered_correct_type": 184,
+        "full_coverage_rate": 0.6943
       },
       "doc:nbsp": {
         "total": 465,
-        "covered": 342,
+        "covered": 383,
         "partial": 30,
-        "missed": 93,
-        "covered_correct_type": 340,
-        "full_coverage_rate": 0.7355
+        "missed": 52,
+        "covered_correct_type": 381,
+        "full_coverage_rate": 0.8237
       },
       "doc:ocr": {
         "total": 379,
-        "covered": 210,
+        "covered": 237,
         "partial": 76,
-        "missed": 93,
-        "covered_correct_type": 199,
-        "full_coverage_rate": 0.5541
+        "missed": 66,
+        "covered_correct_type": 226,
+        "full_coverage_rate": 0.6253
       },
       "doc:typo_labels": {
         "total": 515,
-        "covered": 406,
+        "covered": 462,
         "partial": 18,
-        "missed": 91,
-        "covered_correct_type": 397,
-        "full_coverage_rate": 0.7883
+        "missed": 35,
+        "covered_correct_type": 453,
+        "full_coverage_rate": 0.8971
       },
       "span:nbsp": {
         "total": 35,
-        "covered": 24,
+        "covered": 34,
         "partial": 0,
-        "missed": 11,
-        "covered_correct_type": 24,
-        "full_coverage_rate": 0.6857
+        "missed": 1,
+        "covered_correct_type": 34,
+        "full_coverage_rate": 0.9714
       },
       "span:ocr": {
         "total": 96,
@@ -936,12 +936,12 @@
         "fn": 1282
       },
       "DATE": {
-        "precision": 0.7122,
-        "recall": 0.3268,
-        "f1": 0.448,
-        "tp": 1980,
+        "precision": 0.8801,
+        "recall": 0.9691,
+        "f1": 0.9225,
+        "tp": 5872,
         "fp": 800,
-        "fn": 4079
+        "fn": 187
       },
       "ACCOUNT_LIKE": {
         "precision": 0.9727,
