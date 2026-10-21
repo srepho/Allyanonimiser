@@ -271,28 +271,58 @@ def aggregate(scored: list[dict[str, Any]]) -> dict[str, Any]:
 # Running
 # ---------------------------------------------------------------------------
 
+V4_BUNDLES = {None: "au-rules-v1", "en_core_web_sm": "au-spacy-sm-v1", "en_core_web_lg": "au-spacy-lg-v1"}
+
+
 def run(rows: list[dict[str, Any]], spacy_model: str | None, keep_postcode: bool,
-        repeats: int) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any], list]:
+        repeats: int, engine: str = "v3") -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any], list]:
     """Anonymize every row and score it.
+
+    Args:
+        engine: ``v3`` (the ``Allyanonimiser`` facade) or ``v4`` (``allyanonimiser.v4.Engine``).
 
     Returns:
         Per-document scores, timing, analyzer details and per-row replacements.
     """
-    from allyanonimiser import create_allyanonimiser
-
     t0 = time.perf_counter()
-    ally = create_allyanonimiser(spacy_model=spacy_model, enable_caching=False)
-    init_s = time.perf_counter() - t0
+    if engine == "v4":
+        from allyanonimiser.v4 import Engine, Policy
 
-    def one_pass() -> list[list[tuple[int, int, str]]]:
-        out = []
-        for row in rows:
-            result = ally.anonymize(row["text"], keep_postcode=keep_postcode)
-            out.append([(it["start"], it["end"], it["entity_type"]) for it in result["items"]])
-        return out
+        if spacy_model not in V4_BUNDLES:
+            raise ValueError(f"No v4 bundle for spaCy model {spacy_model!r}")
+        v4 = Engine.from_bundle(V4_BUNDLES[spacy_model])
+        policy = Policy(retain=frozenset({"AU_POSTCODE"}) if keep_postcode else frozenset())
+        init_s = time.perf_counter() - t0
 
-    if rows:
-        ally.anonymize(rows[0]["text"])  # warm lazily initialised components
+        def one_pass() -> list[list[tuple[int, int, str]]]:
+            return [[(x.start, x.end, x.entity_type) for x in res.replacements]
+                    for res in v4.transform_many((r["text"] for r in rows), policy)]
+
+        details = {"engine": "v4", "bundle": v4.bundle, "spacy_model_requested": spacy_model,
+                   "spacy_model_loaded": spacy_model, "min_score_threshold": policy.min_score,
+                   "pattern_count": len(v4._patterns)}
+        if rows:
+            v4.transform(rows[0]["text"], policy)
+    else:
+        from allyanonimiser import create_allyanonimiser
+
+        ally = create_allyanonimiser(spacy_model=spacy_model, enable_caching=False)
+        init_s = time.perf_counter() - t0
+
+        def one_pass() -> list[list[tuple[int, int, str]]]:
+            out = []
+            for row in rows:
+                result = ally.anonymize(row["text"], keep_postcode=keep_postcode)
+                out.append([(it["start"], it["end"], it["entity_type"]) for it in result["items"]])
+            return out
+
+        details = {"engine": "v3",
+                   "spacy_model_requested": spacy_model,
+                   "spacy_model_loaded": ally.analyzer.spacy_model_loaded if ally.analyzer.use_spacy else None,
+                   "min_score_threshold": ally.analyzer.min_score_threshold,
+                   "pattern_count": len(ally.analyzer.patterns)}
+        if rows:
+            ally.anonymize(rows[0]["text"])  # warm lazily initialised components
     run_times, replaced = [], []
     for _ in range(max(1, repeats)):
         t0 = time.perf_counter()
@@ -314,13 +344,7 @@ def run(rows: list[dict[str, Any]], spacy_model: str | None, keep_postcode: bool
         "docs_per_second": round(len(rows) / median, 1) if median else None,
         "chars_per_second": round(chars / median) if median else None,
     }
-    analyzer = {
-        "spacy_model_requested": spacy_model,
-        "spacy_model_loaded": ally.analyzer.spacy_model_loaded if ally.analyzer.use_spacy else None,
-        "min_score_threshold": ally.analyzer.min_score_threshold,
-        "pattern_count": len(ally.analyzer.patterns),
-    }
-    return scored, timing, analyzer, replaced
+    return scored, timing, details, replaced
 
 
 def _git_revision() -> dict[str, Any]:
@@ -350,7 +374,8 @@ def _versions() -> dict[str, str | None]:
 
 def build_receipt(args: argparse.Namespace, rows: list[dict[str, Any]], corpus_hash: str) -> tuple[dict[str, Any], list]:
     """Run the evaluation and assemble a reproducibility receipt."""
-    scored, timing, analyzer, replaced = run(rows, args.spacy_model, args.keep_postcode, args.repeats)
+    scored, timing, analyzer, replaced = run(rows, args.spacy_model, args.keep_postcode, args.repeats,
+                                             engine=args.engine)
     receipt = {
         "receipt_schema": RECEIPT_SCHEMA,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -401,7 +426,7 @@ def compare(current: dict[str, Any], baseline: dict[str, Any],
     for key in ("sha256", "split"):
         if current["corpus"][key] != baseline["corpus"][key]:
             warnings.append(f"corpus {key} differs from baseline; comparison may be meaningless")
-    for key in ("spacy_model_loaded", "keep_postcode"):
+    for key in ("engine", "spacy_model_loaded", "keep_postcode"):
         if current["config"].get(key) != baseline["config"].get(key):
             warnings.append(f"config {key}: baseline {baseline['config'].get(key)!r}, "
                             f"current {current['config'].get(key)!r}")
@@ -505,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus", default=str(DEFAULT_CORPUS),
                         help="JSONL path, or one of: " + ", ".join(CORPUS_ALIASES))
     parser.add_argument("--split", choices=["all", "dev", "test"], default="all")
+    parser.add_argument("--engine", choices=["v3", "v4"], default="v3",
+                        help="v3 facade (default) or the v4 Engine")
     parser.add_argument("--spacy-model", default=None,
                         help="spaCy model name; omit for pattern-only detection")
     parser.add_argument("--keep-postcode", action="store_true",

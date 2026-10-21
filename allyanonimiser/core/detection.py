@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Sequence
 from typing import Any
 
 from ..patterns.general_patterns import BROAD_PERSON_PATTERN_NAME
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 _LABEL_TEXTS = frozenset({"ref number", "reference number", "policy number", "claim number"})
 
 
-def match_patterns(patterns: list[Any], text: str, *, skip_broad_person: bool) -> list[RecognizerResult]:
+def match_patterns(patterns: Sequence[Any], text: str, *, skip_broad_person: bool) -> list[RecognizerResult]:
     """Run registered regex pattern definitions over *text*.
 
     Args:
