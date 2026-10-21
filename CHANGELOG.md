@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added — offline detection evaluation
+
+- `bench/eval_ally.py` evaluates Allyanonimiser alone on the synthetic AU corpus with no downloads or competitor weights. It scores replaced text per gold span as covered, partial or missed, checks entity-type agreement, and reports documents exposing PII, over-masking and throughput. Each run can write a receipt with corpus hash, revision, configuration, versions and CPU details.
+- A pattern-only regression gate now runs in the normal test suite against a checked-in baseline receipt.
+- Corpus rows carry their template family, with documented dev and held-out test splits.
+
 ### Fixed — state isolation and configured scores
 
 - Analyzer caches now store and return independent copies. Previously a caller editing a returned result, a per-call `score_adjustment`, or a context boost could change the scores later calls received for the same text.

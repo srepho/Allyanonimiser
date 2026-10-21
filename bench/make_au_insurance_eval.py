@@ -414,7 +414,8 @@ def main(n=160, out="bench/data/au_insurance.jsonl"):
             for sp in spans:
                 assert text[sp["start"]:sp["end"]] == sp["value"], \
                     f"offset mismatch in {gen.__name__}: {sp}"
-            f.write(json.dumps({"text": text, "spans": spans}) + "\n")
+            family = gen.__name__.removeprefix("make_")
+            f.write(json.dumps({"text": text, "spans": spans, "family": family}) + "\n")
     print(f"Wrote {n} rows to {out}")
 
 

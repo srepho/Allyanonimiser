@@ -7,6 +7,7 @@ Medicare, ABN, ACN, policy, claim, vehicle reg, VIN).
 """
 import argparse
 import json
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -18,26 +19,8 @@ from tokenizers import Tokenizer
 
 from allyanonimiser import create_allyanonimiser
 
-GOLD_TO_CAT = {
-    "PERSON": "PERSON",
-    "AU_ADDRESS": "ADDRESS",
-    "EMAIL_ADDRESS": "EMAIL",
-    "AU_PHONE": "PHONE",
-    "PHONE_INTL": "PHONE",
-    "DATE": "DATE",
-    "ISO_DATETIME": "DATE",
-    "TIME": "DATE",
-    "AU_TFN": "ACCOUNT_LIKE",
-    "AU_MEDICARE": "ACCOUNT_LIKE",
-    "AU_ABN": "ACCOUNT_LIKE",
-    "AU_ACN": "ACCOUNT_LIKE",
-    "POLICY_NUMBER": "ACCOUNT_LIKE",
-    "INSURANCE_CLAIM_NUMBER": "ACCOUNT_LIKE",
-    "VEHICLE_REGISTRATION": "ACCOUNT_LIKE",
-    "VIN": "ACCOUNT_LIKE",
-    "US_SSN": "ACCOUNT_LIKE",
-    "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from au_labels import ALLY_TO_CAT, CATEGORIES, GOLD_TO_CAT  # noqa: E402
 
 OPENAI_TO_CAT = {
     "private_person": "PERSON",
@@ -47,32 +30,6 @@ OPENAI_TO_CAT = {
     "private_date": "DATE",
     "account_number": "ACCOUNT_LIKE",
 }
-
-ALLY_TO_CAT = {
-    "PERSON": "PERSON",
-    "AU_ADDRESS": "ADDRESS",
-    "LOCATION": "ADDRESS",
-    "EMAIL_ADDRESS": "EMAIL",
-    "AU_PHONE": "PHONE",
-    "PHONE_INTL": "PHONE", "PHONE_NUMBER": "PHONE",
-    "DATE": "DATE", "DATE_OF_BIRTH": "DATE", "INCIDENT_DATE": "DATE",
-    "ISO_DATETIME": "DATE", "TIME": "DATE",
-    "AU_TFN": "ACCOUNT_LIKE",
-    "AU_MEDICARE": "ACCOUNT_LIKE",
-    "AU_ABN": "ACCOUNT_LIKE",
-    "AU_ACN": "ACCOUNT_LIKE",
-    "AU_CENTRELINK_CRN": "ACCOUNT_LIKE",
-    "INSURANCE_POLICY_NUMBER": "ACCOUNT_LIKE",
-    "INSURANCE_CLAIM_NUMBER": "ACCOUNT_LIKE",
-    "VEHICLE_REGISTRATION": "ACCOUNT_LIKE",
-    "VEHICLE_VIN": "ACCOUNT_LIKE",
-    "AU_POSTCODE": "ADDRESS",
-    "US_SSN": "ACCOUNT_LIKE",
-    "CREDIT_CARD": "ACCOUNT_LIKE",
-    "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
-}
-
-CATEGORIES = ["PERSON", "ADDRESS", "EMAIL", "PHONE", "DATE", "ACCOUNT_LIKE"]
 
 
 def mask_runs(mask):
