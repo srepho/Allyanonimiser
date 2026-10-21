@@ -12,11 +12,14 @@ from ..patterns.shared_regex import (
     AU_ABN_LABELLED,
     AU_ACN_LABELLED,
     AU_CENTRELINK_CRN_LABELLED,
+    AU_DRIVERS_LICENSE_LABELLED,
     AU_MEDICARE_LABELLED,
     AU_PASSPORT_LABELLED,
     AU_PHONE_PATTERNS,
     AU_TFN_LABELLED,
+    CLAIM_NUMBER_LABELLED,
     EMAIL_ADDRESS_PATTERN,
+    POLICY_NUMBER_LABELLED,
 )
 from .recognizer_result import RecognizerResult
 
@@ -32,14 +35,12 @@ _PHONE_PATTERNS: dict[str, list[str]] = {
 # stray word after the trigger (e.g. "Claim Note" → "Note", "Policy Number" →
 # "Number"). Real claim/policy/rego IDs always contain digits.
 _ID_PATTERNS: dict[str, list[str]] = {
+    # Labelled insurer references (see shared_regex): five or more digits.
     "INSURANCE_CLAIM_NUMBER": [
-        r"(?:Claim|CL|CLM)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
-        r"(?:Claim\s+(?:Number|Reference|ID|#))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
+        *CLAIM_NUMBER_LABELLED,
+        r"\bCL[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
     ],
-    "INSURANCE_POLICY_NUMBER": [
-        r"(?:Policy|POL)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
-        r"(?:Policy\s+(?:Number|ID|#))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
-    ],
+    "INSURANCE_POLICY_NUMBER": list(POLICY_NUMBER_LABELLED),
     "VEHICLE_REGISTRATION": [
         r"(?:Registration|Rego|REG)[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
         r"(?:Vehicle\s+(?:Registration|Rego|REG))[#:\-\s]+([A-Z0-9-]*\d[A-Z0-9-]*)",
@@ -58,7 +59,7 @@ _AU_PATTERNS: dict[str, list[str]] = {
     # labelled forms here are deliberately stricter than the standalone forms
     # loaded as analyzer patterns.
     "AU_DRIVERS_LICENSE": [
-        r"(?:Driver\'?s?\s+License|Licence|DL)[:\s#]*([A-Z0-9]{6,10})\b",
+        AU_DRIVERS_LICENSE_LABELLED,
         r"(?:NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\s+License[:\s]*(\d{6,10})\b",
     ],
     "AU_PASSPORT": [AU_PASSPORT_LABELLED],

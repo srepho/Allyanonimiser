@@ -13,7 +13,7 @@ later-registered entries can override built-in defaults.
 
 import re
 
-from ..patterns.shared_regex import LABEL_FILLER_MAX, LABEL_FILLER_WORDS
+from ..patterns.shared_regex import LABEL_FILLER_MAX, LABEL_FILLER_WORDS, LABEL_FORM_GAP
 from .false_positives import (
     DATE_SHAPE_RE,
     LABEL_SUFFIXES,
@@ -26,7 +26,9 @@ from .validators import EntityValidator
 # identifier type ("TFN is ...", "Medicare number: ..."), that label is
 # stronger evidence than any bare-shape competitor — including one with a
 # higher numeric priority. Checked against the ~48 chars preceding the span.
-_FILLER_BEFORE = rf"(?:\s+(?:{LABEL_FILLER_WORDS})){{0,{LABEL_FILLER_MAX}}}\s*[:#]?\s*$"
+_FILLER_BEFORE = (
+    rf"(?:(?:\s+(?:{LABEL_FILLER_WORDS})){{0,{LABEL_FILLER_MAX}}}\s*[:#]?|{LABEL_FORM_GAP})\s*$"
+)
 _LABEL_BEFORE: dict[str, re.Pattern] = {
     entity_type: re.compile(trigger + _FILLER_BEFORE, re.IGNORECASE)
     for entity_type, trigger in {
@@ -36,6 +38,9 @@ _LABEL_BEFORE: dict[str, re.Pattern] = {
         "AU_ACN": r"(?:\bacn|\baustralian\s+company\s+number)",
         "AU_MEDICARE": r"\bmedicare",
         "US_SSN": r"(?:\bssn|\bsocial\s+security(?:\s+number)?)",
+        "AU_DRIVERS_LICENSE": r"(?:\b(?:driver'?s\s+)?licen[cs]e|\bdl)(?:\s*#)?",
+        "AU_PASSPORT": r"\bpassport",
+        "AU_ACCOUNT_NUMBER": r"\b(?:account|acct)(?:\s*#)?",
     }.items()
 }
 
@@ -148,6 +153,11 @@ def resolve_entity_conflicts(
     labelled = [r for r in results if _has_explicit_label(r.entity_type, full_text, span_start)]
     if labelled:
         return max(labelled, key=priority)
+
+    # An AU_PHONE match is the more specific reading of a "+61 ..." span that
+    # the generic PHONE_INTL shape also covers.
+    if any(r.entity_type == "AU_PHONE" for r in results):
+        results = [r for r in results if r.entity_type != "PHONE_INTL"]
 
     # Validate-then-pick: walk candidates from highest priority down and
     # return the first one that passes per-type validation. Without this,

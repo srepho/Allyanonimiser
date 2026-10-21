@@ -236,7 +236,7 @@ class EntityValidator:
             (is_valid, error_message)
         """
         # Remove spaces
-        cleaned = re.sub(r'\s+', '', text)
+        cleaned = re.sub(r'[\s\-]+', '', text)  # spaces (incl. NBSP) and hyphens
 
         # Medicare format: 10 digits (4+5+1)
         if not re.match(r'^\d{10}$', cleaned):
@@ -261,7 +261,7 @@ class EntityValidator:
             (is_valid, error_message)
         """
         # Remove spaces
-        cleaned = re.sub(r'\s+', '', text)
+        cleaned = re.sub(r'[\s\-]+', '', text)  # spaces (incl. NBSP) and hyphens
 
         # TFN format: 9 digits
         if not re.match(r'^\d{9}$', cleaned):
@@ -285,7 +285,7 @@ class EntityValidator:
             (is_valid, error_message)
         """
         # Remove spaces
-        cleaned = re.sub(r'\s+', '', text)
+        cleaned = re.sub(r'[\s\-]+', '', text)  # spaces (incl. NBSP) and hyphens
 
         # ABN format: 11 digits
         if not re.match(r'^\d{11}$', cleaned):

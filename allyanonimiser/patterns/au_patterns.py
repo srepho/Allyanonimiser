@@ -10,6 +10,7 @@ from .shared_regex import (
     AU_ABN_LABELLED,
     AU_ACN_LABELLED,
     AU_CENTRELINK_CRN_LABELLED,
+    AU_DRIVERS_LICENSE_LABELLED,
     AU_MEDICARE_LABELLED,
     AU_PASSPORT_LABELLED,
     AU_PHONE_PATTERNS,
@@ -36,7 +37,7 @@ def get_au_pattern_definitions():
         {
             "entity_type": "AU_MEDICARE",
             "patterns": [
-                r"\b[2-6]\d{3}\s*\d{5}\s*\d{1}\b",  # More specific first digit
+                r"\b[2-6]\d{3}(?:\s*|-)\d{5}(?:\s*|-)\d\b",  # More specific first digit
                 AU_MEDICARE_LABELLED,
             ],
             "context": ["medicare", "health", "card", "insurance"],
@@ -46,7 +47,7 @@ def get_au_pattern_definitions():
             "entity_type": "AU_DRIVERS_LICENSE",
             "patterns": [
                 r"\b[A-Z]{2,3}\d{5,8}\b",
-                r"\b(?:License|Licence):\s*[A-Z0-9]{5,10}\b"
+                AU_DRIVERS_LICENSE_LABELLED
             ],
             "context": ["license", "licence", "driver", "driving"],
             "name": "Australian Driver's License"
@@ -102,9 +103,9 @@ def get_au_pattern_definitions():
         {
             "entity_type": "AU_ACCOUNT_NUMBER",
             "patterns": [
-                r"Account\s*(?:Number|#)?\s*:\s*(\d{4,10})\b",
-                r"(?:Bank\s+)?Account\s*(?:Number|No\.?|#)?\s*:\s*(\d{4}\s+\d{4})\b",
-                r"(?:account|acct)\s*(?:number|#)?[:\s]*(\d{4,10})\b"
+                # The split "1234 5678" form is tried first so it is not cut
+                # short at four digits.
+                r"\b(?i:(?:bank\s+)?account|acct)(?:\s*(?i:number|no\.?|#))*[\s:#.]*(\d{4}[ \t\u00a0]\d{4}|\d{4,10})\b"
             ],
             "context": ["account", "bank", "payment", "deposit", "transfer"],
             "name": "Australian Bank Account Number"

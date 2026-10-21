@@ -12,7 +12,7 @@ def get_insurance_pattern_definitions():
         {
             "entity_type": "INSURANCE_POLICY_NUMBER",
             "patterns": [
-                r"\b(?:POL|P|Policy)[- ]?\d{6,9}\b",
+                r"\b(?i:POL|P|Policy)[- ]?\d{6,9}\b",
                 r"\bAU[-\s]*\d{5,10}\b",                    # AU-12345678 format
             ],
             "context": ["policy", "insurance", "coverage", "insured"],
@@ -21,7 +21,7 @@ def get_insurance_pattern_definitions():
         {
             "entity_type": "INSURANCE_CLAIM_NUMBER",
             "patterns": [
-                r"\b(?:CLM|CL|C)[- ]?\d{6,9}\b",
+                r"\b(?i:CLM|CL|C)[- ]?\d{6,9}\b",
             ],
             "context": ["claim", "incident", "accident", "reference"],
             "name": "Insurance Claim Number"
