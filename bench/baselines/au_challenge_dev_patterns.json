@@ -1,6 +1,6 @@
 {
   "receipt_schema": 1,
-  "created": "2026-10-22T00:34:28+1100",
+  "created": "2026-10-22T00:37:48+1100",
   "corpus": {
     "path": "bench/data/au_challenge_dev.jsonl",
     "sha256": "8285ae9adee77b96dbecc1711d0506c6312335bf2e60e56b68492cedb1c4522f",
@@ -26,7 +26,7 @@
     "enable_caching": false
   },
   "source": {
-    "revision": "21923cc19ca2082cebd1f0cb6cb6fe6fe457e143",
+    "revision": "e792811a275bd99333804a7b49248bca6748a14b",
     "package_dirty": false
   },
   "environment": {
@@ -46,23 +46,23 @@
   },
   "timing": {
     "init_seconds": 0.001,
-    "warm_pass_seconds_median": 1.477,
+    "warm_pass_seconds_median": 1.617,
     "passes": 3,
-    "docs_per_second": 216.6,
-    "chars_per_second": 84341
+    "docs_per_second": 197.9,
+    "chars_per_second": 77049
   },
   "metrics": {
     "entities": {
       "total": 2840,
-      "covered": 2484,
-      "partial": 108,
-      "missed": 248,
-      "covered_correct_type": 2457,
-      "full_coverage_rate": 0.8746
+      "covered": 2541,
+      "partial": 73,
+      "missed": 226,
+      "covered_correct_type": 2514,
+      "full_coverage_rate": 0.8947
     },
     "documents": {
       "total": 320,
-      "with_exposed_pii": 199
+      "with_exposed_pii": 182
     },
     "overmasking": {
       "chars": 6798,
@@ -106,12 +106,12 @@
       },
       "AU_ADDRESS": {
         "total": 200,
-        "covered": 151,
-        "partial": 49,
+        "covered": 186,
+        "partial": 14,
         "missed": 0,
-        "covered_correct_type": 151,
-        "exposed_chars": 805,
-        "full_coverage_rate": 0.755
+        "covered_correct_type": 186,
+        "exposed_chars": 158,
+        "full_coverage_rate": 0.93
       },
       "AU_BSB": {
         "total": 80,
@@ -160,12 +160,12 @@
       },
       "AU_PHONE": {
         "total": 280,
-        "covered": 239,
+        "covered": 261,
         "partial": 6,
-        "missed": 35,
-        "covered_correct_type": 239,
-        "exposed_chars": 1251,
-        "full_coverage_rate": 0.8536
+        "missed": 13,
+        "covered_correct_type": 261,
+        "exposed_chars": 190,
+        "full_coverage_rate": 0.9321
       },
       "AU_TFN": {
         "total": 40,
@@ -317,11 +317,11 @@
       },
       "AU_ADDRESS/level": {
         "total": 11,
-        "covered": 0,
-        "partial": 11,
+        "covered": 8,
+        "partial": 3,
         "missed": 0,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "covered_correct_type": 8,
+        "full_coverage_rate": 0.7273
       },
       "AU_ADDRESS/lower": {
         "total": 20,
@@ -357,11 +357,11 @@
       },
       "AU_ADDRESS/po_box": {
         "total": 24,
-        "covered": 0,
-        "partial": 24,
+        "covered": 22,
+        "partial": 2,
         "missed": 0,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "covered_correct_type": 22,
+        "full_coverage_rate": 0.9167
       },
       "AU_ADDRESS/unit_slash": {
         "total": 16,
@@ -373,11 +373,11 @@
       },
       "AU_ADDRESS/unit_word": {
         "total": 6,
-        "covered": 0,
-        "partial": 6,
+        "covered": 5,
+        "partial": 1,
         "missed": 0,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "covered_correct_type": 5,
+        "full_coverage_rate": 0.8333
       },
       "AU_BSB/bsb": {
         "total": 80,
@@ -533,11 +533,11 @@
       },
       "AU_PHONE/spoken": {
         "total": 22,
-        "covered": 0,
+        "covered": 22,
         "partial": 0,
-        "missed": 22,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "missed": 0,
+        "covered_correct_type": 22,
+        "full_coverage_rate": 1.0
       },
       "AU_TFN/compact": {
         "total": 17,
@@ -847,19 +847,19 @@
     "by_noise": {
       "clean": {
         "total": 1399,
-        "covered": 1270,
-        "partial": 50,
-        "missed": 79,
-        "covered_correct_type": 1261,
-        "full_coverage_rate": 0.9078
+        "covered": 1304,
+        "partial": 28,
+        "missed": 67,
+        "covered_correct_type": 1295,
+        "full_coverage_rate": 0.9321
       },
       "doc:lowercase": {
         "total": 265,
-        "covered": 184,
+        "covered": 194,
         "partial": 1,
-        "missed": 80,
-        "covered_correct_type": 184,
-        "full_coverage_rate": 0.6943
+        "missed": 70,
+        "covered_correct_type": 194,
+        "full_coverage_rate": 0.7321
       },
       "doc:nbsp": {
         "total": 465,
@@ -871,19 +871,19 @@
       },
       "doc:ocr": {
         "total": 379,
-        "covered": 275,
-        "partial": 47,
+        "covered": 285,
+        "partial": 37,
         "missed": 57,
-        "covered_correct_type": 264,
-        "full_coverage_rate": 0.7256
+        "covered_correct_type": 274,
+        "full_coverage_rate": 0.752
       },
       "doc:typo_labels": {
         "total": 515,
-        "covered": 481,
-        "partial": 10,
+        "covered": 486,
+        "partial": 5,
         "missed": 24,
-        "covered_correct_type": 472,
-        "full_coverage_rate": 0.934
+        "covered_correct_type": 477,
+        "full_coverage_rate": 0.9437
       },
       "span:nbsp": {
         "total": 35,
@@ -904,20 +904,20 @@
     },
     "char_level": {
       "PERSON": {
-        "precision": 0.6151,
+        "precision": 0.6211,
         "recall": 0.7747,
-        "f1": 0.6858,
+        "f1": 0.6894,
         "tp": 5623,
-        "fp": 3518,
+        "fp": 3431,
         "fn": 1635
       },
       "ADDRESS": {
         "precision": 1.0,
-        "recall": 0.8723,
-        "f1": 0.9318,
-        "tp": 6637,
+        "recall": 0.9687,
+        "f1": 0.9841,
+        "tp": 7371,
         "fp": 0,
-        "fn": 972
+        "fn": 238
       },
       "EMAIL": {
         "precision": 1.0,
@@ -928,12 +928,12 @@
         "fn": 0
       },
       "PHONE": {
-        "precision": 0.9984,
-        "recall": 0.7411,
-        "f1": 0.8507,
-        "tp": 3669,
+        "precision": 0.9987,
+        "recall": 0.9554,
+        "f1": 0.9766,
+        "tp": 4730,
         "fp": 6,
-        "fn": 1282
+        "fn": 221
       },
       "DATE": {
         "precision": 0.8801,
