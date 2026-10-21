@@ -8,18 +8,10 @@ from dataclasses import replace
 
 import spacy
 
-from ..patterns.general_patterns import BROAD_PERSON_PATTERN_NAME
 from .common_formats import analyze_common_formats
 from .conflict_resolver import deduplicate_and_resolve_conflicts
 from .context_analyzer import ContextAnalyzer
-from .false_positives import (
-    LOCATION_FP_WORDS,
-    NON_LOCATION_PREFIXES,
-    ORG_ABBREVIATIONS,
-    PERSON_FP_WORDS,
-    PERSON_TRAILING_STOP_WORDS,
-    STREET_SUFFIXES,
-)
+from .detection import map_spacy_entity_type, match_patterns, spacy_doc_to_results
 from .recognizer_result import RecognizerResult
 
 logger = logging.getLogger(__name__)
@@ -593,97 +585,8 @@ class EnhancedAnalyzer:
         return explanation
 
     def _analyze_with_patterns(self, text):
-        """
-        Analyze text using pattern-based detection.
-
-        Args:
-            text: The text to analyze
-
-        Returns:
-            List of RecognizerResult objects
-        """
-        results = []
-
-        for pattern in self.patterns:
-            if not hasattr(pattern, 'patterns') or not pattern.patterns:
-                continue
-
-            entity_type = pattern.entity_type
-            pattern_score = getattr(pattern, 'score', None)
-            if pattern_score is None:
-                pattern_score = 0.85
-
-            # With spaCy NER available, skip only the broad two-capitalised-words
-            # PERSON pattern. Labelled and user-added PERSON patterns still run,
-            # so a name NER misses after "Insured:" is not left exposed.
-            if (self.use_spacy and entity_type == "PERSON"
-                    and getattr(pattern, "name", None) == BROAD_PERSON_PATTERN_NAME):
-                continue
-
-            # Use pre-compiled regexes when the pattern object provides them
-            # (CustomPatternDefinition does); fall back to raw strings for
-            # foreign pattern objects.
-            regexes = getattr(pattern, 'compiled_patterns', None)
-            if regexes is None:
-                regexes = [p for p in pattern.patterns if isinstance(p, str)]
-
-            for regex_pattern in regexes:
-                try:
-                    finditer = (
-                        regex_pattern.finditer(text)
-                        if isinstance(regex_pattern, re.Pattern)
-                        else re.finditer(regex_pattern, text)
-                    )
-                    # Find all matches
-                    for match in finditer:
-                        # Check if the pattern has capturing groups
-                        if match.lastindex and match.lastindex > 0:
-                            # Use the first capturing group to get the actual value
-                            start = match.start(1)
-                            end = match.end(1)
-                            matched_text = match.group(1)
-                        else:
-                            # Use the entire match
-                            start = match.start()
-                            end = match.end()
-                            matched_text = match.group()
-
-                        # Skip known false positives (common identifiers/labels)
-                        skip_match = False
-                        lc_text = matched_text.lower()
-
-                        # Skip if it's a known non-PII label
-                        if lc_text in ["ref number", "reference number", "policy number", "claim number"]:
-                            skip_match = True
-
-                        # Skip common patterns that shouldn't be detected as entities
-                        if (entity_type == "PERSON" and
-                            ("number" in lc_text or
-                             lc_text.startswith("ref") or
-                             lc_text.startswith("policy") or
-                             lc_text.startswith("claim"))):
-                            skip_match = True
-
-                        if not skip_match:
-                            # Create a result object
-                            result = RecognizerResult(
-                                entity_type=entity_type,
-                                start=start,
-                                end=end,
-                                score=pattern_score,
-                                text=matched_text  # Set the actual matched text
-                            )
-
-                            results.append(result)
-                except re.error:
-                    # Skip invalid regex patterns
-                    continue
-                except Exception as e:
-                    # Skip any other errors
-                    logger.debug("Error processing pattern %s: %s", regex_pattern, e)
-                    continue
-
-        return results
+        """Run the registered regex patterns over *text* (see :func:`match_patterns`)."""
+        return match_patterns(self.patterns, text, skip_broad_person=self.use_spacy)
 
     def _analyze_with_spacy(self, text):
         """
@@ -698,110 +601,8 @@ class EnhancedAnalyzer:
         return self._doc_to_results(self.nlp(text))
 
     def _doc_to_results(self, doc) -> list["RecognizerResult"]:
-        """Convert a spaCy Doc to a filtered RecognizerResult list.
-
-        Shared by the single-text path (:meth:`_analyze_with_spacy`) and the
-        batch path (:meth:`analyze_batch`) so both apply identical entity-type
-        mapping and false-positive suppression.
-        """
-        results = []
-
-        # Extract entities detected by spaCy
-        for ent in doc.ents:
-            # Map spaCy entity types to our entity types
-            entity_type = self._map_spacy_entity_type(ent.label_)
-
-            # Skip if not a supported entity type
-            if not entity_type:
-                continue
-
-            # Skip common false positives
-            if entity_type == "PERSON":
-                lc_text = ent.text.lower()
-                # Check for policy/claim patterns
-                if (lc_text.startswith("policy") or
-                    lc_text.startswith("ref") or
-                    lc_text.startswith("claim") or
-                    "number" in lc_text):
-                    continue
-
-                # Check for street/place suffixes
-                if any(ent.text.lower().endswith(suffix) for suffix in STREET_SUFFIXES):
-                    continue
-
-                # Check if entire text is a false positive
-                if lc_text in PERSON_FP_WORDS:
-                    continue
-
-                # Check if text contains multiple false positive words
-                words = lc_text.split()
-                if any(word in PERSON_FP_WORDS for word in words):
-                    continue
-
-                # Check for boundary issues - words that shouldn't be part of
-                # names. Iteratively pop trailing stop-word tokens (spaCy's
-                # split() handles \n as a separator, so newline-absorbed labels
-                # match with the same single rule).
-                text_parts = ent.text.split()
-                trimmed_changed = False
-                while len(text_parts) > 1 and text_parts[-1].lower() in PERSON_TRAILING_STOP_WORDS:
-                    text_parts.pop()
-                    trimmed_changed = True
-
-                if trimmed_changed:
-                    # Re-locate the trimmed text inside the original span so the
-                    # offsets stay anchored to the start. The last surviving
-                    # token always appears as a prefix of ent.text after a
-                    # split/join, so end = start + position of (last token end)
-                    # in the original text.
-                    new_end = ent.start_char + ent.text.find(text_parts[-1]) + len(text_parts[-1])
-                    result = RecognizerResult(
-                        entity_type=entity_type,
-                        start=ent.start_char,
-                        end=new_end,
-                        score=0.9,
-                        text=ent.text[:new_end - ent.start_char],
-                    )
-                    results.append(result)
-                    continue
-
-            # Skip ORGANIZATION false positives
-            if entity_type == "ORGANIZATION":
-                lc_text = ent.text.lower()
-                # Common abbreviations that shouldn't be organizations
-                if lc_text in ORG_ABBREVIATIONS:
-                    continue
-
-            # Skip LOCATION false positives
-            if entity_type == "LOCATION":
-                lc_text = ent.text.lower()
-
-                # Check if the entire text is a false positive
-                if lc_text in LOCATION_FP_WORDS:
-                    continue
-
-                # Check if it's a single word that's clearly not a location
-                if len(lc_text.split()) == 1:
-                    if any(lc_text.startswith(prefix) for prefix in NON_LOCATION_PREFIXES):
-                        continue
-
-                # Check for patterns that indicate it's not a location
-                # e.g., "Repairs in progress" - "Repairs" is not a location
-                if lc_text.endswith("s") and lc_text[:-1] in LOCATION_FP_WORDS:
-                    continue
-
-            # Create result
-            result = RecognizerResult(
-                entity_type=entity_type,
-                start=ent.start_char,
-                end=ent.end_char,
-                score=0.9,  # Higher confidence for spaCy entities
-                text=ent.text
-            )
-
-            results.append(result)
-
-        return results
+        """Convert a spaCy Doc to filtered results (see :func:`spacy_doc_to_results`)."""
+        return spacy_doc_to_results(doc)
 
     def _get_context_around_entity(self, text, entity_result):
         """
@@ -849,35 +650,5 @@ class EnhancedAnalyzer:
         return context_terms
 
     def _map_spacy_entity_type(self, spacy_entity_type):
-        """
-        Map spaCy entity types to our entity types.
-
-        Args:
-            spacy_entity_type: spaCy entity type
-
-        Returns:
-            Mapped entity type or None if not supported
-        """
-        # Define mapping
-        mapping = {
-            "PERSON": "PERSON",
-            "ORG": "ORGANIZATION",
-            "GPE": "LOCATION",
-            "LOC": "LOCATION",
-            "DATE": "DATE",
-            "TIME": "TIME",
-            "MONEY": "MONEY",
-            "CARDINAL": "NUMBER",
-            "ORDINAL": "NUMBER",
-            "QUANTITY": "NUMBER",
-            "PERCENT": "PERCENT",
-            "PRODUCT": "PRODUCT",
-            "EVENT": "EVENT",
-            "WORK_OF_ART": "WORK_OF_ART",
-            "LAW": "LAW",
-            "LANGUAGE": "LANGUAGE",
-            "FAC": "FACILITY"
-        }
-
-        return mapping.get(spacy_entity_type)
-
+        """Map a spaCy label to an Allyanonimiser entity type."""
+        return map_spacy_entity_type(spacy_entity_type)
