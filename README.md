@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.6.0-blue)](https://pypi.org/project/allyanonimiser/3.6.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.7.0-blue)](https://pypi.org/project/allyanonimiser/3.7.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,7 +12,18 @@ Australian-focused PII detection and anonymization for the insurance industry �
 
 📖 **[Full documentation](https://srepho.github.io/Allyanonimiser/)** · [Changelog](CHANGELOG.md)
 
-## Version 3.6.0 — Streaming, Configuration and State-Isolation Fixes
+## Version 3.7.0 — Detection Recall on Realistic Insurance Text
+
+- **Much better recall on realistic insurance text** — on a new held-out test set, fully masked entities rose from 68% to 86% (pattern-only) and from 74% to 85% (`en_core_web_lg`).
+- **Identifiers** — hyphenated TFN/ABN/ACN/Medicare, form-style labels ("Worker TFN for PAYG withholding:"), licences, two-letter passports, account numbers, and insurer policy/claim references in any format.
+- **Dates and names** — written and ISO dates; reversed, all-caps, initialled and accented names; names after titles, greetings, role labels and self-introductions.
+- **Addresses and phones** — unit/level prefixes, PO Box and Locked Bag addresses, "+61 ..." numbers, and mobiles read aloud.
+- **Bug fixes** — dates after words such as "Incident" or "Payment" were dropped; names ending in "id" or "ref" (Reid, Al-Rashid) could vanish; labelled names were hidden when spaCy missed them.
+- **New AU challenge corpus** — 480 synthetic documents with a held-out test split and per-variant results (`bench/make_au_challenge.py`).
+
+**Behaviour change:** PERSON patterns you add yourself now run when spaCy is loaded; they were previously ignored.
+
+### 3.6.0 (prior)
 
 - **Streaming works on real CSV files** — `stream_from_file()` crashed on any real file in 3.5.x. It now reads ordered row batches with correct counts and row indices, and writes entity output incrementally.
 - **Exported configuration reproduces behaviour** — exports now include custom patterns, analyzer settings and priorities, and reload into identical detections in JSON or YAML.
@@ -36,10 +47,10 @@ See the [changelog](CHANGELOG.md) for full details and earlier releases.
 ## Installation
 
 ```bash
-pip install allyanonimiser==3.6.0
+pip install allyanonimiser==3.7.0
 
 # With stream processing support for large files (polars + pyarrow)
-pip install "allyanonimiser[stream]==3.6.0"
+pip install "allyanonimiser[stream]==3.7.0"
 
 # spaCy model for NER (the library defaults to the small model)
 python -m spacy download en_core_web_sm

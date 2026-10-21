@@ -2,7 +2,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.6.0-blue)](https://pypi.org/project/allyanonimiser/3.6.0/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.7.0-blue)](https://pypi.org/project/allyanonimiser/3.7.0/)
 [![Python Versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Release Check](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml)
@@ -12,7 +12,20 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 Allyanonimiser detects and anonymizes personally identifiable information (PII) in text, with first-class support for Australian formats (TFN, ABN, Medicare, AU phone, etc.) and insurance-industry identifiers (policy numbers, claim references, vehicle rego, VIN).
 
-## What's new in v3.6.0
+## What's new in v3.7.0
+
+Detection release; see the [changelog](https://github.com/srepho/Allyanonimiser/blob/main/CHANGELOG.md) for details.
+
+- **Much better recall on realistic insurance text** — on a new held-out test set, fully masked entities rose from 68% to 86% (pattern-only) and from 74% to 85% (`en_core_web_lg`).
+- **Identifiers** — hyphenated TFN/ABN/ACN/Medicare, form-style labels ("Worker TFN for PAYG withholding:"), licences, two-letter passports, account numbers, and insurer policy/claim references in any format.
+- **Dates and names** — written and ISO dates; reversed, all-caps, initialled and accented names; names after titles, greetings, role labels and self-introductions.
+- **Addresses and phones** — unit/level prefixes, PO Box and Locked Bag addresses, "+61 ..." numbers, and mobiles read aloud.
+- **Bug fixes** — dates after words such as "Incident" or "Payment" were dropped; names ending in "id" or "ref" (Reid, Al-Rashid) could vanish; labelled names were hidden when spaCy missed them.
+- **New AU challenge corpus** — 480 synthetic documents with a held-out test split and per-variant results (`bench/make_au_challenge.py`).
+
+**Behaviour change:** PERSON patterns you add yourself now run when spaCy is loaded; they were previously ignored.
+
+### v3.6.0 (prior)
 
 Correctness release. Detection quality on the AU corpus is unchanged from v3.5.1; see the [changelog](https://github.com/srepho/Allyanonimiser/blob/main/CHANGELOG.md) for details.
 
