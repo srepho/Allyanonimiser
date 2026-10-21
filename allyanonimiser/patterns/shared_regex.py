@@ -112,3 +112,21 @@ WRITTEN_DATE_PATTERNS: list[str] = [
     rf"(?i)\b{_MONTH}\.?\s+{_DAY},?\s+(?:19|20)\d{{2}}\b",                    # March 3, 2024
     r"\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b",          # 2024-11-30
 ]
+
+
+# Optional unit/level/suite/shop prefix before the street number:
+# "Level 4, 88 Phillip Street", "Unit 12, 7 Ocean Parade", "Suite 3/40 ...".
+AU_ADDRESS_PREFIX = r"(?:(?i:unit|level|suite|shop|apartment|apt|flat|lot)\s+\d{1,4}[A-Za-z]?(?:,\s*|/|\s+))?"
+# Postal boxes: "PO Box 2210, Orange NSW 2800", "GPO Box 1234, Brisbane QLD 4001".
+AU_POSTAL_BOX_PATTERN = (
+    r"(?i)\b(?:P\.?\s?O\.?\s*Box|GPO\s+Box|Locked\s+Bag|Private\s+Bag)\s+\d{1,5},?\s+"
+    r"(?:[A-Za-z]+\s+){0,2}[A-Za-z]+,?\s+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{4}\b"
+)
+
+# A mobile number read aloud: "oh four one two, three four five, six seven
+# eight". It must start "oh/zero four" and have ten digit words ("double"
+# may stand for a repeated digit), so short number phrases do not match.
+_SPOKEN_DIGIT = r"(?:oh|zero|nought|one|two|three|four|five|six|seven|eight|nine)"
+AU_SPOKEN_MOBILE_PATTERN = (
+    rf"(?i)\b(?:oh|zero|nought)[ ,-]+four(?:[ ,-]+(?:double[ ,-]+)?{_SPOKEN_DIGIT}){{7,8}}\b"
+)

@@ -272,3 +272,61 @@ def test_doubled_greeting_captures_only_the_name(ally):
     spans = [text[r.start:r.end] for r in ally.analyze(text) if r.entity_type == "PERSON"]
     assert "Jenny" in " ".join(spans)
     assert not any(s.startswith(("Hi", "Dear")) for s in spans), spans
+
+
+# --- Batch 4: addresses and spoken phone numbers ----------------------------------
+
+@pytest.mark.parametrize("address", [
+    "PO Box 2210, Orange NSW 2800",
+    "P.O. Box 15 Kalgoorlie WA 6430",
+    "GPO Box 1234, Brisbane QLD 4001",
+    "Locked Bag 7, Penrith NSW 2751",
+    "Level 4, 88 Phillip Street, Sydney NSW 2000",
+    "Unit 12, 7 Ocean Parade, Coogee NSW 2034",
+    "Suite 3/40 Hunter Street, Newcastle NSW 2300",
+    "Shop 2, 15 Main Road, Moonah TAS 7009",
+    "po box 88, dubbo nsw 2830",
+])
+def test_box_and_prefixed_addresses_fully_masked(ally, address):
+    text = f"Send correspondence to {address} please."
+    out = masked(ally, text)
+    assert not any(part in out for part in address.replace(",", " ").split() if len(part) > 3 and not part.isdigit()), out
+    assert "AU_ADDRESS" in types_covering(ally, text, address)
+
+
+@pytest.mark.parametrize("text", [
+    "We moved the files to level 3 last year.",
+    "Unit 4 of the course covers privacy.",
+])
+def test_prefix_words_alone_are_not_addresses(ally, text):
+    assert not [r for r in ally.analyze(text) if r.entity_type == "AU_ADDRESS"]
+
+
+@pytest.mark.parametrize("spoken", [
+    "oh four one one, two two three, four four five",
+    "zero four nine eight seven six five four three two",
+    "Oh four two zero, one one one, nine nine nine",
+])
+def test_spoken_mobile_numbers(ally, spoken):
+    text = f"Caller: you can reach me on {spoken}."
+    out = masked(ally, text)
+    assert "four" not in out.split("on ", 1)[1], out
+    assert "AU_PHONE" in types_covering(ally, text, spoken)
+
+
+@pytest.mark.parametrize("text", [
+    "I have four one two kids and two dogs.",
+    "One two three, testing.",
+])
+def test_short_number_words_are_not_phones(ally, text):
+    assert not [r for r in ally.analyze(text) if r.entity_type == "AU_PHONE"]
+
+
+@pytest.mark.parametrize("spoken,digits", [
+    ("oh four one two, three four five, six seven eight", "0412345678"),
+    ("zero four double two triple three four five six", "0422333456"),
+    ("four score", None),
+])
+def test_spoken_digits_conversion(spoken, digits):
+    from allyanonimiser.core.validators import spoken_digits_to_number
+    assert spoken_digits_to_number(spoken) == digits

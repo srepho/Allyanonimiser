@@ -10,6 +10,27 @@ from ..patterns.shared_regex import WRITTEN_DATE_PATTERNS
 
 _WRITTEN_DATES = [re.compile(p) for p in WRITTEN_DATE_PATTERNS]
 
+_DIGIT_WORDS = {"oh": "0", "zero": "0", "nought": "0", "one": "1", "two": "2", "three": "3",
+                "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9"}
+
+
+def spoken_digits_to_number(text: str) -> str | None:
+    """Convert digit words ("oh four double two ...") to a digit string.
+
+    Returns None if any word is not a digit word or "double"/"triple".
+    """
+    digits: list[str] = []
+    repeat = 1
+    for word in re.findall(r"[A-Za-z]+", text.lower()):
+        if word in ("double", "triple"):
+            repeat = 2 if word == "double" else 3
+            continue
+        if word not in _DIGIT_WORDS:
+            return None
+        digits.append(_DIGIT_WORDS[word] * repeat)
+        repeat = 1
+    return "".join(digits) or None
+
 
 def validate_regex(pattern: str) -> tuple[bool, str | None]:
     """Validate that a string is a valid regex pattern."""
@@ -206,6 +227,10 @@ class EntityValidator:
         Returns:
             (is_valid, phone_type) where phone_type can be 'mobile', 'landline', 'service', etc.
         """
+        # A number read aloud ("oh four one two, ...") is checked as digits.
+        if re.search(r'[A-Za-z]{2}', text):
+            text = spoken_digits_to_number(text) or text
+
         # Remove common formatting
         cleaned = re.sub(r'[\s\-\(\)]+', '', text)
 

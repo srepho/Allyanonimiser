@@ -9,11 +9,14 @@ Regexes shared with the fast common-format recognizers
 from .shared_regex import (
     AU_ABN_LABELLED,
     AU_ACN_LABELLED,
+    AU_ADDRESS_PREFIX,
     AU_CENTRELINK_CRN_LABELLED,
     AU_DRIVERS_LICENSE_LABELLED,
     AU_MEDICARE_LABELLED,
     AU_PASSPORT_LABELLED,
     AU_PHONE_PATTERNS,
+    AU_POSTAL_BOX_PATTERN,
+    AU_SPOKEN_MOBILE_PATTERN,
     AU_STREET_TYPES,
     AU_TFN_LABELLED,
 )
@@ -30,7 +33,7 @@ def get_au_pattern_definitions():
         },
         {
             "entity_type": "AU_PHONE",
-            "patterns": list(AU_PHONE_PATTERNS),
+            "patterns": [*AU_PHONE_PATTERNS, AU_SPOKEN_MOBILE_PATTERN],
             "context": ["phone", "mobile", "call", "contact", "telephone", "ph", "tel"],
             "name": "Australian Phone Number"
         },
@@ -58,13 +61,14 @@ def get_au_pattern_definitions():
                 # Title-case form: anchored by state, postcode optional. Title
                 # case on street/suburb tokens keeps narrative prose like
                 # "2007 the Court decided to notify the Government" from matching.
-                rf"\b\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Z][A-Za-z]*\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Z][A-Za-z]*\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s+\d{{4}})?\b",
+                rf"\b{AU_ADDRESS_PREFIX}\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Z][A-Za-z]*\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Z][A-Za-z]*\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s+\d{{4}})?\b",
                 # Case-tolerant form: accepts lowercase/mixed suburb and street
                 # names ("sydney NSW 2000", "42 queen st melbourne vic 3000")
                 # but REQUIRES a full postcode after the state, which is a
                 # strong enough anchor to prevent prose false positives even
                 # without capitalization.
-                rf"(?i)\b\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Za-z]+\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Za-z]+\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{{4}}\b",
+                rf"(?i)\b{AU_ADDRESS_PREFIX}\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Za-z]+\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Za-z]+\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{{4}}\b",
+                AU_POSTAL_BOX_PATTERN,
             ],
             "context": ["address", "street", "road", "suburb", "live", "residence"],
             "name": "Australian Address"
