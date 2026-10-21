@@ -1,0 +1,957 @@
+{
+  "receipt_schema": 1,
+  "created": "2026-10-22T00:06:05+1100",
+  "corpus": {
+    "path": "bench/data/au_challenge_dev.jsonl",
+    "sha256": "8285ae9adee77b96dbecc1711d0506c6312335bf2e60e56b68492cedb1c4522f",
+    "split": "all",
+    "documents": 320,
+    "families": {
+      "call_transcript": 40,
+      "ctp_injury_note": 40,
+      "diary_entries": 40,
+      "email_thread": 40,
+      "home_assessor_report": 40,
+      "motor_claim_form": 40,
+      "remittance_advice": 40,
+      "workers_comp_note": 40
+    }
+  },
+  "config": {
+    "spacy_model_requested": null,
+    "spacy_model_loaded": null,
+    "min_score_threshold": 0.7,
+    "pattern_count": 34,
+    "keep_postcode": false,
+    "enable_caching": false
+  },
+  "source": {
+    "revision": "5ae0fe271b07efcc9ec41fd0e80c72fa9e1e241e",
+    "package_dirty": false
+  },
+  "environment": {
+    "python": "3.12.9",
+    "platform": "macOS-15.7.9-x86_64-i386-64bit",
+    "machine": "x86_64",
+    "processor": "i386",
+    "cpu_count": 8,
+    "versions": {
+      "allyanonimiser": "3.6.0",
+      "spacy": "3.8.14",
+      "en_core_web_sm": "3.8.0",
+      "en_core_web_lg": "3.8.0",
+      "presidio-analyzer": "2.2.362",
+      "pandas": "3.0.2"
+    }
+  },
+  "timing": {
+    "init_seconds": 0.001,
+    "warm_pass_seconds_median": 0.759,
+    "passes": 3,
+    "docs_per_second": 421.3,
+    "chars_per_second": 164043
+  },
+  "metrics": {
+    "entities": {
+      "total": 2840,
+      "covered": 1916,
+      "partial": 270,
+      "missed": 654,
+      "covered_correct_type": 1665,
+      "full_coverage_rate": 0.6746
+    },
+    "documents": {
+      "total": 320,
+      "with_exposed_pii": 305
+    },
+    "overmasking": {
+      "chars": 7498,
+      "rate": 0.0888,
+      "spurious_replacements": 579,
+      "spurious_by_type": {
+        "AU_DRIVERS_LICENSE": 32,
+        "INVOICE_NUMBER": 40,
+        "MONEY_AMOUNT": 120,
+        "ORGANIZATION": 40,
+        "PERSON": 187,
+        "TIME": 160
+      }
+    },
+    "by_label": {
+      "AU_ABN": {
+        "total": 40,
+        "covered": 26,
+        "partial": 11,
+        "missed": 3,
+        "covered_correct_type": 26,
+        "exposed_chars": 110,
+        "full_coverage_rate": 0.65
+      },
+      "AU_ACCOUNT_NUMBER": {
+        "total": 80,
+        "covered": 58,
+        "partial": 15,
+        "missed": 7,
+        "covered_correct_type": 35,
+        "exposed_chars": 129,
+        "full_coverage_rate": 0.725
+      },
+      "AU_ACN": {
+        "total": 40,
+        "covered": 27,
+        "partial": 9,
+        "missed": 4,
+        "covered_correct_type": 27,
+        "exposed_chars": 76,
+        "full_coverage_rate": 0.675
+      },
+      "AU_ADDRESS": {
+        "total": 200,
+        "covered": 151,
+        "partial": 49,
+        "missed": 0,
+        "covered_correct_type": 151,
+        "exposed_chars": 805,
+        "full_coverage_rate": 0.755
+      },
+      "AU_BSB": {
+        "total": 80,
+        "covered": 75,
+        "partial": 0,
+        "missed": 5,
+        "covered_correct_type": 71,
+        "exposed_chars": 35,
+        "full_coverage_rate": 0.9375
+      },
+      "AU_CENTRELINK_CRN": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "exposed_chars": 0,
+        "full_coverage_rate": 1.0
+      },
+      "AU_DRIVERS_LICENSE": {
+        "total": 80,
+        "covered": 63,
+        "partial": 0,
+        "missed": 17,
+        "covered_correct_type": 25,
+        "exposed_chars": 130,
+        "full_coverage_rate": 0.7875
+      },
+      "AU_MEDICARE": {
+        "total": 80,
+        "covered": 57,
+        "partial": 0,
+        "missed": 23,
+        "covered_correct_type": 57,
+        "exposed_chars": 276,
+        "full_coverage_rate": 0.7125
+      },
+      "AU_PASSPORT": {
+        "total": 40,
+        "covered": 33,
+        "partial": 0,
+        "missed": 7,
+        "covered_correct_type": 17,
+        "exposed_chars": 63,
+        "full_coverage_rate": 0.825
+      },
+      "AU_PHONE": {
+        "total": 280,
+        "covered": 239,
+        "partial": 6,
+        "missed": 35,
+        "covered_correct_type": 127,
+        "exposed_chars": 1251,
+        "full_coverage_rate": 0.8536
+      },
+      "AU_TFN": {
+        "total": 40,
+        "covered": 27,
+        "partial": 9,
+        "missed": 4,
+        "covered_correct_type": 0,
+        "exposed_chars": 80,
+        "full_coverage_rate": 0.675
+      },
+      "CREDIT_CARD_NUMBER": {
+        "total": 40,
+        "covered": 37,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 37,
+        "exposed_chars": 57,
+        "full_coverage_rate": 0.925
+      },
+      "DATE": {
+        "total": 520,
+        "covered": 220,
+        "partial": 0,
+        "missed": 300,
+        "covered_correct_type": 220,
+        "exposed_chars": 4079,
+        "full_coverage_rate": 0.4231
+      },
+      "EMAIL_ADDRESS": {
+        "total": 200,
+        "covered": 200,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 200,
+        "exposed_chars": 0,
+        "full_coverage_rate": 1.0
+      },
+      "INSURANCE_CLAIM_NUMBER": {
+        "total": 120,
+        "covered": 66,
+        "partial": 30,
+        "missed": 24,
+        "covered_correct_type": 66,
+        "exposed_chars": 442,
+        "full_coverage_rate": 0.55
+      },
+      "PERSON": {
+        "total": 640,
+        "covered": 306,
+        "partial": 134,
+        "missed": 200,
+        "covered_correct_type": 286,
+        "exposed_chars": 2866,
+        "full_coverage_rate": 0.4781
+      },
+      "PHONE_INTL": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "exposed_chars": 0,
+        "full_coverage_rate": 1.0
+      },
+      "POLICY_NUMBER": {
+        "total": 80,
+        "covered": 54,
+        "partial": 7,
+        "missed": 19,
+        "covered_correct_type": 43,
+        "exposed_chars": 277,
+        "full_coverage_rate": 0.675
+      },
+      "VEHICLE_REGISTRATION": {
+        "total": 160,
+        "covered": 157,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 157,
+        "exposed_chars": 21,
+        "full_coverage_rate": 0.9812
+      },
+      "VIN": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "exposed_chars": 0,
+        "full_coverage_rate": 1.0
+      }
+    },
+    "by_variant": {
+      "AU_ABN/compact": {
+        "total": 14,
+        "covered": 11,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 11,
+        "full_coverage_rate": 0.7857
+      },
+      "AU_ABN/hyphen": {
+        "total": 11,
+        "covered": 0,
+        "partial": 11,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_ABN/spaced": {
+        "total": 15,
+        "covered": 15,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 15,
+        "full_coverage_rate": 1.0
+      },
+      "AU_ACCOUNT_NUMBER/account": {
+        "total": 80,
+        "covered": 58,
+        "partial": 15,
+        "missed": 7,
+        "covered_correct_type": 35,
+        "full_coverage_rate": 0.725
+      },
+      "AU_ACN/compact": {
+        "total": 13,
+        "covered": 11,
+        "partial": 0,
+        "missed": 2,
+        "covered_correct_type": 11,
+        "full_coverage_rate": 0.8462
+      },
+      "AU_ACN/hyphen": {
+        "total": 9,
+        "covered": 0,
+        "partial": 8,
+        "missed": 1,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_ACN/spaced": {
+        "total": 18,
+        "covered": 16,
+        "partial": 1,
+        "missed": 1,
+        "covered_correct_type": 16,
+        "full_coverage_rate": 0.8889
+      },
+      "AU_ADDRESS/level": {
+        "total": 11,
+        "covered": 0,
+        "partial": 11,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_ADDRESS/lower": {
+        "total": 20,
+        "covered": 20,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 20,
+        "full_coverage_rate": 1.0
+      },
+      "AU_ADDRESS/multi_line": {
+        "total": 8,
+        "covered": 8,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 8,
+        "full_coverage_rate": 1.0
+      },
+      "AU_ADDRESS/no_comma": {
+        "total": 50,
+        "covered": 50,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 50,
+        "full_coverage_rate": 1.0
+      },
+      "AU_ADDRESS/one_line": {
+        "total": 65,
+        "covered": 57,
+        "partial": 8,
+        "missed": 0,
+        "covered_correct_type": 57,
+        "full_coverage_rate": 0.8769
+      },
+      "AU_ADDRESS/po_box": {
+        "total": 24,
+        "covered": 0,
+        "partial": 24,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_ADDRESS/unit_slash": {
+        "total": 16,
+        "covered": 16,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 16,
+        "full_coverage_rate": 1.0
+      },
+      "AU_ADDRESS/unit_word": {
+        "total": 6,
+        "covered": 0,
+        "partial": 6,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_BSB/bsb": {
+        "total": 80,
+        "covered": 75,
+        "partial": 0,
+        "missed": 5,
+        "covered_correct_type": 71,
+        "full_coverage_rate": 0.9375
+      },
+      "AU_CENTRELINK_CRN/crn": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "full_coverage_rate": 1.0
+      },
+      "AU_DRIVERS_LICENSE/licence_NSW": {
+        "total": 21,
+        "covered": 10,
+        "partial": 0,
+        "missed": 11,
+        "covered_correct_type": 10,
+        "full_coverage_rate": 0.4762
+      },
+      "AU_DRIVERS_LICENSE/licence_QLD": {
+        "total": 17,
+        "covered": 17,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 1.0
+      },
+      "AU_DRIVERS_LICENSE/licence_SA": {
+        "total": 12,
+        "covered": 12,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 8,
+        "full_coverage_rate": 1.0
+      },
+      "AU_DRIVERS_LICENSE/licence_VIC": {
+        "total": 17,
+        "covered": 17,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 1.0
+      },
+      "AU_DRIVERS_LICENSE/licence_WA": {
+        "total": 13,
+        "covered": 7,
+        "partial": 0,
+        "missed": 6,
+        "covered_correct_type": 7,
+        "full_coverage_rate": 0.5385
+      },
+      "AU_MEDICARE/compact": {
+        "total": 29,
+        "covered": 29,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 29,
+        "full_coverage_rate": 1.0
+      },
+      "AU_MEDICARE/hyphen": {
+        "total": 23,
+        "covered": 0,
+        "partial": 0,
+        "missed": 23,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_MEDICARE/spaced": {
+        "total": 28,
+        "covered": 28,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 28,
+        "full_coverage_rate": 1.0
+      },
+      "AU_PASSPORT/passport": {
+        "total": 40,
+        "covered": 33,
+        "partial": 0,
+        "missed": 7,
+        "covered_correct_type": 17,
+        "full_coverage_rate": 0.825
+      },
+      "AU_PHONE/landline_bracket": {
+        "total": 20,
+        "covered": 16,
+        "partial": 0,
+        "missed": 4,
+        "covered_correct_type": 16,
+        "full_coverage_rate": 0.8
+      },
+      "AU_PHONE/landline_intl": {
+        "total": 30,
+        "covered": 28,
+        "partial": 1,
+        "missed": 1,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.9333
+      },
+      "AU_PHONE/landline_spaced": {
+        "total": 30,
+        "covered": 27,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 27,
+        "full_coverage_rate": 0.9
+      },
+      "AU_PHONE/mobile_compact": {
+        "total": 26,
+        "covered": 23,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 23,
+        "full_coverage_rate": 0.8846
+      },
+      "AU_PHONE/mobile_hyphen": {
+        "total": 27,
+        "covered": 27,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 27,
+        "full_coverage_rate": 1.0
+      },
+      "AU_PHONE/mobile_intl": {
+        "total": 46,
+        "covered": 44,
+        "partial": 1,
+        "missed": 1,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.9565
+      },
+      "AU_PHONE/mobile_intl_compact": {
+        "total": 42,
+        "covered": 40,
+        "partial": 2,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.9524
+      },
+      "AU_PHONE/mobile_spaced": {
+        "total": 37,
+        "covered": 34,
+        "partial": 2,
+        "missed": 1,
+        "covered_correct_type": 34,
+        "full_coverage_rate": 0.9189
+      },
+      "AU_PHONE/spoken": {
+        "total": 22,
+        "covered": 0,
+        "partial": 0,
+        "missed": 22,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_TFN/compact": {
+        "total": 17,
+        "covered": 17,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 1.0
+      },
+      "AU_TFN/hyphen": {
+        "total": 10,
+        "covered": 0,
+        "partial": 9,
+        "missed": 1,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "AU_TFN/spaced": {
+        "total": 13,
+        "covered": 10,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.7692
+      },
+      "CREDIT_CARD_NUMBER/compact": {
+        "total": 12,
+        "covered": 12,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 12,
+        "full_coverage_rate": 1.0
+      },
+      "CREDIT_CARD_NUMBER/hyphen": {
+        "total": 15,
+        "covered": 14,
+        "partial": 0,
+        "missed": 1,
+        "covered_correct_type": 14,
+        "full_coverage_rate": 0.9333
+      },
+      "CREDIT_CARD_NUMBER/spaced": {
+        "total": 13,
+        "covered": 11,
+        "partial": 0,
+        "missed": 2,
+        "covered_correct_type": 11,
+        "full_coverage_rate": 0.8462
+      },
+      "DATE/dmonY": {
+        "total": 65,
+        "covered": 0,
+        "partial": 0,
+        "missed": 65,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "DATE/dmy_dot": {
+        "total": 87,
+        "covered": 84,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 84,
+        "full_coverage_rate": 0.9655
+      },
+      "DATE/dmy_short": {
+        "total": 72,
+        "covered": 70,
+        "partial": 0,
+        "missed": 2,
+        "covered_correct_type": 70,
+        "full_coverage_rate": 0.9722
+      },
+      "DATE/dmy_slash": {
+        "total": 68,
+        "covered": 66,
+        "partial": 0,
+        "missed": 2,
+        "covered_correct_type": 66,
+        "full_coverage_rate": 0.9706
+      },
+      "DATE/iso": {
+        "total": 78,
+        "covered": 0,
+        "partial": 0,
+        "missed": 78,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "DATE/long": {
+        "total": 80,
+        "covered": 0,
+        "partial": 0,
+        "missed": 80,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "DATE/ordinal": {
+        "total": 70,
+        "covered": 0,
+        "partial": 0,
+        "missed": 70,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "EMAIL_ADDRESS/email": {
+        "total": 200,
+        "covered": 200,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 200,
+        "full_coverage_rate": 1.0
+      },
+      "INSURANCE_CLAIM_NUMBER/c_year_slash": {
+        "total": 28,
+        "covered": 0,
+        "partial": 25,
+        "missed": 3,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "INSURANCE_CLAIM_NUMBER/clm_hyphen": {
+        "total": 29,
+        "covered": 24,
+        "partial": 5,
+        "missed": 0,
+        "covered_correct_type": 24,
+        "full_coverage_rate": 0.8276
+      },
+      "INSURANCE_CLAIM_NUMBER/digits_only": {
+        "total": 25,
+        "covered": 15,
+        "partial": 0,
+        "missed": 10,
+        "covered_correct_type": 15,
+        "full_coverage_rate": 0.6
+      },
+      "INSURANCE_CLAIM_NUMBER/wc": {
+        "total": 38,
+        "covered": 27,
+        "partial": 0,
+        "missed": 11,
+        "covered_correct_type": 27,
+        "full_coverage_rate": 0.7105
+      },
+      "PERSON/first_only": {
+        "total": 138,
+        "covered": 66,
+        "partial": 1,
+        "missed": 71,
+        "covered_correct_type": 66,
+        "full_coverage_rate": 0.4783
+      },
+      "PERSON/full": {
+        "total": 317,
+        "covered": 215,
+        "partial": 55,
+        "missed": 47,
+        "covered_correct_type": 206,
+        "full_coverage_rate": 0.6782
+      },
+      "PERSON/initial": {
+        "total": 62,
+        "covered": 0,
+        "partial": 17,
+        "missed": 45,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "PERSON/middle": {
+        "total": 27,
+        "covered": 0,
+        "partial": 16,
+        "missed": 11,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "PERSON/surname_first": {
+        "total": 28,
+        "covered": 0,
+        "partial": 16,
+        "missed": 12,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "PERSON/title": {
+        "total": 28,
+        "covered": 14,
+        "partial": 14,
+        "missed": 0,
+        "covered_correct_type": 14,
+        "full_coverage_rate": 0.5
+      },
+      "PERSON/upper": {
+        "total": 40,
+        "covered": 11,
+        "partial": 15,
+        "missed": 14,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.275
+      },
+      "PHONE_INTL/intl": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "full_coverage_rate": 1.0
+      },
+      "POLICY_NUMBER/hom_digits": {
+        "total": 10,
+        "covered": 3,
+        "partial": 0,
+        "missed": 7,
+        "covered_correct_type": 3,
+        "full_coverage_rate": 0.3
+      },
+      "POLICY_NUMBER/mot_year": {
+        "total": 15,
+        "covered": 8,
+        "partial": 7,
+        "missed": 0,
+        "covered_correct_type": 8,
+        "full_coverage_rate": 0.5333
+      },
+      "POLICY_NUMBER/pol_digits": {
+        "total": 17,
+        "covered": 17,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 17,
+        "full_coverage_rate": 1.0
+      },
+      "POLICY_NUMBER/slash": {
+        "total": 12,
+        "covered": 0,
+        "partial": 0,
+        "missed": 12,
+        "covered_correct_type": 0,
+        "full_coverage_rate": 0.0
+      },
+      "POLICY_NUMBER/trv_digits": {
+        "total": 12,
+        "covered": 12,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 8,
+        "full_coverage_rate": 1.0
+      },
+      "POLICY_NUMBER/two_letter": {
+        "total": 14,
+        "covered": 14,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 7,
+        "full_coverage_rate": 1.0
+      },
+      "VEHICLE_REGISTRATION/hyphen": {
+        "total": 31,
+        "covered": 31,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 31,
+        "full_coverage_rate": 1.0
+      },
+      "VEHICLE_REGISTRATION/nsw": {
+        "total": 28,
+        "covered": 28,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 28,
+        "full_coverage_rate": 1.0
+      },
+      "VEHICLE_REGISTRATION/qld": {
+        "total": 35,
+        "covered": 35,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 35,
+        "full_coverage_rate": 1.0
+      },
+      "VEHICLE_REGISTRATION/spaced": {
+        "total": 29,
+        "covered": 26,
+        "partial": 0,
+        "missed": 3,
+        "covered_correct_type": 26,
+        "full_coverage_rate": 0.8966
+      },
+      "VEHICLE_REGISTRATION/vic": {
+        "total": 37,
+        "covered": 37,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 37,
+        "full_coverage_rate": 1.0
+      },
+      "VIN/vin": {
+        "total": 40,
+        "covered": 40,
+        "partial": 0,
+        "missed": 0,
+        "covered_correct_type": 40,
+        "full_coverage_rate": 1.0
+      }
+    },
+    "by_noise": {
+      "clean": {
+        "total": 1399,
+        "covered": 1001,
+        "partial": 127,
+        "missed": 271,
+        "covered_correct_type": 876,
+        "full_coverage_rate": 0.7155
+      },
+      "doc:lowercase": {
+        "total": 265,
+        "covered": 126,
+        "partial": 6,
+        "missed": 133,
+        "covered_correct_type": 112,
+        "full_coverage_rate": 0.4755
+      },
+      "doc:nbsp": {
+        "total": 465,
+        "covered": 317,
+        "partial": 38,
+        "missed": 110,
+        "covered_correct_type": 264,
+        "full_coverage_rate": 0.6817
+      },
+      "doc:ocr": {
+        "total": 379,
+        "covered": 194,
+        "partial": 90,
+        "missed": 95,
+        "covered_correct_type": 155,
+        "full_coverage_rate": 0.5119
+      },
+      "doc:typo_labels": {
+        "total": 515,
+        "covered": 384,
+        "partial": 24,
+        "missed": 107,
+        "covered_correct_type": 340,
+        "full_coverage_rate": 0.7456
+      },
+      "span:nbsp": {
+        "total": 35,
+        "covered": 22,
+        "partial": 2,
+        "missed": 11,
+        "covered_correct_type": 13,
+        "full_coverage_rate": 0.6286
+      },
+      "span:ocr": {
+        "total": 96,
+        "covered": 14,
+        "partial": 26,
+        "missed": 56,
+        "covered_correct_type": 10,
+        "full_coverage_rate": 0.1458
+      }
+    },
+    "char_level": {
+      "PERSON": {
+        "precision": 0.4956,
+        "recall": 0.5451,
+        "f1": 0.5192,
+        "tp": 3956,
+        "fp": 4026,
+        "fn": 3302
+      },
+      "ADDRESS": {
+        "precision": 1.0,
+        "recall": 0.8723,
+        "f1": 0.9318,
+        "tp": 6637,
+        "fp": 0,
+        "fn": 972
+      },
+      "EMAIL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 4673,
+        "fp": 0,
+        "fn": 0
+      },
+      "PHONE": {
+        "precision": 0.9984,
+        "recall": 0.7411,
+        "f1": 0.8507,
+        "tp": 3669,
+        "fp": 6,
+        "fn": 1282
+      },
+      "DATE": {
+        "precision": 0.7122,
+        "recall": 0.3268,
+        "f1": 0.448,
+        "tp": 1980,
+        "fp": 800,
+        "fn": 4079
+      },
+      "ACCOUNT_LIKE": {
+        "precision": 0.9469,
+        "recall": 0.8226,
+        "f1": 0.8804,
+        "tp": 7893,
+        "fp": 443,
+        "fn": 1702
+      }
+    }
+  }
+}

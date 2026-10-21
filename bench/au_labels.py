@@ -24,6 +24,12 @@ GOLD_TO_CAT = {
     "VIN": "ACCOUNT_LIKE",
     "US_SSN": "ACCOUNT_LIKE",
     "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
+    # Added for the challenge corpus (make_au_challenge.py).
+    "AU_DRIVERS_LICENSE": "ACCOUNT_LIKE",
+    "AU_PASSPORT": "ACCOUNT_LIKE",
+    "AU_BSB": "ACCOUNT_LIKE",
+    "AU_ACCOUNT_NUMBER": "ACCOUNT_LIKE",
+    "AU_CENTRELINK_CRN": "ACCOUNT_LIKE",
 }
 
 # Allyanonimiser entity type -> coarse scoring category.
@@ -49,6 +55,11 @@ ALLY_TO_CAT = {
     "US_SSN": "ACCOUNT_LIKE",
     "CREDIT_CARD": "ACCOUNT_LIKE",
     "CREDIT_CARD_NUMBER": "ACCOUNT_LIKE",
+    "AU_DRIVERS_LICENSE": "ACCOUNT_LIKE",
+    "AU_PASSPORT": "ACCOUNT_LIKE",
+    "AU_BSB": "ACCOUNT_LIKE",
+    "AU_ACCOUNT_NUMBER": "ACCOUNT_LIKE",
+    "NAME_CONSULTANT": "PERSON",
 }
 
 # Gold label -> Allyanonimiser types that count as the *correct* type.
@@ -73,6 +84,11 @@ GOLD_TO_ALLY_TYPES = {
     "VIN": {"VEHICLE_VIN"},
     "US_SSN": {"US_SSN"},
     "CREDIT_CARD_NUMBER": {"CREDIT_CARD", "CREDIT_CARD_NUMBER"},
+    "AU_DRIVERS_LICENSE": {"AU_DRIVERS_LICENSE"},
+    "AU_PASSPORT": {"AU_PASSPORT"},
+    "AU_BSB": {"AU_BSB"},
+    "AU_ACCOUNT_NUMBER": {"AU_ACCOUNT_NUMBER"},
+    "AU_CENTRELINK_CRN": {"AU_CENTRELINK_CRN"},
 }
 
 CATEGORIES = ["PERSON", "ADDRESS", "EMAIL", "PHONE", "DATE", "ACCOUNT_LIKE"]

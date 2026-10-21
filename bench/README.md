@@ -48,6 +48,56 @@ dev, so rules tuned on dev can be checked on unseen templates.
 **Limits.** The corpus is synthetic and templated, with 20 documents per family.
 It catches regressions; it does not establish accuracy on real claim notes.
 
+## AU challenge corpus
+
+`make_au_challenge.py` generates a harder, independent test set. The original
+corpus was used while fixing detection, so it can no longer show gains.
+
+```bash
+python bench/make_au_challenge.py                          # regenerate (deterministic)
+python bench/eval_ally.py --corpus challenge-dev --show-failures 30
+python bench/eval_ally.py --corpus challenge-test          # held out: read aggregates only
+```
+
+**Contents.** 480 synthetic insurance documents in 12 template families, none
+shared with the original corpus. Identifiers are generated fresh with valid
+checksums: TFN, ABN, ACN, Medicare and Luhn cards. It adds driver's licences,
+passports, BSB and account numbers, Centrelink CRNs, and insurer-style policy
+and claim formats. Names come from a diverse bank with accents, apostrophes,
+hyphens and multi-part surnames.
+
+**Noise.** Each gold span records a `variant` naming its surface form, such as
+`AU_TFN/hyphen`, `PERSON/surname_first`, `AU_ADDRESS/multi_line` or
+`AU_PHONE/spoken`. Span-level noise is appended as `+ocr` or `+nbsp`. Documents
+carry `tags` for lowercase text, misspelt labels, OCR substitutions and
+non-breaking spaces. The evaluator reports coverage by variant and by noise, and
+lists the weakest variants.
+
+**Splits and protocol.**
+
+| File | Families | Use |
+|---|---|---|
+| `data/au_challenge_dev.jsonl` | 8 families, 320 documents | Development. Inspect failures and tune rules here. Gated in CI, pattern-only. |
+| `data/au_challenge_test.jsonl` | 4 held-out families, 160 documents | Report aggregate results at release time. Do not tune against its individual failures. |
+
+The held-out families are a medical statement, a complaint letter, a travel
+claim and a tabular export. Every label in them also appears in development.
+`data/au_challenge_manifest.json` records the seed, Faker version, hashes and
+counts. `tests/test_challenge_corpus.py` checks checksums against the package's
+validators, offsets, split separation, the manifest hashes, and exact
+regeneration when the Faker version matches.
+
+**Starting point, v3.6.0 plus the unreleased detection fixes:**
+
+| Split | Configuration | Entities fully covered | Docs exposing PII | Over-masking |
+|---|---|---|---|---|
+| dev | pattern-only | 1,916 / 2,840 (67%) | 305 / 320 | 8.9% |
+| dev | `en_core_web_sm` | 2,243 / 2,840 (79%) | 271 / 320 | 10.0% |
+| dev | `en_core_web_lg` | 2,338 / 2,840 (82%) | 261 / 320 | 9.9% |
+| test | pattern-only | 1,420 / 2,080 (68%) | 158 / 160 | 10.4% |
+| test | `en_core_web_sm` | 1,527 / 2,080 (73%) | 145 / 160 | 2.9% |
+| test | `en_core_web_lg` | 1,543 / 2,080 (74%) | 139 / 160 | 4.3% |
+
 ## Head-to-head comparisons
 
 Head-to-head evaluations of Allyanonimiser against `openai/privacy-filter` on three
@@ -86,6 +136,9 @@ Results land in `bench/results_*.json` (gitignored — regenerate on demand).
 - `eval_ally.py` — Offline Ally-only evaluator and regression gate
 - `au_labels.py` — Label mappings and split definitions shared by the AU runners
 - `baselines/au_insurance_patterns.json` — Pattern-only baseline receipt used by the gate
+- `make_au_challenge.py` — Generator for the AU challenge corpus (dev and held-out test splits)
+- `data/au_challenge_{dev,test}.jsonl`, `data/au_challenge_manifest.json` — The challenge corpus and its manifest
+- `baselines/au_challenge_dev_patterns.json` — Pattern-only challenge-dev baseline used by the gate
 
 ## Model comparison notes
 

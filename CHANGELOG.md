@@ -12,6 +12,8 @@
 
 ### Evaluation
 
+- **New AU challenge corpus** (`bench/make_au_challenge.py`): 480 synthetic insurance documents in 12 new template families, split into 8 development and 4 held-out test families. Identifiers are freshly generated with valid checksums. New types include driver's licences, passports, BSB and account numbers and CRNs. Realistic noise includes compact and hyphenated numbers, multi-line and unit addresses, reversed and initialled names, lowercase notes, misspelt labels, OCR substitutions, non-breaking spaces and spoken phone numbers. Each span records its surface form, and the evaluator now reports coverage by variant and by noise. Pattern-only detection fully covers 67% of development entities; the large spaCy model reaches 82%.
+- The regression gate now also covers the challenge development split, pattern-only. The test split is held out and reported, not gated.
 - On the synthetic AU corpus every labelled entity is now fully masked under pattern-only, `en_core_web_sm` and `en_core_web_lg`. Documents exposing PII fell from 13, 17 and 19 to zero. Over-masking did not increase. The pattern-only baseline receipt was refreshed.
 - These fixes were made with the corpus visible, so it can no longer show further gains. The regression tests use fresh phrasings that are not in the corpus.
 

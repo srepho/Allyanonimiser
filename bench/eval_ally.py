@@ -54,7 +54,14 @@ from au_labels import (  # noqa: E402
 )
 
 RECEIPT_SCHEMA = 1
-DEFAULT_CORPUS = Path(__file__).resolve().parent / "data" / "au_insurance.jsonl"
+DATA_DIR = Path(__file__).resolve().parent / "data"
+DEFAULT_CORPUS = DATA_DIR / "au_insurance.jsonl"
+# Short names accepted by --corpus.
+CORPUS_ALIASES = {
+    "au": DEFAULT_CORPUS,
+    "challenge-dev": DATA_DIR / "au_challenge_dev.jsonl",
+    "challenge-test": DATA_DIR / "au_challenge_test.jsonl",
+}
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -72,6 +79,7 @@ def load_corpus(path: Path, split: str = "all") -> tuple[list[dict[str, Any]], s
     Returns:
         The selected rows and the corpus hash.
     """
+    path = CORPUS_ALIASES.get(str(path), Path(path))
     raw = path.read_bytes()
     rows = []
     for i, line in enumerate(raw.decode("utf-8").splitlines()):
@@ -84,6 +92,9 @@ def load_corpus(path: Path, split: str = "all") -> tuple[list[dict[str, Any]], s
             if row["text"][span["start"]:span["end"]] != span.get("value", row["text"][span["start"]:span["end"]]):
                 raise ValueError(f"Row {i}: span offsets do not match recorded value")
         rows.append(row)
+    if split != "all" and not {r["family"] for r in rows} <= set(FAMILIES):
+        raise ValueError("--split applies to the original AU corpus; the challenge corpus "
+                         "is already split into challenge-dev and challenge-test")
     if split == "dev":
         rows = [r for r in rows if r["family"] not in TEST_FAMILIES]
     elif split == "test":
@@ -135,6 +146,7 @@ def score_document(text: str, gold: list[dict[str, Any]], replaced: list[tuple[i
         types_seen = set().union(*owner[s:e]) if e > s else set()
         entities.append({
             "label": label,
+            "variant": span.get("variant"),
             "outcome": outcome,
             "type_correct": bool(types_seen & GOLD_TO_ALLY_TYPES.get(label, set())),
             "exposed_chars": (e - s) - covered,
@@ -205,6 +217,29 @@ def aggregate(scored: list[dict[str, Any]]) -> dict[str, Any]:
         fn = sum(d["char_counts"][cat][2] for d in scored)
         char[cat] = {**_prf(tp, fp, fn), "tp": tp, "fp": fp, "fn": fn}
 
+    def _outcomes(items: list[dict[str, Any]]) -> dict[str, Any]:
+        c = Counter(e["outcome"] for e in items)
+        total = len(items)
+        return {"total": total, "covered": c["covered"], "partial": c["partial"], "missed": c["missed"],
+                "covered_correct_type": sum(e["outcome"] == "covered" and e["type_correct"] for e in items),
+                "full_coverage_rate": round(c["covered"] / total, 4) if total else 0.0}
+
+    # Breakdowns exist only when the corpus records variants (challenge corpus).
+    by_variant: dict[str, list] = defaultdict(list)
+    by_noise: dict[str, list] = defaultdict(list)
+    for doc in scored:
+        for ent in doc["entities"]:
+            if not ent.get("variant"):
+                continue
+            base, *flags = ent["variant"].split("+")
+            by_variant[f"{ent['label']}/{base}"].append(ent)
+            for flag in flags:
+                by_noise[f"span:{flag}"].append(ent)
+            for tag in doc.get("tags", []):
+                by_noise[f"doc:{tag}"].append(ent)
+            if not flags and not doc.get("tags"):
+                by_noise["clean"].append(ent)
+
     overmasked = sum(d["overmasked_chars"] for d in scored)
     non_gold = sum(d["non_gold_chars"] for d in scored)
     spurious = Counter(t for d in scored for t in d["spurious"])
@@ -226,6 +261,8 @@ def aggregate(scored: list[dict[str, Any]]) -> dict[str, Any]:
             "spurious_by_type": dict(sorted(spurious.items())),
         },
         "by_label": labels,
+        "by_variant": {k: _outcomes(v) for k, v in sorted(by_variant.items())},
+        "by_noise": {k: _outcomes(v) for k, v in sorted(by_noise.items())},
         "char_level": char,
     }
 
@@ -266,6 +303,8 @@ def run(rows: list[dict[str, Any]], spacy_model: str | None, keep_postcode: bool
         replaced = current
 
     scored = [score_document(r["text"], r["spans"], rep) for r, rep in zip(rows, replaced)]
+    for doc, row in zip(scored, rows):
+        doc["tags"] = row.get("tags", [])
     median = statistics.median(run_times)
     chars = sum(len(r["text"]) for r in rows)
     timing = {
@@ -316,7 +355,7 @@ def build_receipt(args: argparse.Namespace, rows: list[dict[str, Any]], corpus_h
         "receipt_schema": RECEIPT_SCHEMA,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "corpus": {
-            "path": os.path.relpath(args.corpus, REPO_ROOT),
+            "path": os.path.relpath(CORPUS_ALIASES.get(str(args.corpus), args.corpus), REPO_ROOT),
             "sha256": corpus_hash,
             "split": args.split,
             "documents": len(rows),
@@ -418,6 +457,21 @@ def print_summary(receipt: dict[str, Any]) -> None:
     print(f"{'ALL':<24} {e['total']:>6} {e['covered']:>8} {e['partial']:>8} {e['missed']:>7} "
           f"{e['covered_correct_type']:>8}")
     print()
+    if m.get("by_noise"):
+        print()
+        print(f"{'Noise':<24} {'total':>6} {'covered':>8} {'partial':>8} {'missed':>7} {'type ok':>8}")
+        for key, c in m["by_noise"].items():
+            print(f"{key:<24} {c['total']:>6} {c['covered']:>8} {c['partial']:>8} {c['missed']:>7} "
+                  f"{c['covered_correct_type']:>8}")
+    if m.get("by_variant"):
+        weakest = sorted(m["by_variant"].items(), key=lambda kv: (kv[1]["full_coverage_rate"], -kv[1]["total"]))
+        weakest = [(k, c) for k, c in weakest if c["full_coverage_rate"] < 1.0][:12]
+        if weakest:
+            print()
+            print(f"{'Weakest label/variant':<40} {'total':>6} {'covered':>8} {'rate':>7}")
+            for key, c in weakest:
+                print(f"{key:<40} {c['total']:>6} {c['covered']:>8} {c['full_coverage_rate']:>7.0%}")
+    print()
     print(f"Documents with exposed PII: {m['documents']['with_exposed_pii']} / {m['documents']['total']}")
     o = m["overmasking"]
     print(f"Over-masking: {o['chars']} chars ({o['rate']:.2%} of non-PII text), "
@@ -440,14 +494,16 @@ def print_failures(rows: list[dict[str, Any]], replaced: list, limit: int) -> No
             s, e = span["start"], span["end"]
             ctx = row["text"][max(0, s - 30):e + 30].replace("\n", " ")
             types = sorted({t for a, b, t in rep if a < e and b > s}) or ["-"]
-            print(f"  row {row['row']:>3} {row['family']:<22} {span['label']:<22} "
+            variant = f"/{span['variant']}" if span.get("variant") else ""
+            print(f"  row {row['row']:>3} {row['family']:<22} {span['label'] + variant:<34} "
                   f"{ent['outcome']:<8} got={','.join(types):<28} ...{ctx}...")
             shown += 1
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
+    parser.add_argument("--corpus", default=str(DEFAULT_CORPUS),
+                        help="JSONL path, or one of: " + ", ".join(CORPUS_ALIASES))
     parser.add_argument("--split", choices=["all", "dev", "test"], default="all")
     parser.add_argument("--spacy-model", default=None,
                         help="spaCy model name; omit for pattern-only detection")
@@ -463,6 +519,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logging.disable(logging.WARNING)
+    if args.corpus not in CORPUS_ALIASES:
+        args.corpus = Path(args.corpus)
     rows, corpus_hash = load_corpus(args.corpus, args.split)
     receipt, replaced = build_receipt(args, rows, corpus_hash)
     print_summary(receipt)

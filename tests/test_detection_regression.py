@@ -25,19 +25,44 @@ def ev():
     return module
 
 
-@pytest.fixture(scope="module")
-def receipt(ev, tmp_path_factory):
+# (corpus alias, baseline receipt). The challenge test split is deliberately
+# absent: it is held out, so it is reported at release time, not gated.
+GATED = [
+    ("au", BASELINE),
+    ("challenge-dev", BENCH / "baselines" / "au_challenge_dev_patterns.json"),
+]
+
+
+def _run(ev, tmp_path_factory, corpus):
     out = tmp_path_factory.mktemp("eval") / "receipt.json"
-    assert ev.main(["--repeats", "1", "--out", str(out)]) == 0
+    assert ev.main(["--corpus", corpus, "--repeats", "1", "--out", str(out)]) == 0
     return json.loads(out.read_text())
 
 
-def test_no_detection_regression_against_baseline(ev, receipt):
+@pytest.fixture(scope="module")
+def receipt(ev, tmp_path_factory):
+    return _run(ev, tmp_path_factory, "au")
+
+
+@pytest.mark.parametrize("corpus,baseline_path", GATED, ids=[c for c, _ in GATED])
+def test_no_detection_regression_against_baseline(ev, tmp_path_factory, receipt, corpus, baseline_path):
     """Invariant: no gold label loses coverage or correct typing versus the baseline."""
-    baseline = json.loads(BASELINE.read_text())
-    assert receipt["corpus"]["sha256"] == baseline["corpus"]["sha256"], "corpus changed; refresh baseline"
-    regressions, _, _ = ev.compare(receipt, baseline)
+    current = receipt if corpus == "au" else _run(ev, tmp_path_factory, corpus)
+    baseline = json.loads(baseline_path.read_text())
+    assert current["corpus"]["sha256"] == baseline["corpus"]["sha256"], "corpus changed; refresh baseline"
+    regressions, _, _ = ev.compare(current, baseline)
     assert not regressions, "Detection regressed:\n" + "\n".join(regressions)
+
+
+def test_challenge_receipt_has_breakdowns(ev, tmp_path_factory):
+    current = _run(ev, tmp_path_factory, "challenge-dev")
+    assert current["metrics"]["by_variant"] and current["metrics"]["by_noise"]
+    assert "span:ocr" in current["metrics"]["by_noise"]
+
+
+def test_split_flag_rejected_for_challenge_corpus(ev):
+    with pytest.raises(ValueError, match="challenge"):
+        ev.load_corpus("challenge-dev", "dev")
 
 
 def test_receipt_records_reproducibility_fields(receipt):
