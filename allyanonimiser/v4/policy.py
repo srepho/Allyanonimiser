@@ -39,7 +39,11 @@ class Policy:
     min_scores: Mapping[str, float] = field(default_factory=dict)
     retain: frozenset[str] = frozenset()
     mask_char: str = "*"
-    hash_key: bytes | None = field(default=None, repr=False, compare=False)
+    hash_key: bytes | None = field(default=None, repr=False)
+
+    def __hash__(self) -> int:
+        # Mapping fields are not hashable; the digest covers every setting.
+        return hash((self.digest(), self.hash_key))
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "operators", _frozen_map(self.operators))

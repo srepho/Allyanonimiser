@@ -56,3 +56,13 @@ def test_applies_to_and_retain():
 def test_constructors():
     assert Policy.redact({"PERSON"}).entity_types == frozenset({"PERSON"})
     assert Policy.mask(mask_char="#").default_operator == "mask"
+
+
+def test_policies_are_hashable_and_hash_matches_equality():
+    a = Policy(operators={"PERSON": "mask"})
+    b = Policy(operators={"PERSON": "mask"})
+    assert a == b and hash(a) == hash(b)
+    assert len({a, b, Policy()}) == 2
+    k1 = Policy(default_operator="hash", hash_key=b"1" * 32)
+    k2 = Policy(default_operator="hash", hash_key=b"2" * 32)
+    assert k1 != k2
