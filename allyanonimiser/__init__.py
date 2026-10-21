@@ -23,6 +23,7 @@ from .patterns.au_patterns import get_au_pattern_definitions
 from .patterns.general_intl_patterns import get_general_intl_pattern_definitions
 from .patterns.general_patterns import get_general_pattern_definitions
 from .patterns.insurance_patterns import get_insurance_pattern_definitions
+from .reporting import ReportingManager
 
 try:
     from .io.stream_processor import POLARS_AVAILABLE, StreamProcessor
@@ -140,6 +141,7 @@ def create_allyanonimiser(
     spacy_model: str | None = _DefaultModel.SMALL,
     minimal_output: bool | None = None,
     require_spacy_model: bool | None = None,
+    report_manager: ReportingManager | None = None,
 ) -> Allyanonimiser:
     """Create a fully configured Allyanonimiser instance.
 
@@ -161,6 +163,7 @@ def create_allyanonimiser(
         spacy_model=spacy_model,
         minimal_output=minimal_output,
         require_spacy_model=require_spacy_model,
+        report_manager=report_manager,
     )
 
 

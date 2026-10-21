@@ -165,6 +165,9 @@ batch_process(
 
 ### Reporting
 
+Each instance owns its reports. To combine reports from several instances, pass one
+`ReportingManager` to each: `create_allyanonimiser(report_manager=shared)`.
+
 | Method | Purpose |
 |---|---|
 | `start_new_report(session_id=None)` | Begin tracking a batch run. |

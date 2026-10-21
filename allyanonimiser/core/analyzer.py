@@ -4,6 +4,7 @@ Unified analyzer for PII detection across all document types.
 import logging
 import re
 import threading
+from dataclasses import replace
 
 import spacy
 
@@ -146,6 +147,8 @@ class EnhancedAnalyzer:
         self._context_analyzer = ContextAnalyzer()
 
         # Result caching system
+        if type(max_cache_size) is not int or max_cache_size < 1:
+            raise ValueError("max_cache_size must be a positive integer")
         self.enable_caching = enable_caching
         self.max_cache_size = max_cache_size
         self._result_cache = {}
@@ -327,35 +330,32 @@ class EnhancedAnalyzer:
             # Check if we have a cached result
             if cache_key in self._result_cache:
                 self._cache_hits += 1
-                # Return a deep copy to prevent modification of cached results
-                return [RecognizerResult(**result.__dict__) for result in self._result_cache[cache_key]]
+                return self._copy_results(self._result_cache[cache_key])
 
             self._cache_misses += 1
 
         # Check if we have cached pattern results
         pattern_results = []
         if self.enable_caching and text in self._pattern_result_cache:
-            pattern_results = self._pattern_result_cache[text].copy()
+            pattern_results = self._copy_results(self._pattern_result_cache[text])
         else:
             # Get results from pattern-based detection
             pattern_results = self._analyze_with_patterns(text)
             # Cache pattern results if caching is enabled
             if self.enable_caching:
-                self._evict_oldest(self._pattern_result_cache, self.max_cache_size)
-                self._pattern_result_cache[text] = pattern_results.copy()
+                self._cache_put(self._pattern_result_cache, text, pattern_results)
 
         # Check if we have cached spaCy results
         spacy_results = []
         if self.use_spacy:
             if self.enable_caching and text in self._spacy_result_cache:
-                spacy_results = self._spacy_result_cache[text].copy()
+                spacy_results = self._copy_results(self._spacy_result_cache[text])
             else:
                 # Get results from spaCy NER
                 spacy_results = self._analyze_with_spacy(text)
                 # Cache spaCy results if caching is enabled
                 if self.enable_caching:
-                    self._evict_oldest(self._spacy_result_cache, self.max_cache_size)
-                    self._spacy_result_cache[text] = spacy_results.copy()
+                    self._cache_put(self._spacy_result_cache, text, spacy_results)
 
         # Add entity-specific extraction for common formats
         format_results = analyze_common_formats(text)
@@ -400,10 +400,7 @@ class EnhancedAnalyzer:
 
         # Cache the final result if caching is enabled
         if self.enable_caching:
-            self._evict_oldest(self._result_cache, self.max_cache_size)
-
-            # Store a copy of the results
-            self._result_cache[cache_key] = filtered_results.copy()
+            self._cache_put(self._result_cache, cache_key, filtered_results)
 
         return filtered_results
 
@@ -432,8 +429,7 @@ class EnhancedAnalyzer:
             if uncached:
                 docs = self.nlp.pipe(uncached, batch_size=min(256, len(uncached)))
                 for raw_text, doc in zip(uncached, docs):
-                    self._evict_oldest(self._spacy_result_cache, self.max_cache_size)
-                    self._spacy_result_cache[raw_text] = self._doc_to_results(doc)
+                    self._cache_put(self._spacy_result_cache, raw_text, self._doc_to_results(doc))
 
         return [
             self.analyze(
@@ -445,15 +441,26 @@ class EnhancedAnalyzer:
         ]
 
     @staticmethod
+    def _copy_results(results):
+        """Return independent copies so callers and later calls cannot edit cached results."""
+        return [replace(r) for r in results]
+
+    def _cache_put(self, cache: dict, key, results) -> None:
+        """Store copies of *results* under *key*, keeping at most ``max_cache_size`` entries."""
+        self._evict_oldest(cache, self.max_cache_size)
+        cache[key] = self._copy_results(results)
+
+    @staticmethod
     def _evict_oldest(cache: dict, max_size: int) -> None:
-        """Evict the oldest half of *cache* once it reaches *max_size*.
+        """Make room for one insertion while keeping at most *max_size* entries.
 
         Dicts preserve insertion order, so the first keys are the oldest
-        entries. Evicting half (rather than clearing everything) keeps the
-        most recent results warm.
+        entries. Once full, the oldest half is evicted (at least one entry)
+        so the most recent results stay warm.
         """
         if len(cache) >= max_size:
-            for key in list(cache)[: max_size // 2]:
+            excess = len(cache) - max_size + 1
+            for key in list(cache)[: max(excess, max_size // 2)]:
                 del cache[key]
 
     def _create_cache_key(
@@ -601,6 +608,9 @@ class EnhancedAnalyzer:
                 continue
 
             entity_type = pattern.entity_type
+            pattern_score = getattr(pattern, 'score', None)
+            if pattern_score is None:
+                pattern_score = 0.85
 
             # For PERSON entity type, skip pattern-based detection if we're using spaCy
             if entity_type == "PERSON" and self.use_spacy:
@@ -656,7 +666,7 @@ class EnhancedAnalyzer:
                                 entity_type=entity_type,
                                 start=start,
                                 end=end,
-                                score=0.85,  # Default score
+                                score=pattern_score,
                                 text=matched_text  # Set the actual matched text
                             )
 

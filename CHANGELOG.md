@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed — state isolation and configured scores
+
+- Analyzer caches now store and return independent copies. Previously a caller editing a returned result, a per-call `score_adjustment`, or a context boost could change the scores later calls received for the same text.
+- `max_cache_size` is enforced at every insertion. A limit of one previously never evicted, so caches grew without bound. Non-positive or non-integer sizes now raise `ValueError`.
+- Custom patterns report their configured `score` instead of a hardcoded 0.85, so the threshold filters them as configured. All built-in patterns declare 0.85, so built-in detection is unchanged.
+- DataFrame processing writes outputs by row position. Rows sharing an index label previously all received the last such row's anonymized text. An entirely null text column now still gets its `_anonymized` output column.
+- **Behavior change:** each `Allyanonimiser` instance owns its reports. Instances previously shared one module-level report, so one instance's statistics appeared in another's. Pass the same `ReportingManager` as `report_manager=` to share deliberately. `allyanonimiser.reporting.report_manager` still exists but instances no longer write to it by default.
+
 ### Added — operational controls
 
 - Opt-in `minimal_output` profile suppresses original values in facade results, entity tables and CSV previews; drops selected tabular source columns; disables analyzer caches and session reporting. Existing defaults remain unchanged.

@@ -197,16 +197,19 @@ class DataFrameProcessor(BaseProcessor):
         for column in text_columns:
 
             output_column = f"{output_prefix}{column}_anonymized"
-            if self.ally.minimal_output and anonymize:
-                # Keep the output schema even for empty or entirely null columns.
-                result_df[output_column] = df[column].copy()
-
-            col_series = df[column].dropna()
+            source = df[column]
+            labels = source.index.tolist()
+            # Build outputs by row position: index labels may repeat, so
+            # label-based writes would send one row's output to several rows.
+            # Null inputs stay null, and the column exists even when empty.
+            outputs = source.astype(object).where(source.notna(), None).tolist()
+            positions = [pos for pos, missing in enumerate(source.isna()) if not missing]
             iterator = tqdm(
-                col_series.items(), total=len(col_series), desc=f"Processing {column}"
-            ) if progress_bar else col_series.items()
+                positions, total=len(positions), desc=f"Processing {column}"
+            ) if progress_bar else positions
 
-            for idx, text in iterator:
+            for pos in iterator:
+                idx, text = labels[pos], source.iat[pos]
                 text_str, _ = self.ally._preprocess(str(text), expand_acronyms)
                 entities = self.ally.analyze(
                     text_str,
@@ -238,7 +241,10 @@ class DataFrameProcessor(BaseProcessor):
                         keep_postcode=keep_postcode,
                         analysis_results=entities,
                     )
-                    result_df.at[idx, output_column] = r["text"]
+                    outputs[pos] = r["text"]
+
+            if anonymize:
+                result_df[output_column] = pd.Series(outputs, index=result_df.index, dtype=object)
 
         entity_df = pd.DataFrame(all_entities) if all_entities else pd.DataFrame(
             columns=["row_index", "column", "entity_type", "start", "end", "text", "score"]

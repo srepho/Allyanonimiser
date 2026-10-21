@@ -11,17 +11,21 @@ from typing import Any
 
 import pandas as pd
 
+from . import reporting as _reporting
 from .core.analyzer import EnhancedAnalyzer, RecognizerResult
 from .core.anonymizer import EnhancedAnonymizer
 from .core.pattern_manager import CustomPatternDefinition
 from .core.pattern_registry import PatternRegistry
 from .io.csv_processor import CSVProcessor
-from .reporting import report_manager
+from .reporting import ReportingManager
 from .utils.long_text_processor import extract_pii_rich_segments
 from .utils.settings_manager import SettingsManager, create_default_settings
 from .utils.text_preprocessor import TextPreprocessor
 
 logger = logging.getLogger(__name__)
+
+# Legacy alias: instances no longer write here unless passed it explicitly.
+report_manager = _reporting.report_manager
 
 
 @dataclass
@@ -81,6 +85,7 @@ def create_allyanonimiser(
     spacy_model: str | None = _DefaultModel.SMALL,
     minimal_output: bool | None = None,
     require_spacy_model: bool | None = None,
+    report_manager: ReportingManager | None = None,
 ) -> "Allyanonimiser":
     """Create a pre-configured Allyanonimiser instance.
 
@@ -98,6 +103,8 @@ def create_allyanonimiser(
             session reports, and disable analyzer caches. Overrides saved profile.
         require_spacy_model: Require the requested model and its NER pipeline;
             fail instead of falling back. Incompatible with spacy_model=None.
+        report_manager: Share reports between instances by passing the same
+            ``ReportingManager``. By default each instance owns its reports.
     """
     if settings_path:
         settings_manager = SettingsManager()
@@ -125,7 +132,9 @@ def create_allyanonimiser(
     # Keep explicit factory overrides when configuring the instance.
     if "analyzer" in settings_manager.settings:
         settings_manager.settings["analyzer"] = analyzer_options
-    ally = Allyanonimiser(analyzer=analyzer, settings_manager=settings_manager)
+    ally = Allyanonimiser(
+        analyzer=analyzer, settings_manager=settings_manager, report_manager=report_manager,
+    )
 
     if pattern_filepath:
         ally.load_patterns(pattern_filepath)
@@ -154,8 +163,12 @@ class Allyanonimiser:
         settings_manager: SettingsManager | None = None,
         enable_caching: bool = True,
         minimal_output: bool | None = None,
+        report_manager: ReportingManager | None = None,
     ):
         self.settings_manager = settings_manager or SettingsManager()
+        # Reports hold per-run statistics; each instance owns its own unless
+        # the caller passes a shared manager deliberately.
+        self.report_manager = report_manager if report_manager is not None else ReportingManager()
         if minimal_output is not None:
             if not isinstance(minimal_output, bool):
                 raise ValueError("minimal_output must be a boolean")
@@ -481,9 +494,9 @@ class Allyanonimiser:
             result["original_text"] = text
 
         if report and not self.minimal_output:
-            if not report_manager.get_current_report():
-                report_manager.start_new_report()
-            report_manager.get_current_report().record_anonymization(
+            if not self.report_manager.get_current_report():
+                self.report_manager.start_new_report()
+            self.report_manager.get_current_report().record_anonymization(
                 document_id=result["document_id"],
                 original_text=text,
                 anonymization_result=result,
@@ -907,7 +920,7 @@ class Allyanonimiser:
 
         report = report and not self.minimal_output
         if report:
-            batch_report = report_manager.start_new_report()
+            batch_report = self.report_manager.start_new_report()
             batch_id = batch_report.session_id
         else:
             batch_id = f"batch_{int(time.time() * 1000)}"
@@ -995,14 +1008,14 @@ class Allyanonimiser:
         if self.minimal_output:
             return None
         if session_id:
-            return report_manager.get_report(session_id)
-        return report_manager.get_current_report()
+            return self.report_manager.get_report(session_id)
+        return self.report_manager.get_current_report()
 
     def start_new_report(self, session_id: str | None = None):
         """Start a fresh anonymization report."""
         if self.minimal_output:
             return None
-        return report_manager.start_new_report(session_id)
+        return self.report_manager.start_new_report(session_id)
 
     def finalize_report(
         self, output_path: str | None = None, format: str = "html"
