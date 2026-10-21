@@ -2,7 +2,7 @@
 
 Australian-focused PII detection and anonymization for the insurance industry with support for stream processing of very large files.
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.5.1-blue)](https://pypi.org/project/allyanonimiser/3.5.1/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.6.0-blue)](https://pypi.org/project/allyanonimiser/3.6.0/)
 [![Python Versions](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Release Check](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/release-check.yml)
@@ -12,7 +12,20 @@ Australian-focused PII detection and anonymization for the insurance industry wi
 
 Allyanonimiser detects and anonymizes personally identifiable information (PII) in text, with first-class support for Australian formats (TFN, ABN, Medicare, AU phone, etc.) and insurance-industry identifiers (policy numbers, claim references, vehicle rego, VIN).
 
-## What's new in v3.5.1
+## What's new in v3.6.0
+
+Correctness release. Detection quality on the AU corpus is unchanged from v3.5.1; see the [changelog](https://github.com/srepho/Allyanonimiser/blob/main/CHANGELOG.md) for details.
+
+- **Streaming works on real CSV files** — `stream_from_file()` crashed on any real file in 3.5.x. It now reads ordered row batches with correct counts and row indices, and writes entity output incrementally.
+- **Exported configuration reproduces behaviour** — exports now include custom patterns, analyzer settings and priorities, and reload into identical detections in JSON or YAML.
+- **Opt-in sensitive-output controls** — `minimal_output=True` drops original values, source columns, caches and reports. `require_spacy_model=True` fails at start-up instead of silently running without NER.
+- **State isolation fixes** — cached results can no longer be altered by callers or earlier calls, cache limits are enforced, custom pattern scores are honoured, and duplicate DataFrame index labels keep their own rows' output.
+- **Reports belong to their instance** — instances no longer share one report. Pass a shared `ReportingManager` to combine them.
+- **Offline detection evaluation** — `bench/eval_ally.py` plus a pattern-only regression gate in the test suite. Detection quality on the AU corpus is unchanged from 3.5.1.
+
+**Compatibility:** the `stream` extra needs Polars 1.37 or later, and streaming reads CSV columns as strings by default.
+
+### v3.5.1 (prior)
 
 Bug-fix and precision release — AU bench unchanged from v3.5.0 (still beats `openai/privacy-filter` on 5 of 6 categories, see [Benchmarks](benchmarks.md)).
 

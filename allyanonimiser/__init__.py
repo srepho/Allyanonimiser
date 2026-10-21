@@ -66,7 +66,7 @@ from .utils.presidio_helpers import (
 )
 from .utils.spacy_helpers import create_spacy_pattern_from_examples
 
-__version__ = "3.5.1"
+__version__ = "3.6.0"
 
 # Named spaCy model presets — use these instead of the bare strings to make
 # the deployment-vs-accuracy tradeoff explicit at call sites.

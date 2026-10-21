@@ -1,6 +1,6 @@
 # Allyanonimiser
 
-[![PyPI version](https://img.shields.io/badge/pypi-v3.5.1-blue)](https://pypi.org/project/allyanonimiser/3.5.1/)
+[![PyPI version](https://img.shields.io/badge/pypi-v3.6.0-blue)](https://pypi.org/project/allyanonimiser/3.6.0/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/allyanonimiser.svg)](https://pypi.org/project/allyanonimiser/)
 [![Tests](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml/badge.svg)](https://github.com/srepho/Allyanonimiser/actions/workflows/tests.yml)
 [![Coverage](https://codecov.io/gh/srepho/Allyanonimiser/branch/main/graph/badge.svg)](https://codecov.io/gh/srepho/Allyanonimiser)
@@ -12,7 +12,18 @@ Australian-focused PII detection and anonymization for the insurance industry �
 
 📖 **[Full documentation](https://srepho.github.io/Allyanonimiser/)** · [Changelog](CHANGELOG.md)
 
-## Version 3.5.1 — Label-Context Disambiguation + Per-Call Option Fixes
+## Version 3.6.0 — Streaming, Configuration and State-Isolation Fixes
+
+- **Streaming works on real CSV files** — `stream_from_file()` crashed on any real file in 3.5.x. It now reads ordered row batches with correct counts and row indices, and writes entity output incrementally.
+- **Exported configuration reproduces behaviour** — exports now include custom patterns, analyzer settings and priorities, and reload into identical detections in JSON or YAML.
+- **Opt-in sensitive-output controls** — `minimal_output=True` drops original values, source columns, caches and reports. `require_spacy_model=True` fails at start-up instead of silently running without NER.
+- **State isolation fixes** — cached results can no longer be altered by callers or earlier calls, cache limits are enforced, custom pattern scores are honoured, and duplicate DataFrame index labels keep their own rows' output.
+- **Reports belong to their instance** — instances no longer share one report. Pass a shared `ReportingManager` to combine them.
+- **Offline detection evaluation** — `bench/eval_ally.py` plus a pattern-only regression gate in the test suite. Detection quality on the AU corpus is unchanged from 3.5.1.
+
+**Compatibility:** the `stream` extra needs Polars 1.37 or later, and streaming reads CSV columns as strings by default.
+
+### 3.5.1 (prior)
 
 - **Per-call options no longer leak** — `analyze(active_entity_types=...)` / `min_score_threshold=...` are now true per-call parameters instead of sticky setters that silently restricted every later call (also fixed in the DataFrame and stream processors).
 - **`analyze_batch()` now matches `analyze()` exactly** — the batch path previously skipped false-positive filtering, so DataFrame/CSV processing missed the v3.5.0 precision work.
@@ -25,10 +36,10 @@ See the [changelog](CHANGELOG.md) for full details and earlier releases.
 ## Installation
 
 ```bash
-pip install allyanonimiser==3.5.1
+pip install allyanonimiser==3.6.0
 
 # With stream processing support for large files (polars + pyarrow)
-pip install "allyanonimiser[stream]==3.5.1"
+pip install "allyanonimiser[stream]==3.6.0"
 
 # spaCy model for NER (the library defaults to the small model)
 python -m spacy download en_core_web_sm

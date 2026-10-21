@@ -82,7 +82,7 @@ wheels = [
 
 [[package]]
 name = "allyanonimiser"
-version = "3.5.1"
+version = "3.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
