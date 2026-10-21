@@ -139,3 +139,50 @@ def test_account_numbers_fully_masked(ally, text, value):
 ])
 def test_lowercase_prefixed_references(ally, text, value, entity_type):
     assert_masked_as(ally, text, value, entity_type)
+
+
+# --- Batch 2: dates ---------------------------------------------------------------
+
+@pytest.mark.parametrize("text,value", [
+    ("Born 3 March 1971 in Perth.", "3 March 1971"),
+    ("Seen on the 22nd of July 2025 by the GP.", "22nd of July 2025"),
+    ("Incident 5-Feb-2024 reported late.", "5-Feb-2024"),
+    ("Effective 2024-11-30 until renewal.", "2024-11-30"),
+    ("Payment made March 3, 2024 by EFT.", "March 3, 2024"),
+    ("Hearing set for October 12th 2025.", "October 12th 2025"),
+    ("Letter dated 12 Sept 2023 attached.", "12 Sept 2023"),
+    ("insd rang 4 june 2025 re excess", "4 june 2025"),
+    ("Discharged 01-JAN-26 per notes.", "01-JAN-26"),
+])
+def test_written_and_iso_dates(ally, text, value):
+    out = masked(ally, text)
+    assert value not in out, out
+
+
+@pytest.mark.parametrize("text", [
+    "May I call you back tomorrow?",
+    "In March the policy renews automatically.",
+    "Build version 2024-11 deployed.",
+    "Invalid value 2024-13-45 rejected.",
+    "We meet on 3 June at the office.",
+])
+def test_month_words_without_full_dates_are_not_dates(ally, text):
+    found = [r for r in ally.analyze(text) if r.entity_type in {"DATE", "DATE_OF_BIRTH", "INCIDENT_DATE"}]
+    assert not found, [(text[r.start:r.end], r.entity_type) for r in found]
+
+
+@pytest.mark.parametrize("text,value", [
+    ("Incident 14/02/2025 at the depot.", "14/02/2025"),
+    ("Payment 03/06/2024 received.", "03/06/2024"),
+    ("Patient 22/11/1980 admitted.", "22/11/1980"),
+    ("Visa 09/09/2026 expiry noted.", "09/09/2026"),
+    ("Paragraph 12/03/2024 refers.", "12/03/2024"),
+])
+def test_dates_after_words_ending_in_state_codes_are_kept(ally, text, value):
+    """'Incident' ends in 'nt' and 'Visa' in 'sa': neither is a state code."""
+    assert value not in masked(ally, text)
+
+
+def test_state_postcode_still_not_a_date(ally):
+    text = "Sydney NSW 2000"
+    assert not [r for r in ally.analyze(text) if r.entity_type == "DATE"]

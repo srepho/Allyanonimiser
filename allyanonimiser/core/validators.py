@@ -6,6 +6,10 @@ import re
 from datetime import datetime
 from typing import Any
 
+from ..patterns.shared_regex import WRITTEN_DATE_PATTERNS
+
+_WRITTEN_DATES = [re.compile(p) for p in WRITTEN_DATE_PATTERNS]
+
 
 def validate_regex(pattern: str) -> tuple[bool, str | None]:
     """Validate that a string is a valid regex pattern."""
@@ -175,6 +179,10 @@ class EntityValidator:
         for pattern in date_patterns:
             if re.match(pattern, text, re.IGNORECASE):
                 return True, 'date'
+        # Written forms detected by the DATE patterns themselves ("22nd of July
+        # 2025", "5-Feb-2024"), so detection and validation cannot disagree.
+        if any(p.fullmatch(text) for p in _WRITTEN_DATES):
+            return True, 'date'
 
         # Duration patterns (e.g., "5 days")
         if re.match(r'^\d+\s+(day|week|month|year)s?$', text, re.IGNORECASE):

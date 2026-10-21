@@ -6,7 +6,7 @@ in :mod:`allyanonimiser.patterns.general_intl_patterns` is a strict superset
 of the old 4x4-groups form that used to live here.
 """
 
-from .shared_regex import EMAIL_ADDRESS_PATTERN
+from .shared_regex import EMAIL_ADDRESS_PATTERN, WRITTEN_DATE_PATTERNS
 
 # Name of the broad two-capitalised-words PERSON pattern. It over-matches
 # ("Rundle Mall", "Travel Claim"), so the analyzer skips it when spaCy NER is
@@ -69,7 +69,7 @@ def get_general_pattern_definitions():
         },
         {
             "entity_type": "DATE",
-            "patterns": [r"\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b"],
+            "patterns": [r"\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b", *WRITTEN_DATE_PATTERNS],
             "context": ["date", "on", "when", "time", "day"],
             "name": "Date"
         },

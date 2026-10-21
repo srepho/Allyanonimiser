@@ -210,11 +210,11 @@ class ContextAnalyzer:
         false_positive_patterns = {
             'DATE': [
                 # NSW 2000 (state + postcode)
-                r'(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s*$',
+                r'\b(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s*$',  # \b: 'Incident' ends in 'nt'
                 # Part of phone number
-                r'(?:phone|mobile|contact|ph|tel)[\s:]*$',
+                r'\b(?:phone|mobile|contact|ph|tel)[\s:]*$',
                 # Part of Medicare number
-                r'medicare[\s:]*$'
+                r'\bmedicare[\s:]*$'
             ],
             'NUMBER': [
                 # Just a hash symbol

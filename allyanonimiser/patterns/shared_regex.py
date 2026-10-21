@@ -99,3 +99,16 @@ CLAIM_NUMBER_LABELLED = [
     rf"\b(?i:claim|clm)\b{_REF_EXPLICIT}{_ref_value(3)}",
     rf"\b(?i:claim|clm)\b{_REF_BARE}{_ref_value(5)}",
 ]
+
+
+# Written and ISO dates. Spaced forms need a four-digit year so "5 may 20
+# units" is not a date; the hyphenated "01-JAN-26" form may use two digits.
+_MONTH = (r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?"
+          r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)")
+_DAY = r"(?:0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th)?"
+WRITTEN_DATE_PATTERNS: list[str] = [
+    rf"(?i)\b{_DAY}(?:\s+of)?\s+{_MONTH}\.?,?\s+(?:19|20)\d{{2}}\b",          # 3 March 1971, 22nd of July 2025
+    rf"(?i)\b(?:0?[1-9]|[12]\d|3[01])-{_MONTH}-(?:(?:19|20)\d{{2}}|\d{{2}})\b",  # 5-Feb-2024, 01-JAN-26
+    rf"(?i)\b{_MONTH}\.?\s+{_DAY},?\s+(?:19|20)\d{{2}}\b",                    # March 3, 2024
+    r"\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b",          # 2024-11-30
+]
