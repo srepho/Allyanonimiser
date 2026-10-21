@@ -1,6 +1,6 @@
 {
   "receipt_schema": 1,
-  "created": "2026-10-22T00:21:17+1100",
+  "created": "2026-10-22T00:34:39+1100",
   "corpus": {
     "path": "bench/data/au_insurance.jsonl",
     "sha256": "ff24ede6e2bf7f5de558ca8000a39f2bd5911f5b7fea6135dd5bfa8be822f204",
@@ -21,12 +21,12 @@
     "spacy_model_requested": null,
     "spacy_model_loaded": null,
     "min_score_threshold": 0.7,
-    "pattern_count": 34,
+    "pattern_count": 35,
     "keep_postcode": false,
     "enable_caching": false
   },
   "source": {
-    "revision": "58fb15f0f52628439fde8de043315818b8492bc3",
+    "revision": "21923cc19ca2082cebd1f0cb6cb6fe6fe457e143",
     "package_dirty": false
   },
   "environment": {
@@ -46,10 +46,10 @@
   },
   "timing": {
     "init_seconds": 0.001,
-    "warm_pass_seconds_median": 0.57,
+    "warm_pass_seconds_median": 0.654,
     "passes": 3,
-    "docs_per_second": 280.7,
-    "chars_per_second": 85406
+    "docs_per_second": 244.8,
+    "chars_per_second": 74484
   },
   "metrics": {
     "entities": {
@@ -65,12 +65,12 @@
       "with_exposed_pii": 0
     },
     "overmasking": {
-      "chars": 1979,
-      "rate": 0.0693,
-      "spurious_replacements": 140,
+      "chars": 1608,
+      "rate": 0.0563,
+      "spurious_replacements": 120,
       "spurious_by_type": {
         "ORGANIZATION": 20,
-        "PERSON": 120
+        "PERSON": 100
       }
     },
     "by_label": {
@@ -241,11 +241,11 @@
     "by_noise": {},
     "char_level": {
       "PERSON": {
-        "precision": 0.5695,
+        "precision": 0.6249,
         "recall": 1.0,
-        "f1": 0.7257,
+        "f1": 0.7692,
         "tp": 2381,
-        "fp": 1800,
+        "fp": 1429,
         "fn": 0
       },
       "ADDRESS": {
