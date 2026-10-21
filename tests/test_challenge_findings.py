@@ -186,3 +186,89 @@ def test_dates_after_words_ending_in_state_codes_are_kept(ally, text, value):
 def test_state_postcode_still_not_a_date(ally):
     text = "Sydney NSW 2000"
     assert not [r for r in ally.analyze(text) if r.entity_type == "DATE"]
+
+
+# --- Batch 3: names -------------------------------------------------------------
+
+def person_masked(ally, text, name):
+    out = masked(ally, text)
+    return all(part not in out for part in name.replace(",", " ").split() if len(part) > 2), out
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Claimant: ADEYEMI, Ngozi\nDOB unknown", "ADEYEMI, Ngozi"),
+    ("Payee: NGOZI ADEYEMI\nAmount below", "NGOZI ADEYEMI"),
+    ("Insured: N. Adeyemi\nPolicy pending", "N. Adeyemi"),
+    ("Policyholder: Anne-Marie T. Dubois\n", "Anne-Marie T. Dubois"),
+    ("Worker: Björn Ekström\nEmployer: Acme", "Björn Ekström"),
+    ("Traveller: Lê Văn Thành\n", "Lê Văn Thành"),
+    ("Injured person: Ahmad Al-Rashid, aged 40", "Ahmad Al-Rashid"),
+    ("Caller name: Saoirse O’Connell\n", "Saoirse O’Connell"),
+])
+def test_role_labelled_name_forms(ally, text, name):
+    ok, out = person_masked(ally, text, name)
+    assert ok, out
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Spoke to Mrs Adeyemi about the excess.", "Adeyemi"),
+    ("Report reviewed by Dr Björn Ekström today.", "Björn Ekström"),
+    ("Hi Ngozi, thanks for the photos.", "Ngozi"),
+    ("Dear Mr Dubois, we refer to your claim.", "Dubois"),
+])
+def test_titles_and_greetings(ally, text, name):
+    ok, out = person_masked(ally, text, name)
+    assert ok, out
+
+
+@pytest.mark.parametrize("text", [
+    "Hi team, the report is attached.",
+    "Dear Sir, please find enclosed.",
+    "Thanks again, see you Monday.",
+    "Payee: ACME PTY LTD\n",
+    "Insured: TO BE CONFIRMED\n",
+])
+def test_greetings_and_labels_without_people(ally, text):
+    found = [text[r.start:r.end] for r in ally.analyze(text) if r.entity_type == "PERSON"]
+    assert not found, found
+
+
+@pytest.fixture(scope="module")
+def nlp_ally():
+    import spacy.util
+    if not spacy.util.is_package("en_core_web_sm"):
+        pytest.skip("en_core_web_sm not installed")
+    return create_allyanonimiser(spacy_model="en_core_web_sm")
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Claimant: ADEYEMI, Ngozi\nDOB unknown", "ADEYEMI, Ngozi"),
+    ("Policyholder: Anne-Marie T. Dubois\n", "Anne-Marie T. Dubois"),
+    ("Spoke to Mrs Adeyemi about the excess.", "Adeyemi"),
+])
+def test_name_forms_with_spacy(nlp_ally, text, name):
+    ok, out = person_masked(nlp_ally, text, name)
+    assert ok, out
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Claimant: Lachlan Reid\nPolicy pending", "Lachlan Reid"),
+    ("Insured: Morag Kincaid\n", "Morag Kincaid"),
+    ("Witness: Ahmad Al-Rashid\n", "Ahmad Al-Rashid"),
+])
+def test_names_ending_in_label_suffix_letters_are_kept(ally, text, name):
+    """'Reid' ends in 'id' but is not the label word 'ID'."""
+    ok, out = person_masked(ally, text, name)
+    assert ok, out
+
+
+@pytest.mark.parametrize("text", ["Policy ref", "Customer ID", "Claim #"])
+def test_label_words_alone_are_not_entities(ally, text):
+    assert not [r for r in ally.analyze(f"{text}: see above") if r.entity_type == "PERSON"]
+
+
+def test_doubled_greeting_captures_only_the_name(ally):
+    text = "Dear Hi Jenny,\nThanks for the call."
+    spans = [text[r.start:r.end] for r in ally.analyze(text) if r.entity_type == "PERSON"]
+    assert "Jenny" in " ".join(spans)
+    assert not any(s.startswith(("Hi", "Dear")) for s in spans), spans

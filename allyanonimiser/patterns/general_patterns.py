@@ -13,18 +13,44 @@ from .shared_regex import EMAIL_ADDRESS_PATTERN, WRITTEN_DATE_PATTERNS
 # available. Every other PERSON pattern, including user-added ones, still runs.
 BROAD_PERSON_PATTERN_NAME = "Person Name"
 
-# One name token: Lewis, O'Keefe, McDonald, Nguyen-Tran, Te.
-_NAME_TOKEN = r"[A-Z](?:[a-z]+|'[A-Z][a-z]+)(?:[A-Z][a-z]+)?(?:-[A-Z][a-z]+)?"
-# Two to four tokens on one line: [ \t] rather than \s, so a name never runs
-# onto the next line's label ("Ryan Rush\nPolicy: ...").
-_NAME = rf"{_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN}){{1,3}}"
+# Letter classes covering Latin-1, Latin Extended-A and Vietnamese, so names
+# such as Ekström, Thành or Nguyễn are letters rather than word breaks.
+_UP = "A-Z\u00c0-\u00d6\u00d8-\u00de\u0100-\u017e\u1ea0-\u1ef8"
+_LO = "a-z\u00df-\u00f6\u00f8-\u00ff\u0100-\u017f\u1ea0-\u1ef9"
+# One name token: Lewis, O'Keefe, O’Connell, McDonald, Nguyen-Tran, Te.
+_NAME_TOKEN = rf"[{_UP}](?:[{_LO}]+|['\u2019][{_UP}][{_LO}]+)(?:[{_UP}][{_LO}]+)?(?:-[{_UP}][{_LO}]+)?"
+_PARTICLE = r"(?:van|von|der|den|de|da|di|del|la|le|bin|binti)"
+# Names stay on one line ([ \t], not \s) so they never run onto the next
+# line's label ("Ryan Rush\nPolicy: ...").
+_FULL = (rf"{_NAME_TOKEN}(?:[ \t]+[{_UP}]\.)?"
+         rf"(?:[ \t]+(?:{_PARTICLE}[ \t]+)*{_NAME_TOKEN}){{1,3}}")          # Anne-Marie T. Dubois
+_INITIAL = rf"[{_UP}]\.(?:[ \t]*[{_UP}]\.)?[ \t]+{_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN})?"  # N. Adeyemi
+_CAPS_WORD = rf"[{_UP}][{_UP}'\u2019\-]+"
+_SURNAME_FIRST = rf"{_CAPS_WORD}(?:[ \t]+{_CAPS_WORD})?,[ \t]+{_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN})?"  # ADEYEMI, Ngozi
+# All-caps words that are not names (company suffixes, placeholders).
+_CAPS_STOP = r"(?:PTY|LTD|LIMITED|INC|CORP|CO|GROUP|TRUST|BANK|TO|BE|TBC|TBA|NOT|SEE|UNKNOWN|NONE|NIL|CONFIRMED)"
+_UPPER = rf"(?!{_CAPS_STOP}\b){_CAPS_WORD}(?:[ \t]+(?!{_CAPS_STOP}\b){_CAPS_WORD}){{1,3}}\b"   # NGOZI ADEYEMI
+_NAME = rf"(?:{_SURNAME_FIRST}|{_INITIAL}|{_FULL}|{_UPPER})"
 _PERSON_ROLE_LABELS = (
     r"policy\s*holder|(?:named\s+)?insured(?:\s+person)?|claimant|customer|client|patient"
     r"|(?:third\s+party\s+)?driver|third\s+party|witness|beneficiary|applicant|member"
+    r"|worker|employee|payee|travell?er|injured\s+person|caller"
     r"|next\s+of\s+kin|(?:full\s+|contact\s+)?name"
 )
-# "Policyholder: Ryan Rush" -> captures just the name.
-LABELLED_PERSON_PATTERN = rf"\b(?i:{_PERSON_ROLE_LABELS})[ \t]*:[ \t]*({_NAME})"
+# "Policyholder: Ryan Rush", "Caller name: ...", "Claimant: ADEYEMI, Ngozi".
+LABELLED_PERSON_PATTERN = rf"\b(?i:{_PERSON_ROLE_LABELS})(?i:\s+name)?[ \t]*:[ \t]*({_NAME})"
+# "Mrs Adeyemi", "Dr Björn Ekström", "Mr J. Smith". The title is not captured.
+TITLED_PERSON_PATTERN = (
+    rf"\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof)\.?[ \t]+"
+    rf"((?:[{_UP}]\.[ \t]+)?{_NAME_TOKEN}(?:[ \t]+(?:{_PARTICLE}[ \t]+)*{_NAME_TOKEN}){{0,2}})"
+)
+_GREETING_STOP = (r"(?:All|Team|Sir|Madam|Everyone|There|Again|Both|Guys|Folks|Customer|Valued"
+                  r"|Mr|Mrs|Ms|Miss|Dr|Prof|Mx|Hi|Hello|Dear|Thanks)")
+# "Hi Ngozi,", "Thanks Lisa." — a first name directly after a greeting.
+GREETING_PERSON_PATTERN = (
+    rf"\b(?:Hi|Hello|Dear|Thanks|Thank\s+you)[ \t]+(?!{_GREETING_STOP}\b)"
+    rf"({_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN})?)(?=[ \t]*[,.!\n])"
+)
 
 
 def get_general_pattern_definitions():
@@ -32,7 +58,8 @@ def get_general_pattern_definitions():
     return [
         {
             "entity_type": "PERSON",
-            "patterns": [r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b"],
+            # Excludes greetings and salutations ("Dear Sir").
+            "patterns": [rf"\b(?!(?:Dear|Hi|Hello|Thanks)\b){_NAME_TOKEN}\s+(?!{_GREETING_STOP}\b){_NAME_TOKEN}\b"],
             "context": ["name", "person", "customer", "insured", "patient"],
             "name": BROAD_PERSON_PATTERN_NAME,
         },
@@ -41,6 +68,12 @@ def get_general_pattern_definitions():
             "patterns": [LABELLED_PERSON_PATTERN],
             "context": ["name", "insured", "policyholder", "claimant", "patient"],
             "name": "Labelled Person Name",
+        },
+        {
+            "entity_type": "PERSON",
+            "patterns": [TITLED_PERSON_PATTERN, GREETING_PERSON_PATTERN],
+            "context": ["mr", "mrs", "ms", "dr", "dear", "hi"],
+            "name": "Titled or Greeted Person Name",
         },
         {
             "entity_type": "EMAIL_ADDRESS",

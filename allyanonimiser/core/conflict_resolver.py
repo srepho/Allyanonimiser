@@ -118,7 +118,11 @@ def resolve_entity_conflicts(
     Returns:
         The winning result, or ``None`` if the span should be dropped.
     """
-    if any(text.lower().endswith(sfx) for sfx in LABEL_SUFFIXES):
+    # Spans ending in a label word ("Policy ref", "Customer ID", "Claim #")
+    # are labels, not values. Compare whole words: "Reid" and "Al-Rashid"
+    # end in the letters "id" but not in the word "ID".
+    words = text.lower().split()
+    if words and (words[-1] in LABEL_SUFFIXES or text.rstrip().endswith("#")):
         return None
 
     if DATE_SHAPE_RE.match(text):
