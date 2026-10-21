@@ -13,6 +13,7 @@ later-registered entries can override built-in defaults.
 
 import re
 
+from ..patterns.shared_regex import LABEL_FILLER_MAX, LABEL_FILLER_WORDS
 from .false_positives import (
     DATE_SHAPE_RE,
     LABEL_SUFFIXES,
@@ -25,25 +26,17 @@ from .validators import EntityValidator
 # identifier type ("TFN is ...", "Medicare number: ..."), that label is
 # stronger evidence than any bare-shape competitor — including one with a
 # higher numeric priority. Checked against the ~48 chars preceding the span.
+_FILLER_BEFORE = rf"(?:\s+(?:{LABEL_FILLER_WORDS})){{0,{LABEL_FILLER_MAX}}}\s*[:#]?\s*$"
 _LABEL_BEFORE: dict[str, re.Pattern] = {
-    "AU_TFN": re.compile(
-        r"(?:\btfn|\btax\s+file\s+number)(?:\s+(?:is|was|number|no\.?)){0,2}\s*[:#]?\s*$",
-        re.IGNORECASE),
-    "AU_CENTRELINK_CRN": re.compile(
-        r"(?:\bcrn|\bcentrelink(?:\s+reference)?(?:\s+number)?)(?:\s+(?:is|was)){0,1}\s*[:#]?\s*$",
-        re.IGNORECASE),
-    "AU_ABN": re.compile(
-        r"(?:\babn|\baustralian\s+business\s+number)(?:\s+(?:is|was|number|no\.?)){0,2}\s*[:#]?\s*$",
-        re.IGNORECASE),
-    "AU_ACN": re.compile(
-        r"(?:\bacn|\baustralian\s+company\s+number)(?:\s+(?:is|was|number|no\.?)){0,2}\s*[:#]?\s*$",
-        re.IGNORECASE),
-    "AU_MEDICARE": re.compile(
-        r"\bmedicare(?:\s+(?:card|number|no\.?|is|was)){0,2}\s*[:#]?\s*$",
-        re.IGNORECASE),
-    "US_SSN": re.compile(
-        r"(?:\bssn|\bsocial\s+security(?:\s+number)?)(?:\s+(?:is|was)){0,1}\s*[:#]?\s*$",
-        re.IGNORECASE),
+    entity_type: re.compile(trigger + _FILLER_BEFORE, re.IGNORECASE)
+    for entity_type, trigger in {
+        "AU_TFN": r"(?:\btfn|\btax\s+file\s+number)",
+        "AU_CENTRELINK_CRN": r"(?:\bcrn|\bcentrelink(?:\s+reference)?(?:\s+number)?)",
+        "AU_ABN": r"(?:\babn|\baustralian\s+business\s+number)",
+        "AU_ACN": r"(?:\bacn|\baustralian\s+company\s+number)",
+        "AU_MEDICARE": r"\bmedicare",
+        "US_SSN": r"(?:\bssn|\bsocial\s+security(?:\s+number)?)",
+    }.items()
 }
 
 _LABEL_WINDOW = 48

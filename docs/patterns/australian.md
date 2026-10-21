@@ -9,6 +9,13 @@ Tax File Numbers are unique identifiers issued by the Australian Taxation Office
 **Pattern Example:**
 - `123 456 782` *(checksum-valid — use this shape in tests)*
 - `TFN: 123 456 782`
+- `TFN on file: 123 456 782`, `Tax file number as supplied: 123 456 782`
+
+A label before the number (TFN, ABN, ACN, CRN, Medicare) decides the type even
+when the bare digits also fit another identifier. Up to three connective words
+may sit between the label and the value: *is, was, number, no., card, on, file,
+record, provided, supplied, recorded, listed, given, quoted, as*. Words that
+change the meaning, such as *not*, break the link.
 
 **Regex Pattern:**
 ```
@@ -87,6 +94,12 @@ Australian address formats including street addresses and postal codes.
 **Pattern Example:**
 - `42 Main St, Sydney NSW 2000`
 - `Unit 5, 123 Example Road, Melbourne VIC 3000`
+- `88 Rundle Mall, Adelaide SA 5000`, `7 Hilltop Circuit, Belconnen ACT 2617`
+
+The street must end in a recognised Australian street type. The
+list follows the common Australia Post types, including Mall, Grove, Circuit,
+Esplanade, Square, Quay, Rise, Walk, Promenade and their abbreviations, as
+well as Street, Road, Avenue and the other long-standing forms.
 
 **Regex Patterns:**
 Multiple complex patterns for detecting address components.

@@ -13,6 +13,7 @@ from .shared_regex import (
     AU_MEDICARE_LABELLED,
     AU_PASSPORT_LABELLED,
     AU_PHONE_PATTERNS,
+    AU_STREET_TYPES,
     AU_TFN_LABELLED,
 )
 
@@ -56,13 +57,13 @@ def get_au_pattern_definitions():
                 # Title-case form: anchored by state, postcode optional. Title
                 # case on street/suburb tokens keeps narrative prose like
                 # "2007 the Court decided to notify the Government" from matching.
-                r"\b\d{1,5}[A-Za-z]?(?:[-/]\d{1,4})?\s+(?:[A-Z][A-Za-z]*\s+){1,4}(?:Street|St\.?|Road|Rd\.?|Avenue|Ave\.?|Drive|Dr\.?|Lane|Ln\.?|Place|Pl\.?|Court|Ct\.?|Crescent|Cres\.?|Cr\.?|Boulevard|Blvd\.?|Parade|Pde\.?|Highway|Hwy\.?|Close|Cl\.?|Terrace|Tce\.?|Way)\.?,?\s+(?:[A-Z][A-Za-z]*\s*){1,3},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s+\d{4})?\b",
+                rf"\b\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Z][A-Za-z]*\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Z][A-Za-z]*\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s+\d{{4}})?\b",
                 # Case-tolerant form: accepts lowercase/mixed suburb and street
                 # names ("sydney NSW 2000", "42 queen st melbourne vic 3000")
                 # but REQUIRES a full postcode after the state, which is a
                 # strong enough anchor to prevent prose false positives even
                 # without capitalization.
-                r"(?i)\b\d{1,5}[A-Za-z]?(?:[-/]\d{1,4})?\s+(?:[A-Za-z]+\s+){1,4}(?:Street|St\.?|Road|Rd\.?|Avenue|Ave\.?|Drive|Dr\.?|Lane|Ln\.?|Place|Pl\.?|Court|Ct\.?|Crescent|Cres\.?|Cr\.?|Boulevard|Blvd\.?|Parade|Pde\.?|Highway|Hwy\.?|Close|Cl\.?|Terrace|Tce\.?|Way)\.?,?\s+(?:[A-Za-z]+\s*){1,3},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{4}\b",
+                rf"(?i)\b\d{{1,5}}[A-Za-z]?(?:[-/]\d{{1,4}})?\s+(?:[A-Za-z]+\s+){{1,4}}(?:{AU_STREET_TYPES})\.?,?\s+(?:[A-Za-z]+\s*){{1,3}},?\s*(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\s+\d{{4}}\b",
             ],
             "context": ["address", "street", "road", "suburb", "live", "residence"],
             "name": "Australian Address"
@@ -150,6 +151,12 @@ def get_au_pattern_definitions():
                 r"\b(?!AU-\d+\b)(?!NSW|VIC|QLD|WA|SA|TAS|NT|ACT\b)(?!(?:DOB|PLC|LLC|ABN|ACN|TFN|VIN|REF|POL|CRN|BSB|GST|SSN|TIN|NIN)(?:\b|\d))(?![A-Z]{1,3}\s+\d{3}-\d{2}-\d{4}\b)(?=[A-Z0-9-\s]*\d\b)[A-Z]{1,3}[-\s]?[A-Z0-9]{2,3}[-\s]?[A-Z0-9]{1,3}\b",  # Must have digits, exclude states & label tokens & SSN shape
                 r"\b(?:Registration|Rego)(?:\.|\:|\s)+\s*([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",  # Match after the word Registration/Rego with capturing group
                 r"\brego\s+([A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3}[-\s]?[A-Z0-9]{1,3})\b",   # Match after lowercase "rego" with capturing group
+                # Introduced by a vehicle word ("vehicle AU-4321", "Number plate: 1ABC234").
+                # The value must mix letters and digits, so "Vehicle 4" and prose
+                # after "car" do not match; label tokens (DOB30) are refused as in the
+                # bare form. Bare "AU-<digits>" stays excluded above
+                # because it is commonly a policy number.
+                r"\b(?i:vehicle|car|plate|number\s+plate|licen[cs]e\s+plate)(?:\s+(?i:registration|rego|plate|number|no\.?|is|was)){0,2}[\s:#(]*(?!(?:DOB|PLC|LLC|ABN|ACN|TFN|VIN|REF|POL|CRN|BSB|GST|SSN|TIN|NIN)(?:\b|\d))(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])([A-Z0-9]{1,3}(?:-?[A-Z0-9]{1,4}){1,2})\b",
                 r"\b(?!(?:DOB|PLC|LLC|ABN|ACN|TFN|VIN|REF|POL|CRN|BSB|GST)\d)[A-Z]{2,3}\d{2,3}[A-Z]?\b",  # Common format like ABC123 or AB123C
                 r"\b\d{1,3}[A-Z]{2,3}\b"  # Common format like 123ABC
             ],

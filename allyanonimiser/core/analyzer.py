@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import spacy
 
+from ..patterns.general_patterns import BROAD_PERSON_PATTERN_NAME
 from .common_formats import analyze_common_formats
 from .conflict_resolver import deduplicate_and_resolve_conflicts
 from .context_analyzer import ContextAnalyzer
@@ -612,8 +613,11 @@ class EnhancedAnalyzer:
             if pattern_score is None:
                 pattern_score = 0.85
 
-            # For PERSON entity type, skip pattern-based detection if we're using spaCy
-            if entity_type == "PERSON" and self.use_spacy:
+            # With spaCy NER available, skip only the broad two-capitalised-words
+            # PERSON pattern. Labelled and user-added PERSON patterns still run,
+            # so a name NER misses after "Insured:" is not left exposed.
+            if (self.use_spacy and entity_type == "PERSON"
+                    and getattr(pattern, "name", None) == BROAD_PERSON_PATTERN_NAME):
                 continue
 
             # Use pre-compiled regexes when the pattern object provides them

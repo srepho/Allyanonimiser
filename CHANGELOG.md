@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed — detection gaps found by the offline evaluator
+
+- **Labelled names no longer leak when spaCy is loaded.** The analyzer skipped every regex `PERSON` pattern whenever spaCy NER was available, so a name the model missed after "Policyholder:" or "Insured:" had no fallback. Now only the broad two-capitalised-words pattern is skipped. A new labelled-name pattern covers roles such as policyholder, insured, claimant, customer, patient, driver, witness and name. It handles names like O'Keefe, McDonald and Nguyen-Tran, and stops at the end of the line.
+- **Behavior change:** user-added `PERSON` patterns now run when spaCy is loaded. They were previously ignored silently.
+- **Labelled identifiers accept record-keeping wording.** "TFN on file: 123 456 782" was masked as a Centrelink CRN. Up to three connective words such as *on file*, *on record*, *provided* or *as supplied* may now separate a TFN, ABN, ACN, CRN or Medicare label from its value. Label triggers are case-insensitive. The regexes and the conflict resolver share one vocabulary.
+- **More Australian street types.** Addresses on a Mall, Grove, Circuit, Esplanade, Square, Quay and similar were only partly masked. The address patterns now use the common Australia Post street types.
+- **Registrations introduced by vehicle words.** "vehicle AU-4321" and "Number plate: 1ABC234" were missed. A value after *vehicle*, *car* or *plate* that mixes letters and digits is now a registration. Bare "AU-<digits>" is still left to the policy-number pattern.
+
+### Evaluation
+
+- On the synthetic AU corpus every labelled entity is now fully masked under pattern-only, `en_core_web_sm` and `en_core_web_lg`. Documents exposing PII fell from 13, 17 and 19 to zero. Over-masking did not increase. The pattern-only baseline receipt was refreshed.
+- These fixes were made with the corpus visible, so it can no longer show further gains. The regression tests use fresh phrasings that are not in the corpus.
+
 ## 3.6.0 (2026-10-21)
 
 ### Added — offline detection evaluation

@@ -8,19 +8,39 @@ of the old 4x4-groups form that used to live here.
 
 from .shared_regex import EMAIL_ADDRESS_PATTERN
 
+# Name of the broad two-capitalised-words PERSON pattern. It over-matches
+# ("Rundle Mall", "Travel Claim"), so the analyzer skips it when spaCy NER is
+# available. Every other PERSON pattern, including user-added ones, still runs.
+BROAD_PERSON_PATTERN_NAME = "Person Name"
+
+# One name token: Lewis, O'Keefe, McDonald, Nguyen-Tran, Te.
+_NAME_TOKEN = r"[A-Z](?:[a-z]+|'[A-Z][a-z]+)(?:[A-Z][a-z]+)?(?:-[A-Z][a-z]+)?"
+# Two to four tokens on one line: [ \t] rather than \s, so a name never runs
+# onto the next line's label ("Ryan Rush\nPolicy: ...").
+_NAME = rf"{_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN}){{1,3}}"
+_PERSON_ROLE_LABELS = (
+    r"policy\s*holder|(?:named\s+)?insured(?:\s+person)?|claimant|customer|client|patient"
+    r"|(?:third\s+party\s+)?driver|third\s+party|witness|beneficiary|applicant|member"
+    r"|next\s+of\s+kin|(?:full\s+|contact\s+)?name"
+)
+# "Policyholder: Ryan Rush" -> captures just the name.
+LABELLED_PERSON_PATTERN = rf"\b(?i:{_PERSON_ROLE_LABELS})[ \t]*:[ \t]*({_NAME})"
+
 
 def get_general_pattern_definitions():
     """Return patterns for common PII detection."""
     return [
         {
             "entity_type": "PERSON",
-            "patterns": [
-                r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b",
-                r"\bName:\s*[A-Z][a-z]+\s+[A-Z][a-z]+\b",
-                r"\bCustomer:\s*[A-Z][a-z]+\s+[A-Z][a-z]+\b"
-            ],
+            "patterns": [r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b"],
             "context": ["name", "person", "customer", "insured", "patient"],
-            "name": "Person Name"
+            "name": BROAD_PERSON_PATTERN_NAME,
+        },
+        {
+            "entity_type": "PERSON",
+            "patterns": [LABELLED_PERSON_PATTERN],
+            "context": ["name", "insured", "policyholder", "claimant", "patient"],
+            "name": "Labelled Person Name",
         },
         {
             "entity_type": "EMAIL_ADDRESS",
