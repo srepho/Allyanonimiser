@@ -87,16 +87,19 @@ counts. `tests/test_challenge_corpus.py` checks checksums against the package's
 validators, offsets, split separation, the manifest hashes, and exact
 regeneration when the Faker version matches.
 
-**Starting point, v3.6.0 plus the unreleased detection fixes:**
+**Results.** Starting point is v3.6.0 plus the first unreleased detection fixes. "After" is after the challenge-dev fixes; the test split was not used for tuning.
 
-| Split | Configuration | Entities fully covered | Docs exposing PII | Over-masking |
-|---|---|---|---|---|
-| dev | pattern-only | 1,916 / 2,840 (67%) | 305 / 320 | 8.9% |
-| dev | `en_core_web_sm` | 2,243 / 2,840 (79%) | 271 / 320 | 10.0% |
-| dev | `en_core_web_lg` | 2,338 / 2,840 (82%) | 261 / 320 | 9.9% |
-| test | pattern-only | 1,420 / 2,080 (68%) | 158 / 160 | 10.4% |
-| test | `en_core_web_sm` | 1,527 / 2,080 (73%) | 145 / 160 | 2.9% |
-| test | `en_core_web_lg` | 1,543 / 2,080 (74%) | 139 / 160 | 4.3% |
+| Split | Configuration | Fully covered, start | After | Docs exposing PII, start | After |
+|---|---|---|---|---|---|
+| dev | pattern-only | 67% | 93% | 305 / 320 | 113 / 320 |
+| dev | `en_core_web_sm` | 79% | 94% | 271 / 320 | 106 / 320 |
+| dev | `en_core_web_lg` | 82% | 95% | 261 / 320 | 87 / 320 |
+| test | pattern-only | 68% | 86% | 158 / 160 | 81 / 160 |
+| test | `en_core_web_sm` | 73% | 85% | 145 / 160 | 74 / 160 |
+| test | `en_core_web_lg` | 74% | 85% | 139 / 160 | 71 / 160 |
+
+Over-masking with spaCy is around 10% on dev, mostly organisation names, clock
+times, dollar amounts and invoice numbers, which the package masks by design.
 
 ## Head-to-head comparisons
 

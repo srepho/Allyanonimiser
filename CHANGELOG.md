@@ -10,10 +10,19 @@
 - **More Australian street types.** Addresses on a Mall, Grove, Circuit, Esplanade, Square, Quay and similar were only partly masked. The address patterns now use the common Australia Post street types.
 - **Registrations introduced by vehicle words.** "vehicle AU-4321" and "Number plate: 1ABC234" were missed. A value after *vehicle*, *car* or *plate* that mixes letters and digits is now a registration. Bare "AU-<digits>" is still left to the policy-number pattern.
 
+### Fixed — gaps found on the AU challenge corpus
+
+- **Identifiers:** TFN, ABN, ACN and Medicare numbers written with hyphens are detected, and the validators accept hyphens. Form-style labels such as "Worker TFN for PAYG withholding: ..." set the type. Labelled driver's licences, two-letter passports and account numbers are typed correctly. "1234 5678" account numbers are no longer cut at four digits. Labelled policy and claim references of any insurer format are detected, such as "MOT-2021-554210", "PL/23/118204" and "C2024/118233".
+- **Phones:** "+61 4..." numbers are typed AU_PHONE, and mobiles read aloud ("oh four one two, ...") are detected.
+- **Dates:** written and ISO dates are detected, such as "3 March 1971", "22nd of July 2025", "5-Feb-2024", "March 3, 2024" and "2024-11-30". A false-positive rule dropped any date after a word ending in a state code, such as "Incident", "Payment", "Patient" or "Visa". That rule now uses word boundaries.
+- **Names:** names with accented or Vietnamese letters, curly apostrophes, particles and middle initials are detected. After role labels, "SURNAME, Given", initials and all-caps names are detected. New patterns cover titles ("Mrs Adeyemi"), greetings ("Hi Ngozi,"), initials in running text ("K. Oyelaran") and self-introductions ("speaking with Tamsin"). These run alongside spaCy. Two bugs are fixed. Conflict resolution dropped names ending in the letters "id" or "ref", such as Reid and Al-Rashid. The broad name pattern crossed line breaks and displaced the full labelled name.
+- **Addresses:** unit, level, suite and shop prefixes, PO Box, GPO Box and Locked Bag addresses are detected.
+
 ### Evaluation
 
 - **New AU challenge corpus** (`bench/make_au_challenge.py`): 480 synthetic insurance documents in 12 new template families, split into 8 development and 4 held-out test families. Identifiers are freshly generated with valid checksums. New types include driver's licences, passports, BSB and account numbers and CRNs. Realistic noise includes compact and hyphenated numbers, multi-line and unit addresses, reversed and initialled names, lowercase notes, misspelt labels, OCR substitutions, non-breaking spaces and spoken phone numbers. Each span records its surface form, and the evaluator now reports coverage by variant and by noise. Pattern-only detection fully covers 67% of development entities; the large spaCy model reaches 82%.
 - The regression gate now also covers the challenge development split, pattern-only. The test split is held out and reported, not gated.
+- After the fixes above, the held-out test split, which was not used for tuning, improved from 68% to 86% of entities fully masked pattern-only, and from 74% to 85% with `en_core_web_lg`. Documents still exposing PII fell from 158 to 81 and from 139 to 71.
 - On the synthetic AU corpus every labelled entity is now fully masked under pattern-only, `en_core_web_sm` and `en_core_web_lg`. Documents exposing PII fell from 13, 17 and 19 to zero. Over-masking did not increase. The pattern-only baseline receipt was refreshed.
 - These fixes were made with the corpus visible, so it can no longer show further gains. The regression tests use fresh phrasings that are not in the corpus.
 
