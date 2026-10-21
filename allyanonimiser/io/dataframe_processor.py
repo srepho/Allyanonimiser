@@ -114,11 +114,8 @@ class DataFrameProcessor(BaseProcessor):
                     "score": e.score,
                 })
 
-        if not records:
-            return pd.DataFrame(
-                columns=["row_index", "entity_type", "start", "end", "text", "score"]
-            )
-        return pd.DataFrame(records)
+        result = pd.DataFrame(records, columns=["row_index", "entity_type", "start", "end", "text", "score"])
+        return result.drop(columns="text") if self.ally.minimal_output else result
 
     def anonymize_column(
         self,
@@ -152,6 +149,8 @@ class DataFrameProcessor(BaseProcessor):
             return r["text"]
 
         result_df[output_column] = result_df[column].apply(_anonymize)
+        if self.ally.minimal_output and output_column != column:
+            result_df.drop(columns=column, inplace=True)
         return result_df
 
     def process_dataframe(
@@ -198,6 +197,9 @@ class DataFrameProcessor(BaseProcessor):
         for column in text_columns:
 
             output_column = f"{output_prefix}{column}_anonymized"
+            if self.ally.minimal_output and anonymize:
+                # Keep the output schema even for empty or entirely null columns.
+                result_df[output_column] = df[column].copy()
 
             col_series = df[column].dropna()
             iterator = tqdm(
@@ -242,6 +244,9 @@ class DataFrameProcessor(BaseProcessor):
             columns=["row_index", "column", "entity_type", "start", "end", "text", "score"]
         )
 
+        if self.ally.minimal_output:
+            result_df = result_df.drop(columns=text_columns)
+            entity_df = entity_df.drop(columns="text", errors="ignore")
         return {"dataframe": result_df, "entities": entity_df}
 
     def analyze_dataframe_statistics(

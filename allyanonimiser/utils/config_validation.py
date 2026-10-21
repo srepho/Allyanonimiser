@@ -22,7 +22,7 @@ def validate_settings(settings):
             raise ValueError(f"{path} must be between {low} and {high}")
 
     analyzer = settings.get("analyzer", {})
-    unknown = set(analyzer) - {"min_score_threshold", "spacy_model", "enable_caching", "max_cache_size"}
+    unknown = set(analyzer) - {"min_score_threshold", "spacy_model", "enable_caching", "max_cache_size", "require_spacy_model"}
     if unknown:
         raise ValueError(f"Unknown analyzer setting(s): {sorted(unknown)}")
     if "min_score_threshold" in analyzer:
@@ -32,6 +32,10 @@ def validate_settings(settings):
             raise ValueError("analyzer.spacy_model must be a model name or null")
     if "enable_caching" in analyzer and not isinstance(analyzer["enable_caching"], bool):
         raise ValueError("analyzer.enable_caching must be a boolean")
+    if "require_spacy_model" in analyzer and not isinstance(analyzer["require_spacy_model"], bool):
+        raise ValueError("analyzer.require_spacy_model must be a boolean")
+    if analyzer.get("require_spacy_model") and analyzer.get("spacy_model", "en_core_web_sm") is None:
+        raise ValueError("require_spacy_model requires a named spaCy model")
     for section, key in (("analyzer", "max_cache_size"), ("processing", "batch_size"),
                          ("processing", "worker_count")):
         values = settings.get(section, {})
@@ -62,7 +66,7 @@ def validate_settings(settings):
         not isinstance(k, str) or not k or type(v) is not int for k, v in priority.items()
     ):
         raise ValueError("anonymization.entity_priority must map entity names to integers")
-    for key in ("use_pyarrow", "expand_acronyms"):
+    for key in ("use_pyarrow", "expand_acronyms", "minimal_output"):
         processing = settings.get("processing", {})
         if key in processing and not isinstance(processing[key], bool):
             raise ValueError(f"processing.{key} must be a boolean")

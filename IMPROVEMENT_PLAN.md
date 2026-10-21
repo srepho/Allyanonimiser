@@ -14,7 +14,9 @@ The first correctness batch was pushed as `ce337c8`; all five GitHub workflows p
 - Memory observation using `bench/check_stream_memory.py`, pattern-only mode, default caches, chunk size 500: 2,000 rows / 1.75 MiB input used 285.64 MiB peak RSS (3.15 s); 20,000 rows / 17.51 MiB input used 337.06 MiB (31.02 s). Both runs had exact row/entity counts. This is a local measurement, not a universal memory bound; larger-scale and NER measurements remain useful follow-up.
 - Configuration batch (item 3): implemented complete live regex snapshots, analyzer settings, priorities, version validation, safe serialization checks, and JSON/YAML behavior round trips. Existing per-call operator/score-adjustment semantics are retained and documented. Factory arguments explicitly override saved model/cache settings. Legacy unversioned files still load, and patterns in them now register correctly.
 - Configuration validation: 333 default tests passed, 7 deselected; Ruff and strict documentation build passed. Pyright remains advisory (55 errors in the local check); this batch does not undertake the type backlog.
-- Remaining: optional DataFrame batching, larger/NER memory measurements, and items 4–6.
+- Operational controls (item 4): implemented opt-in `minimal_output` across facade, DataFrame, CSV and streaming outputs; suppressed session reporting and disabled/cleared analyzer caches. Added strict requested-model NER loading through `require_spacy_model`, with JSON/YAML persistence and explicit factory overrides. Existing defaults and hash operators remain unchanged.
+- Operational-controls validation: 357 default tests passed, 7 opt-in tests deselected; Ruff and strict documentation build passed. New regressions cover sentinel absence in returned/file outputs, report suppression, caches, empty/null data, configuration reload, and requested/fallback/missing-model behavior. These changes are local and unreleased.
+- Remaining: optional DataFrame batching, larger/NER memory measurements, and items 5–6; keyed pseudonymization remains separate optional scope.
 
 ## Verified baseline
 

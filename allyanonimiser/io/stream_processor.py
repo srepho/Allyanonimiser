@@ -130,6 +130,8 @@ class StreamProcessor(BaseProcessor):
             stopping early should close the generator (e.g. contextlib.closing).
         """
         self._check_polars_available()
+        if self.ally.minimal_output and not anonymize:
+            raise ValueError("minimal_output streaming requires anonymize=True")
 
         import polars as pl
         from tqdm import tqdm
@@ -192,6 +194,8 @@ class StreamProcessor(BaseProcessor):
                         pl.Series(f"{column}_anonymized", [], dtype=pl.String)
                         for column in text_columns
                     ])
+                if self.ally.minimal_output:
+                    empty = empty.drop(text_columns)
                 empty.write_csv(output)
 
     def _process_chunk(
@@ -265,6 +269,10 @@ class StreamProcessor(BaseProcessor):
                     pl.Series(f"{column}_anonymized", anonymized_texts, dtype=pl.String)
                 )
 
+        if self.ally.minimal_output:
+            result = result.drop(text_columns)
+            for entity in all_entities:
+                entity.pop("text", None)
         return {
             'dataframe': result,
             'entities': all_entities,
@@ -325,6 +333,9 @@ class StreamProcessor(BaseProcessor):
         total_rows = 0
         total_entities = 0
         entity_columns = ["row_index", "column", "entity_type", "start", "end", "text", "score"]
+
+        if self.ally.minimal_output:
+            entity_columns.remove("text")
 
         with ExitStack() as stack:
             entity_output = None

@@ -295,6 +295,8 @@ class CSVProcessor(BaseProcessor):
                         })
 
         preview_df = pd.DataFrame(preview_data)
+        if self.ally.minimal_output:
+            preview_df = preview_df.drop(columns="original", errors="ignore")
         return preview_df
 
     def stream_process_csv(

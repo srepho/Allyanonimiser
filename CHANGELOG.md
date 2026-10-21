@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added — operational controls
+
+- Opt-in `minimal_output` profile suppresses original values in facade results, entity tables and CSV previews; drops selected tabular source columns; disables analyzer caches and session reporting. Existing defaults remain unchanged.
+- Opt-in `require_spacy_model` fails initialization if the requested model cannot load with NER, instead of silently using another model or pattern-only detection.
+- Persist both controls through JSON/YAML configuration and document their scope, precedence, and limitations.
+
 ### Fixed — configuration export and reload
 
 - Export complete live regex pattern snapshots, analyzer threshold/model/cache settings, active entities, acronym and processing settings, and anonymizer priorities. Preserve stored operator maps and score adjustments, with their existing per-call semantics.

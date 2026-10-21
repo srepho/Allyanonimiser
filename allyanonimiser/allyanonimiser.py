@@ -79,6 +79,8 @@ def create_allyanonimiser(
     enable_caching: bool | None = None,
     max_cache_size: int | None = None,
     spacy_model: str | None = _DefaultModel.SMALL,
+    minimal_output: bool | None = None,
+    require_spacy_model: bool | None = None,
 ) -> "Allyanonimiser":
     """Create a pre-configured Allyanonimiser instance.
 
@@ -92,6 +94,10 @@ def create_allyanonimiser(
             ``PERSON``, ``LOCATION``, and ``ORG`` entities — pattern-based
             detection (TFN/ABN/MEDICARE/AU_PHONE/EMAIL/dates/etc.) is identical
             either way. Pass ``None`` to disable spaCy entirely (pattern-only).
+        minimal_output: Omit source values from facade/processor outputs, suppress
+            session reports, and disable analyzer caches. Overrides saved profile.
+        require_spacy_model: Require the requested model and its NER pipeline;
+            fail instead of falling back. Incompatible with spacy_model=None.
     """
     if settings_path:
         settings_manager = SettingsManager()
@@ -107,6 +113,14 @@ def create_allyanonimiser(
         analyzer_options["enable_caching"] = enable_caching
     if max_cache_size is not None:
         analyzer_options["max_cache_size"] = max_cache_size
+    if require_spacy_model is not None:
+        analyzer_options["require_spacy_model"] = require_spacy_model
+    if minimal_output is not None:
+        if not isinstance(minimal_output, bool):
+            raise ValueError("minimal_output must be a boolean")
+        settings_manager.settings.setdefault("processing", {})["minimal_output"] = minimal_output
+    if settings_manager.get_value("processing.minimal_output", False):
+        analyzer_options["enable_caching"] = False
     analyzer = EnhancedAnalyzer(**analyzer_options)
     # Keep explicit factory overrides when configuring the instance.
     if "analyzer" in settings_manager.settings:
@@ -139,8 +153,13 @@ class Allyanonimiser:
         text_preprocessor: TextPreprocessor | None = None,
         settings_manager: SettingsManager | None = None,
         enable_caching: bool = True,
+        minimal_output: bool | None = None,
     ):
         self.settings_manager = settings_manager or SettingsManager()
+        if minimal_output is not None:
+            if not isinstance(minimal_output, bool):
+                raise ValueError("minimal_output must be a boolean")
+            self.settings_manager.settings.setdefault("processing", {})["minimal_output"] = minimal_output
         self.analyzer = analyzer or EnhancedAnalyzer(enable_caching=enable_caching)
         self.anonymizer = anonymizer or EnhancedAnonymizer(analyzer=self.analyzer)
         self.pattern_registry = pattern_registry or PatternRegistry()
@@ -163,6 +182,7 @@ class Allyanonimiser:
     # ------------------------------------------------------------------
 
     def _configure_from_settings(self) -> None:
+        self.minimal_output = self.settings_manager.get_value("processing.minimal_output", False)
         entity_types = self.settings_manager.get_entity_types()
         if "active" in self.settings_manager.get_section("entity_types"):
             self.analyzer.set_active_entity_types(entity_types)
@@ -175,8 +195,17 @@ class Allyanonimiser:
 
         options = self.settings_manager.get_section("analyzer")
         if options:
-            if options.get("spacy_model", self.analyzer.spacy_model_requested) != self.analyzer.spacy_model_requested:
-                replacement = EnhancedAnalyzer(**options)
+            if (options.get("spacy_model", self.analyzer.spacy_model_requested) != self.analyzer.spacy_model_requested
+                    or options.get("require_spacy_model", self.analyzer.require_spacy_model) != self.analyzer.require_spacy_model):
+                replacement_options = {
+                    "spacy_model": self.analyzer.spacy_model_requested,
+                    "require_spacy_model": self.analyzer.require_spacy_model,
+                    "enable_caching": self.analyzer.enable_caching,
+                    "max_cache_size": self.analyzer.max_cache_size,
+                    "min_score_threshold": self.analyzer.min_score_threshold,
+                    **options,
+                }
+                replacement = EnhancedAnalyzer(**replacement_options)
                 replacement.patterns = self.analyzer.patterns.copy()
                 replacement.entity_type_metadata.update(self.analyzer.entity_type_metadata)
                 self.analyzer = replacement
@@ -198,6 +227,8 @@ class Allyanonimiser:
         priority = self.settings_manager.get_value("anonymization.entity_priority")
         if priority is not None:
             self.anonymizer.entity_priority = deepcopy(priority)
+        if self.minimal_output:
+            self.analyzer.enable_caching = False
         self.analyzer.clear_cache()
 
     def _load_default_patterns(self) -> None:
@@ -259,6 +290,7 @@ class Allyanonimiser:
         snapshot.setdefault("entity_types", {})["active"] = sorted(self.analyzer.active_entity_types)
         snapshot["analyzer"] = {
             "spacy_model": self.analyzer.spacy_model_requested,
+            "require_spacy_model": self.analyzer.require_spacy_model,
             "min_score_threshold": self.analyzer.min_score_threshold,
             "enable_caching": self.analyzer.enable_caching,
             "max_cache_size": self.analyzer.max_cache_size,
@@ -268,7 +300,7 @@ class Allyanonimiser:
         snapshot["patterns"] = [pattern.to_dict() for pattern in self.analyzer.patterns]
         snapshot.setdefault("processing", {}).update({
             "batch_size": self.batch_size, "worker_count": self.worker_count,
-            "use_pyarrow": self.use_pyarrow,
+            "use_pyarrow": self.use_pyarrow, "minimal_output": self.minimal_output,
         })
         return SettingsManager(snapshot).export_config(config_path, include_metadata)
 
@@ -345,7 +377,8 @@ class Allyanonimiser:
     ) -> list[RecognizerResult]:
         """Detect PII entities in *text*.
 
-        Returns a list of ``RecognizerResult`` objects.
+        Returns a list of ``RecognizerResult`` objects. In minimal-output mode,
+        their ``text`` is None; offsets, types, and scores remain available.
         """
         if config is not None:
             language = config.language
@@ -355,7 +388,7 @@ class Allyanonimiser:
             expand_acronyms = config.expand_acronyms
 
         processed_text, _ = self._preprocess(text, expand_acronyms)
-        return self.analyzer.analyze(
+        results = self.analyzer.analyze(
             processed_text,
             language,
             score_adjustment,
@@ -363,12 +396,18 @@ class Allyanonimiser:
             min_score_threshold=min_score_threshold,
         )
 
+        if self.minimal_output:
+            return [RecognizerResult(r.entity_type, r.start, r.end, r.score) for r in results]
+        return results
+
     def get_available_entity_types(self) -> dict[str, Any]:
         """Return metadata about all registered entity types."""
         return self.analyzer.get_available_entity_types()
 
     def explain_entity(self, text: str, entity: dict[str, Any]) -> dict[str, Any]:
         """Explain why *entity* was detected in *text*."""
+        if self.minimal_output:
+            raise ValueError("explain_entity is unavailable with minimal_output")
         result = RecognizerResult(
             entity_type=entity["entity_type"],
             start=entity["start"],
@@ -404,7 +443,8 @@ class Allyanonimiser:
                 are skipped (the results are tied to the text as passed).
 
         Returns a dict with keys ``text``, ``items``, ``processing_time``,
-        ``document_id``, and ``original_text``.
+        ``document_id``, and ``original_text``. Minimal-output mode omits
+        ``original_text`` and item ``original`` values and suppresses reports.
         """
         start_time = time.time()
 
@@ -434,9 +474,13 @@ class Allyanonimiser:
         processing_time = time.time() - start_time
         result["processing_time"] = processing_time
         result["document_id"] = document_id or f"doc_{int(time.time() * 1000)}"
-        result["original_text"] = text
+        if self.minimal_output:
+            for item in result["items"]:
+                item.pop("original", None)
+        else:
+            result["original_text"] = text
 
-        if report:
+        if report and not self.minimal_output:
             if not report_manager.get_current_report():
                 report_manager.start_new_report()
             report_manager.get_current_report().record_anonymization(
@@ -471,7 +515,8 @@ class Allyanonimiser:
         """Analyze and anonymize *text* in one call.
 
         Returns a dict with ``analysis``, ``anonymized``, ``segments``,
-        ``structured_data``, ``statistics``, and ``processing_time``.
+        ``structured_data``, ``statistics``, and ``processing_time``. Minimal-output
+        mode omits entity text, segments, structured data, and acronym metadata.
         """
         start_time = time.time()
 
@@ -527,7 +572,7 @@ class Allyanonimiser:
         # rather than re-analyzing every segment (which cost one full
         # detection pass per segment, and could double-expand acronyms
         # because segments are cut from already-expanded text).
-        segments = extract_pii_rich_segments(processed_text)
+        segments = [] if self.minimal_output else extract_pii_rich_segments(processed_text)
         search_from = 0
         for segment in segments:
             seg_text = segment["text"]
@@ -559,7 +604,7 @@ class Allyanonimiser:
             )
             segment["anonymized"] = anon["text"]
 
-        structured_data = self._extract_structured_data(analysis_results)
+        structured_data = {} if self.minimal_output else self._extract_structured_data(analysis_results)
         processing_time = time.time() - start_time
 
         result: dict[str, Any] = {
@@ -603,6 +648,12 @@ class Allyanonimiser:
                 ]
             }
 
+        if self.minimal_output:
+            for entity in result["analysis"]["entities"]:
+                entity.pop("text", None)
+            result.pop("segments", None)
+            result.pop("structured_data", None)
+            result.pop("preprocessing", None)
         return result
 
     # ------------------------------------------------------------------
@@ -854,6 +905,7 @@ class Allyanonimiser:
 
 
 
+        report = report and not self.minimal_output
         if report:
             batch_report = report_manager.start_new_report()
             batch_id = batch_report.session_id
@@ -940,19 +992,23 @@ class Allyanonimiser:
 
     def get_report(self, session_id: str | None = None):
         """Retrieve an anonymization report."""
+        if self.minimal_output:
+            return None
         if session_id:
             return report_manager.get_report(session_id)
         return report_manager.get_current_report()
 
     def start_new_report(self, session_id: str | None = None):
         """Start a fresh anonymization report."""
+        if self.minimal_output:
+            return None
         return report_manager.start_new_report(session_id)
 
     def finalize_report(
         self, output_path: str | None = None, format: str = "html"
     ) -> dict[str, Any]:
         """Finalize the current report and optionally export it."""
-        rpt = report_manager.get_current_report()
+        rpt = self.get_report()
         if not rpt:
             return {"error": "No active report"}
         rpt.finalize()

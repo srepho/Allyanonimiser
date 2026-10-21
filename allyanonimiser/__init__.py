@@ -138,6 +138,8 @@ def create_allyanonimiser(
     enable_caching: bool | None = None,
     max_cache_size: int | None = None,
     spacy_model: str | None = _DefaultModel.SMALL,
+    minimal_output: bool | None = None,
+    require_spacy_model: bool | None = None,
 ) -> Allyanonimiser:
     """Create a fully configured Allyanonimiser instance.
 
@@ -157,6 +159,8 @@ def create_allyanonimiser(
         enable_caching=enable_caching,
         max_cache_size=max_cache_size,
         spacy_model=spacy_model,
+        minimal_output=minimal_output,
+        require_spacy_model=require_spacy_model,
     )
 
 

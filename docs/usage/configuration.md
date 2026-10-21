@@ -86,3 +86,76 @@ Export rejects unsupported custom analyzer/anonymizer subclasses, non-string
 pattern definitions, and nonserializable settings. Serialization validation
 happens before opening the output file. Arbitrary Python callbacks and
 third-party components cannot be reproduced by this format.
+
+
+## Sensitive-output controls
+
+Both controls are opt-in; existing output shapes and model fallback remain the defaults.
+
+```python
+from allyanonimiser import create_allyanonimiser
+
+ally = create_allyanonimiser(
+    minimal_output=True,
+    spacy_model="en_core_web_sm",
+    require_spacy_model=True,
+)
+result = ally.process("Contact sentinel.private@example.com")
+```
+
+`minimal_output=True` applies to the facade and its DataFrame, CSV, and stream
+processors:
+
+- `anonymize()` omits `original_text` and each item's `original` value.
+- `analyze()` returns entity offsets, types, and scores with `text=None`.
+  `process()` omits entity text, segments, structured source values, and acronym
+  expansion metadata. Batch and text-file helpers use the same profile.
+- DataFrame and Polars processing drop selected source columns and omit entity
+  text from entity tables/files. Anonymized columns remain. Detection-only
+  DataFrame processing drops selected source columns too; Polars streaming
+  requires `anonymize=True` in this profile.
+- CSV helpers replace selected columns in place, as before. CSV previews omit
+  the original-value column. Aggregate CSV statistics remain available.
+- Automatic session reports are suppressed even when `report=True`.
+  `get_report()` and `start_new_report()` return `None`; finalization reports no
+  active report. Existing global reports from other instances are neither read
+  through this instance nor cleared or modified.
+- All three analyzer result caches are cleared when the profile is applied and
+  disabled, even if `enable_caching=True` is also supplied. The model itself can
+  remain resident in memory.
+- `explain_entity()` is unavailable because its explanation includes source data.
+
+This is an output/retention policy, not a new detector or operator. Unselected
+columns, caller-supplied identifiers, filenames, and paths are not sanitized.
+Undetected text and content deliberately preserved by operators (such as
+postcodes) can remain in anonymized text. Select every sensitive source column;
+column auto-detection samples rows and can miss sparse PII. Inputs and temporary
+processing objects still exist in memory. Direct use of low-level components
+such as `ally.analyzer` or `ally.anonymizer` bypasses facade output filtering.
+Use the public configuration APIs rather than mutating component attributes.
+The existing hash operator is unchanged; this profile adds no keyed pseudonyms.
+
+`require_spacy_model=True` requires the **requested** model to load with a `ner`
+pipeline. Initialization raises `RuntimeError` when it is missing or lacks NER,
+even if the usual fallback model is installed or a permissive fallback was
+previously cached. `spacy_model=None` remains an explicit pattern-only choice;
+combining it with the strict requirement raises `ValueError`.
+
+Both options round-trip through `export_config()` in JSON/YAML:
+
+```json
+{
+  "schema_version": 1,
+  "processing": {"minimal_output": true},
+  "analyzer": {
+    "spacy_model": "en_core_web_sm",
+    "require_spacy_model": true,
+    "enable_caching": false
+  }
+}
+```
+
+Omitted factory options inherit saved settings. Explicit boolean arguments
+allow overriding them. Minimal output always takes precedence over enabling
+caching. For pattern-only use, set `spacy_model=None` and leave
+`require_spacy_model=False`.

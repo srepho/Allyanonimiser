@@ -97,7 +97,13 @@ class EnhancedAnalyzer:
         enable_caching: bool = True,
         max_cache_size: int = 10_000,
         spacy_model: str | None = "en_core_web_sm",
+        require_spacy_model: bool = False,
     ):
+        if not isinstance(require_spacy_model, bool):
+            raise ValueError("require_spacy_model must be a boolean")
+        if require_spacy_model and spacy_model is None:
+            raise ValueError("require_spacy_model requires a named spaCy model")
+        self.require_spacy_model = require_spacy_model
         self.spacy_model_requested = spacy_model
         self.patterns: list = []
         self.active_entity_types: set = set()
@@ -111,7 +117,13 @@ class EnhancedAnalyzer:
             self.nlp = None
         else:
             try:
-                self.nlp = load_spacy_model(spacy_model)
+                if require_spacy_model:
+                    self.nlp = spacy.load(spacy_model)
+                    if "ner" not in self.nlp.pipe_names:
+                        raise ValueError("Requested model has no NER pipeline")
+                    self.nlp._allyanonimiser_loaded_as = spacy_model
+                else:
+                    self.nlp = load_spacy_model(spacy_model)
                 # Use the loader-attached sentinel: spacy.blank('en') reports
                 # meta['name'] = 'pipeline', which misleads check_spacy_status.
                 self.spacy_model_loaded = getattr(
@@ -123,6 +135,8 @@ class EnhancedAnalyzer:
                 if self.use_spacy:
                     logger.info("spaCy model loaded: %s", self.spacy_model_loaded)
             except Exception as e:
+                if require_spacy_model:
+                    raise RuntimeError(f"Required spaCy NER model {spacy_model!r} could not be loaded") from e
                 logger.warning("Could not load spaCy model: %s", e)
                 self.use_spacy = False
                 self.nlp = None
