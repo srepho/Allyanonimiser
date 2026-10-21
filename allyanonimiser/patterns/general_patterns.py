@@ -46,6 +46,20 @@ TITLED_PERSON_PATTERN = (
 )
 _GREETING_STOP = (r"(?:All|Team|Sir|Madam|Everyone|There|Again|Both|Guys|Folks|Customer|Valued"
                   r"|Mr|Mrs|Ms|Miss|Dr|Prof|Mx|Hi|Hello|Dear|Thanks)")
+# Words that start sentences or headings, never surnames after an initial.
+_INITIAL_STOP = (r"(?:The|This|That|These|Those|Then|There|It|In|On|At|We|I|He|She|They|You|Our"
+                 r"|Your|Please|Note|See|If|As|An|And|But|Or|For|To|Of|By|With|From|Re|Subject"
+                 r"|Policy|Claim|Total|Section|Plan|Part|Item|Step|Medicare)")
+# "K. Oyelaran", "J.R. Whitcombe" in running text.
+INITIAL_PERSON_PATTERN = (
+    rf"(?<![A-Za-z.])([{_UP}]\.(?:[ \t]?[{_UP}]\.)?[ \t]+(?!{_INITIAL_STOP}\b){_NAME_TOKEN})"
+)
+# Self-introductions in call notes: "you're speaking with Tamsin",
+# "my name is Ruairi Gallagher".
+INTRODUCED_PERSON_PATTERN = (
+    rf"\b(?i:speaking\s+(?:with|to)|my\s+name\s+is|(?:his|her|their)\s+name\s+is)[ \t]+"
+    rf"(?!{_INITIAL_STOP}\b)({_NAME_TOKEN}(?:[ \t]+{_NAME_TOKEN})?)"
+)
 # "Hi Ngozi,", "Thanks Lisa." — a first name directly after a greeting.
 GREETING_PERSON_PATTERN = (
     rf"\b(?:Hi|Hello|Dear|Thanks|Thank\s+you)[ \t]+(?!{_GREETING_STOP}\b)"
@@ -59,7 +73,9 @@ def get_general_pattern_definitions():
         {
             "entity_type": "PERSON",
             # Excludes greetings and salutations ("Dear Sir").
-            "patterns": [rf"\b(?!(?:Dear|Hi|Hello|Thanks)\b){_NAME_TOKEN}\s+(?!{_GREETING_STOP}\b){_NAME_TOKEN}\b"],
+            # One line only: "Khoury\nInspection" is not a name. Excludes
+            # greetings and salutations ("Dear Sir").
+            "patterns": [rf"\b(?!(?:Dear|Hi|Hello|Thanks)\b){_NAME_TOKEN}[ \t]+(?!{_GREETING_STOP}\b){_NAME_TOKEN}\b"],
             "context": ["name", "person", "customer", "insured", "patient"],
             "name": BROAD_PERSON_PATTERN_NAME,
         },
@@ -71,7 +87,8 @@ def get_general_pattern_definitions():
         },
         {
             "entity_type": "PERSON",
-            "patterns": [TITLED_PERSON_PATTERN, GREETING_PERSON_PATTERN],
+            "patterns": [TITLED_PERSON_PATTERN, GREETING_PERSON_PATTERN,
+                         INITIAL_PERSON_PATTERN, INTRODUCED_PERSON_PATTERN],
             "context": ["mr", "mrs", "ms", "dr", "dear", "hi"],
             "name": "Titled or Greeted Person Name",
         },

@@ -330,3 +330,39 @@ def test_short_number_words_are_not_phones(ally, text):
 def test_spoken_digits_conversion(spoken, digits):
     from allyanonimiser.core.validators import spoken_digits_to_number
     assert spoken_digits_to_number(spoken) == digits
+
+
+@pytest.mark.parametrize("text,name", [
+    ("Policyholder: Priya S. Khoury\nInspection date: 1/4/26", "Priya S. Khoury"),
+    ("Policyholder: Mrs Greg Russell\nInspection date: 1/11/25", "Greg Russell"),
+])
+def test_labelled_names_not_cut_by_next_line(ally, text, name):
+    ok, out = person_masked(ally, text, name)
+    assert ok, out
+
+
+def test_broad_name_pattern_stays_on_one_line(ally):
+    text = "Ref: Khoury\nInspection notes follow"
+    spans = [text[r.start:r.end] for r in ally.analyze(text) if r.entity_type == "PERSON"]
+    assert not any("\n" in s for s in spans), spans
+
+
+@pytest.mark.parametrize("text,name", [
+    ("The other driver was K. Oyelaran, who left the scene.", "K. Oyelaran"),
+    ("Statement taken from J.R. Whitcombe on site.", "J.R. Whitcombe"),
+    ("Hi, you're speaking with Tamsin. How can I help?", "Tamsin"),
+    ("Caller said my name is Ruairi Gallagher and hung up.", "Ruairi Gallagher"),
+])
+def test_unlabelled_initials_and_introductions(ally, text, name):
+    ok, out = person_masked(ally, text, name)
+    assert ok, out
+
+
+@pytest.mark.parametrize("text", [
+    "Refer to Plan B. Then call the assessor.",
+    "See section A. The insured agreed.",
+    "This is Medicare related.",
+])
+def test_initial_and_introduction_false_positives(ally, text):
+    found = [text[r.start:r.end] for r in ally.analyze(text) if r.entity_type == "PERSON"]
+    assert not found, found
