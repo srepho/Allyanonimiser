@@ -16,7 +16,8 @@ The first correctness batch was pushed as `ce337c8`; all five GitHub workflows p
 - Configuration validation: 333 default tests passed, 7 deselected; Ruff and strict documentation build passed. Pyright remains advisory (55 errors in the local check); this batch does not undertake the type backlog.
 - Operational controls (item 4): implemented opt-in `minimal_output` across facade, DataFrame, CSV and streaming outputs; suppressed session reporting and disabled/cleared analyzer caches. Added strict requested-model NER loading through `require_spacy_model`, with JSON/YAML persistence and explicit factory overrides. Existing defaults and hash operators remain unchanged.
 - Operational-controls validation: 357 default tests passed, 7 opt-in tests deselected; Ruff and strict documentation build passed. New regressions cover sentinel absence in returned/file outputs, report suppression, caches, empty/null data, configuration reload, and requested/fallback/missing-model behavior. These changes are local and unreleased.
-- Remaining: optional DataFrame batching, larger/NER memory measurements, and items 5–6; keyed pseudonymization remains separate optional scope.
+- Benchmark gate (item 5, first pass, 2026-10-21): `bench/eval_ally.py` evaluates offline with receipts, family-based dev/test splits and a pattern-only baseline gate in pytest. Held-out noise variations and generated docs tables remain.
+- Remaining: optional DataFrame batching, larger/NER memory measurements, the rest of item 5, and item 6; keyed pseudonymization remains separate optional scope.
 
 ## Verified baseline
 
