@@ -1,6 +1,6 @@
 {
   "receipt_schema": 1,
-  "created": "2026-10-22T00:34:39+1100",
+  "created": "2026-10-22T00:42:02+1100",
   "corpus": {
     "path": "bench/data/au_insurance.jsonl",
     "sha256": "ff24ede6e2bf7f5de558ca8000a39f2bd5911f5b7fea6135dd5bfa8be822f204",
@@ -26,7 +26,7 @@
     "enable_caching": false
   },
   "source": {
-    "revision": "21923cc19ca2082cebd1f0cb6cb6fe6fe457e143",
+    "revision": "e6ba7ce252533cc5e46fb59d286f65fb0e1ae5ac",
     "package_dirty": false
   },
   "environment": {
@@ -46,10 +46,10 @@
   },
   "timing": {
     "init_seconds": 0.001,
-    "warm_pass_seconds_median": 0.654,
+    "warm_pass_seconds_median": 0.951,
     "passes": 3,
-    "docs_per_second": 244.8,
-    "chars_per_second": 74484
+    "docs_per_second": 168.3,
+    "chars_per_second": 51218
   },
   "metrics": {
     "entities": {

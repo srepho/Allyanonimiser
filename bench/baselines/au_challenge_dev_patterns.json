@@ -1,6 +1,6 @@
 {
   "receipt_schema": 1,
-  "created": "2026-10-22T00:37:48+1100",
+  "created": "2026-10-22T00:41:52+1100",
   "corpus": {
     "path": "bench/data/au_challenge_dev.jsonl",
     "sha256": "8285ae9adee77b96dbecc1711d0506c6312335bf2e60e56b68492cedb1c4522f",
@@ -26,7 +26,7 @@
     "enable_caching": false
   },
   "source": {
-    "revision": "e792811a275bd99333804a7b49248bca6748a14b",
+    "revision": "e6ba7ce252533cc5e46fb59d286f65fb0e1ae5ac",
     "package_dirty": false
   },
   "environment": {
@@ -46,33 +46,33 @@
   },
   "timing": {
     "init_seconds": 0.001,
-    "warm_pass_seconds_median": 1.617,
+    "warm_pass_seconds_median": 1.151,
     "passes": 3,
-    "docs_per_second": 197.9,
-    "chars_per_second": 77049
+    "docs_per_second": 278.0,
+    "chars_per_second": 108239
   },
   "metrics": {
     "entities": {
       "total": 2840,
-      "covered": 2541,
-      "partial": 73,
-      "missed": 226,
-      "covered_correct_type": 2514,
-      "full_coverage_rate": 0.8947
+      "covered": 2642,
+      "partial": 43,
+      "missed": 155,
+      "covered_correct_type": 2615,
+      "full_coverage_rate": 0.9303
     },
     "documents": {
       "total": 320,
-      "with_exposed_pii": 182
+      "with_exposed_pii": 113
     },
     "overmasking": {
-      "chars": 6798,
-      "rate": 0.0805,
-      "spurious_replacements": 547,
+      "chars": 5847,
+      "rate": 0.0692,
+      "spurious_replacements": 507,
       "spurious_by_type": {
         "INVOICE_NUMBER": 40,
         "MONEY_AMOUNT": 120,
         "ORGANIZATION": 40,
-        "PERSON": 187,
+        "PERSON": 147,
         "TIME": 160
       }
     },
@@ -214,12 +214,12 @@
       },
       "PERSON": {
         "total": 640,
-        "covered": 460,
-        "partial": 41,
-        "missed": 139,
-        "covered_correct_type": 440,
-        "exposed_chars": 1364,
-        "full_coverage_rate": 0.7188
+        "covered": 561,
+        "partial": 11,
+        "missed": 68,
+        "covered_correct_type": 541,
+        "exposed_chars": 632,
+        "full_coverage_rate": 0.8766
       },
       "PHONE_INTL": {
         "total": 40,
@@ -685,11 +685,11 @@
       },
       "PERSON/first_only": {
         "total": 138,
-        "covered": 67,
+        "covered": 93,
         "partial": 0,
-        "missed": 71,
-        "covered_correct_type": 67,
-        "full_coverage_rate": 0.4855
+        "missed": 45,
+        "covered_correct_type": 93,
+        "full_coverage_rate": 0.6739
       },
       "PERSON/full": {
         "total": 317,
@@ -701,19 +701,19 @@
       },
       "PERSON/initial": {
         "total": 62,
-        "covered": 0,
-        "partial": 17,
-        "missed": 45,
-        "covered_correct_type": 0,
-        "full_coverage_rate": 0.0
+        "covered": 61,
+        "partial": 1,
+        "missed": 0,
+        "covered_correct_type": 61,
+        "full_coverage_rate": 0.9839
       },
       "PERSON/middle": {
         "total": 27,
-        "covered": 17,
-        "partial": 10,
+        "covered": 26,
+        "partial": 1,
         "missed": 0,
-        "covered_correct_type": 17,
-        "full_coverage_rate": 0.6296
+        "covered_correct_type": 26,
+        "full_coverage_rate": 0.963
       },
       "PERSON/surname_first": {
         "total": 28,
@@ -725,11 +725,11 @@
       },
       "PERSON/title": {
         "total": 28,
-        "covered": 21,
-        "partial": 7,
+        "covered": 26,
+        "partial": 2,
         "missed": 0,
-        "covered_correct_type": 21,
-        "full_coverage_rate": 0.75
+        "covered_correct_type": 26,
+        "full_coverage_rate": 0.9286
       },
       "PERSON/upper": {
         "total": 40,
@@ -847,11 +847,11 @@
     "by_noise": {
       "clean": {
         "total": 1399,
-        "covered": 1304,
-        "partial": 28,
-        "missed": 67,
-        "covered_correct_type": 1295,
-        "full_coverage_rate": 0.9321
+        "covered": 1369,
+        "partial": 10,
+        "missed": 20,
+        "covered_correct_type": 1360,
+        "full_coverage_rate": 0.9786
       },
       "doc:lowercase": {
         "total": 265,
@@ -863,27 +863,27 @@
       },
       "doc:nbsp": {
         "total": 465,
-        "covered": 427,
+        "covered": 447,
         "partial": 5,
-        "missed": 33,
-        "covered_correct_type": 425,
-        "full_coverage_rate": 0.9183
+        "missed": 13,
+        "covered_correct_type": 445,
+        "full_coverage_rate": 0.9613
       },
       "doc:ocr": {
         "total": 379,
-        "covered": 285,
-        "partial": 37,
+        "covered": 296,
+        "partial": 26,
         "missed": 57,
-        "covered_correct_type": 274,
-        "full_coverage_rate": 0.752
+        "covered_correct_type": 285,
+        "full_coverage_rate": 0.781
       },
       "doc:typo_labels": {
         "total": 515,
-        "covered": 486,
-        "partial": 5,
-        "missed": 24,
-        "covered_correct_type": 477,
-        "full_coverage_rate": 0.9437
+        "covered": 496,
+        "partial": 3,
+        "missed": 16,
+        "covered_correct_type": 487,
+        "full_coverage_rate": 0.9631
       },
       "span:nbsp": {
         "total": 35,
@@ -904,12 +904,12 @@
     },
     "char_level": {
       "PERSON": {
-        "precision": 0.6211,
-        "recall": 0.7747,
-        "f1": 0.6894,
-        "tp": 5623,
-        "fp": 3431,
-        "fn": 1635
+        "precision": 0.7193,
+        "recall": 0.8756,
+        "f1": 0.7898,
+        "tp": 6355,
+        "fp": 2480,
+        "fn": 903
       },
       "ADDRESS": {
         "precision": 1.0,
